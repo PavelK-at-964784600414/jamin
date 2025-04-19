@@ -98,7 +98,6 @@ export async function createTheme(prevState: State, formData: FormData) {
 
     // Use the memberId obtained from the session
     // member_id	seconds	key	mode	chords	tempo	date	status	description	title	genre	recording_url	instrument
-    recording_url = 'testing';
     await sql`
       INSERT INTO themes (
         member_id,	seconds,	key,	mode,	chords,	tempo,	date,	status,	description,	title,	genre,	recording_url,	instrument
@@ -132,12 +131,12 @@ export async function updateTheme(id: string, prevState: State, formData: FormDa
     };
   }
   // Prepare data for insertion into the database
-  const { customerId, seconds, status } = validatedFields.data;
+  const { memberId, seconds, status } = validatedFields.data;
 
  try{
   await sql`
     UPDATE themes
-    SET member_id = ${customerId}, seconds = ${seconds}, status = ${status}
+    SET member_id = ${memberId}, seconds = ${seconds}, status = ${status}
     WHERE id = ${id}
   `;
 } catch (error) {

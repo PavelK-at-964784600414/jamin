@@ -70,15 +70,16 @@ export type ThemesTable = {
   seconds: string;
   id: string;
   user_name: string;
-  name: string;
+  title: string;
   chords: string;
-  keySignature: string;
+  key: string;
   mode: string;
   tempo: string;
   instrument: string;
   image_url: string;
   date: string;
   status: 'in progress' | 'complete';
+  recording_url: string;
 };
 
 // Member table related types
