@@ -4,8 +4,11 @@ import { z } from 'zod';
 import { sql } from '@vercel/postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { signIn } from '@/auth';
+import { signIn, signUp } from '@/auth';
 import { AuthError } from 'next-auth';
+import { uploadToS3 } from './s3';
+import getServerSession from 'next-auth';
+import { authConfig } from '@/auth.config';
 
 const FormSchema = z.object({
   id: z.string(),
@@ -15,56 +18,110 @@ const FormSchema = z.object({
   date: z.string(),
 });
  
-const CreateInvoice = FormSchema.omit({ id: true, date: true });
-const UpdateInvoice = FormSchema.omit({ id: true, date: true });
+const UpdateTheme = FormSchema.omit({ id: true, date: true });
+
 
 export type State = {
   errors?: {
-    customerId?: string[];
-    amount?: string[];
-    status?: string[];
+    title?: string[];
+    description?: string[];
+    genre?: string[];
+    key?: string[];
+    tempo?: string[];
+    audioFile?: string[];
   };
   message?: string | null;
 };
- 
-export async function createInvoice(prevState: State, formData: FormData) {
-  const validatedFields = CreateInvoice.safeParse({
-    customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
-    status: formData.get('status'),
-  });
-  console.log(validatedFields);
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Create Invoice.',
-    };
+
+const CreateTheme = z.object({
+  title: z.string().nonempty(),
+  description: z.string().optional(),
+  genre: z.string().optional(),
+  key: z.string().optional(),   // Previously “key”
+  tempo: z.number().optional(),
+  seconds: z.number().optional(),
+  audioFile: z.any().optional(),           // Accept any input for audioFile
+  instrument: z.string().optional(),
+  scale: z.string().optional(), 
+  mode: z.string().optional(),           
+  chords: z.string().optional(),           // New: chord progression
+});
+
+
+export async function createTheme(prevState: State, formData: FormData) {
+  
+  // Get the current session from NextAuth
+  const session = await getServerSession(authConfig);
+  let memberId = session?.user?.id;
+  console.log('session details:', session);
+  if (!memberId) {
+    console.warn('User not authenticated. Using default member id for testing.');
+    memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
+    //throw new Error('User not authenticated.');
   }
-  // Prepare data for insertion into the database
-  const { customerId, amount, status } = validatedFields.data;
-  const amountInCents = amount * 100;
-  const date = new Date().toISOString().split('T')[0];
 
   try {
+    const validatedFields = CreateTheme.safeParse({
+      title: formData.get('title'),
+      description: formData.get('description'),
+      genre: formData.get('genre'),
+      key: formData.get('keySignature') ?? "",
+      tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
+      audioFile: formData.get('audioFile'),
+      instrument: formData.get('instrument'),
+      scale: formData.get('scale') ?? "",
+      mode: formData.get('mode') ?? "",
+      chords: formData.get('chords'),
+    });
+
+    
+    if (!validatedFields.success) {
+      console.error('Validation failed:', validatedFields.error);
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        message: 'Missing or Invalid Fields. Failed to Create Theme.',
+      };
+    }
+
+    const { title, description, genre, key, tempo, audioFile, instrument, scale, mode, chords } = validatedFields.data;
+    let recording_url = null;
+    const status = 'in progress';
+    const seconds = 0;// need to get seconds fromrecording
+    
+    if (audioFile instanceof File) {
+      const fileKey = `recordings/${Date.now()}-${audioFile.name}`;
+      recording_url = await uploadToS3(audioFile, fileKey);
+      console.log('File uploaded, URL:', recording_url);
+    }
+
+    const date = new Date().toISOString().split('T')[0];
+
+    // Use the memberId obtained from the session
+    // member_id	seconds	key	mode	chords	tempo	date	status	description	title	genre	recording_url	instrument
+    recording_url = 'testing';
     await sql`
-      INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+      INSERT INTO themes (
+        member_id,	seconds,	key,	mode,	chords,	tempo,	date,	status,	description,	title,	genre,	recording_url,	instrument
+      ) VALUES (
+        ${memberId}, ${seconds}, ${key}, ${mode}, ${chords}, ${tempo}, ${date}, ${status}, ${description}, ${title}, ${genre} , ${recording_url}, ${instrument}
+      )
     `;
+  
+    console.log('Theme created successfully');
+    revalidatePath('/dashboard/themes');
+    redirect('/dashboard/themes');
   } catch (error) {
+    console.error('Error creating theme:', error);
     return {
-      message: 'Database Error: Failed to Create Invoice.',
+      message: 'Database Error: Failed to Create Theme.',
     };
   }
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
 }
-
  
- 
-export async function updateInvoice(id: string, prevState: State, formData: FormData) {
-  const validatedFields = CreateInvoice.safeParse({
+export async function updateTheme(id: string, prevState: State, formData: FormData) {
+  const validatedFields = CreateTheme.safeParse({
     customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
+    seconds: formData.get('seconds'),
     status: formData.get('status'),
   });
   console.log(validatedFields);
@@ -75,13 +132,12 @@ export async function updateInvoice(id: string, prevState: State, formData: Form
     };
   }
   // Prepare data for insertion into the database
-  const { customerId, amount, status } = validatedFields.data;
-  const amountInCents = amount * 100;
+  const { customerId, seconds, status } = validatedFields.data;
 
  try{
   await sql`
-    UPDATE invoices
-    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+    UPDATE themes
+    SET member_id = ${customerId}, seconds = ${seconds}, status = ${status}
     WHERE id = ${id}
   `;
 } catch (error) {
@@ -93,7 +149,7 @@ export async function updateInvoice(id: string, prevState: State, formData: Form
   redirect('/dashboard/invoices');
 }
 
-export async function deleteInvoice(id: string) {
+export async function deleteTheme(id: string) {
   throw new Error('Failed to Delete Invoice');
     try{
       await sql`DELETE FROM invoices WHERE id = ${id}`;
@@ -110,8 +166,46 @@ export async function authenticate(
   formData: FormData,
 ) {
   try {
-    await signIn('credentials', formData);
-    //redirect('/dashboard');
+    // Use the signIn function imported from auth.ts which is an async wrapper
+    const result = await signIn('credentials', {
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+      redirect: false,
+    });
+    
+    // Check if authentication failed
+    if (result?.error) {
+      return 'Invalid credentials.';
+    }
+    
+    // If we get here, authentication was successful
+    console.log('Authentication successful - redirecting to dashboard');
+    
+    // Return success to clear any previous error state
+    // The useEffect in the login form will handle the redirect
+    return undefined;
+  } catch (error) {
+    console.error('Authentication error:', error);
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.';
+        default:
+          return 'Something went wrong.';
+      }
+    }
+    return 'Something went wrong. Please try again.';
+  }
+}
+
+export async function register(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  try {
+    await signUp(undefined, formData);
+    console.log('Registered successfully   ');
+    redirect('/login');
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
@@ -124,3 +218,4 @@ export async function authenticate(
     throw error;
   }
 }
+

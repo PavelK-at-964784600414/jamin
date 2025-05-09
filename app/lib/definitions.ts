@@ -1,99 +1,183 @@
-// This file contains type definitions for your data.
-// It describes the shape of the data, and what data type each property should accept.
-// For simplicity of teaching, we're manually defining these types.
-// However, these types are generated automatically if you're using an ORM such as Prisma.
-export type User = {
+import { z } from 'zod'
+
+
+// Member related types
+export type Member = {
   id: string;
-  name: string;
+  user_name: string;
+  email: string;
+  password: string;
+  image_url: string;
+  details: AdditionalDetails | null;
+  themes: Theme[] | null;
+};
+
+export type AdditionalDetails = {
+  first_name: string;
+  last_name: string;
+  country: string | null;
+  instrument: string | null;
+};
+
+// Theme types – updated with new field names and types
+export type Theme = {
+  id: string;
+  member_id: string;
+  title: string;
+  description?: string;
+  seconds: number;
+  keySignature: string;
+  mode: string;
+  chords: string;
+  tempo: number;
+  recording_url: string;
+  instrument: string;
+  date: string;
+  status: 'in progress' | 'complete';
+};
+
+// New type for signup data
+export type SignupData = {
+  first_name: string;
+  last_name: string;
+  user_name: string;
   email: string;
   password: string;
 };
 
-export type Member = {
+// Other Theme-related types
+export type LatestThemes = {
   id: string;
-  name: string;
-  email: string;
+  title: string;
   image_url: string;
+  user_name: string;
+  date: string;
 };
 
+export type ThemePages = {
+  title: string;
+  status: string;
+  user_name: string;
+  seconds: string;
+};
 
-
-export type Theme = {
-  id: string;
-  customer_id: string;
+export type LatestThemesRaw = Omit<LatestThemes, 'title'> & {
   name: string;
   seconds: number;
-  style: string;
-  key: string;
+};
+
+export type ThemesTable = {
+  seconds: string;
+  id: string;
+  user_name: string;
+  name: string;
+  chords: string;
+  keySignature: string;
   mode: string;
-  chords: string[];
-  tempo: number;
-  rythm: string;
-  sample: string;
-  date: string;
-  // In TypeScript, this is called a string union type.
-  // It means that the "status" property can only be one of the two strings: 'pending' or 'paid'.
-  status: 'pending' | 'complete';
-};
-
-export type Revenue = {
-  month: string;
-  revenue: number;
-};
-
-export type LatestInvoice = {
-  id: string;
-  name: string;
-  image_url: string;
-  email: string;
-  amount: string;
-};
-
-// The database returns a number for amount, but we later format it to a string with the formatCurrency function
-export type LatestInvoiceRaw = Omit<LatestInvoice, 'amount'> & {
-  amount: number;
-};
-
-export type InvoicesTable = {
-  id: string;
-  customer_id: string;
-  name: string;
-  email: string;
+  tempo: string;
+  instrument: string;
   image_url: string;
   date: string;
-  amount: number;
-  status: 'pending' | 'paid';
+  status: 'in progress' | 'complete';
 };
 
-export type CustomersTableType = {
+// Member table related types
+export type MembersTableType = {
   id: string;
-  name: string;
+  title: string;
   email: string;
   image_url: string;
-  total_invoices: number;
-  total_pending: number;
-  total_paid: number;
+  total_themes: number;
+  total_in_progress: number;
+  total_complete: number;
 };
 
 export type FormattedMembersTable = {
   id: string;
-  name: string;
-  email: string;
+  user_name: string;
   image_url: string;
-  total_invoices: number;
-  total_pending: string;
-  total_paid: string;
+  instrument: number;
+  themes: string;
 };
 
-export type CustomerField = {
+export type MemberField = {
   id: string;
-  name: string;
+  user_name: string;
   image_url: string;
 };
 
-export type InvoiceForm = {
+// Theme form related types – updated to use keySignature and chords as string
+export type ThemeForm = {
   id: string;
-  customer_id: string;
-  amount: number;
-  status: 'pending' | 'paid';
+  user_name: string;
+  name: string;
+  description?: string;
+  seconds: number;
+  keySignature: string;
+  mode: string;
+  chords: string;
+  tempo: number;
+  instrument: string;
+  sample: string;
+  date: Date;
+  status: 'in progress' | 'complete';
 };
+
+export type FormState =
+  | {
+      errors?: {
+        userName?: string[]
+        email?: string[]
+        password?: string[]
+      }
+      message?: string
+    }
+  | undefined
+
+// Zod schemas for validation
+  export const SignupFormSchema = z
+  .object({
+    userName: z
+      .string()
+      .min(2, { message: 'Name must be at least 2 characters long.' })
+      .trim(),
+    email: z
+      .string()
+      .email({ message: 'Please enter a valid email.' })
+      .trim(),
+    password: z
+      .string()
+      .min(8, { message: 'Be at least 8 characters long' })
+      .regex(/[a-zA-Z]/, { message: 'Contain at least one letter.' })
+      .regex(/[0-9]/, { message: 'Contain at least one number.' })
+      .regex(/[^a-zA-Z0-9]/, {
+        message: 'Contain at least one special character.',
+      })
+      .trim(),
+    confirmPassword: z.string().trim(),
+    firstName: z.string().trim().optional(),
+    lastName: z.string().trim().optional(),
+    country: z.string().trim().optional(),
+    instrument: z.string().trim().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+    
+  });
+
+  export const LoginFormSchema = z.
+  object({
+    email: z
+      .string()
+      .email({ message: 'Please enter a valid email.' })
+      .trim(),
+    password: z
+      .string()
+      .regex(/[a-zA-Z]/, { message: 'Contain at least one letter.' })
+      .regex(/[0-9]/, { message: 'Contain at least one number.' })
+      .regex(/[^a-zA-Z0-9]/, {
+        message: 'Contain at least one special character.',
+      })
+      .trim(),
+  });

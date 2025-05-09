@@ -3,31 +3,36 @@ import {
   ClockIcon,
   UserGroupIcon,
   InboxIcon,
+  MusicalNoteIcon,
+  RectangleStackIcon,
+  
 } from '@heroicons/react/24/outline';
+
 import { lusitana } from '@/app/ui/fonts';
 import { fetchCardData } from '@/app/lib/data';
+import { CoolValueDisplay } from '@/app/ui/dashboard/cool-value-display';
 
 const iconMap = {
-  collected: BanknotesIcon,
-  customers: UserGroupIcon,
+  arangements: RectangleStackIcon,
+  members: UserGroupIcon,
   pending: ClockIcon,
-  invoices: InboxIcon,
+  themes: MusicalNoteIcon,
 };
 
 export default async function CardWrapper() {
-  const { numberOfCustomers, numberOfInvoices, totalPaidInvoices, totalPendingInvoices } = await fetchCardData();
+  const { numberOfMembers, numberOfThemes, totalArangements, totalThemes } = await fetchCardData();
 
   return (
     <>
       {/* NOTE: Uncomment this code in Chapter 9 */}
 
-      <Card title="Collected" value={totalPaidInvoices} type="collected" />
-      <Card title="Pending" value={totalPendingInvoices} type="pending" />
-      <Card title="Total Invoices" value={numberOfInvoices} type="invoices" />
+      <Card title="Arangements" value={totalArangements} type="arangements" />
+      <Card title="Pending" value={totalThemes} type="pending" />
+      <Card title="Total Themes" value={numberOfThemes} type="themes" />
       <Card
-        title="Total Customers"
-        value={numberOfCustomers}
-        type="customers"
+        title="Total Members"
+        value={numberOfMembers}
+        type="members"
       />
     </>
   );
@@ -40,22 +45,17 @@ export function Card({
 }: {
   title: string;
   value: number | string;
-  type: 'invoices' | 'customers' | 'pending' | 'collected';
+  type: 'themes' | 'members' | 'pending' | 'arangements';
 }) {
   const Icon = iconMap[type];
 
   return (
-    <div className="rounded-xl bg-gray-50 p-2 shadow-sm">
+    <div className="rounded-xl bg-black p-2 shadow-sm">
       <div className="flex p-4">
         {Icon ? <Icon className="h-5 w-5 text-gray-700" /> : null}
         <h3 className="ml-2 text-sm font-medium">{title}</h3>
       </div>
-      <p
-        className={`${lusitana.className}
-          truncate rounded-xl bg-white px-4 py-8 text-center text-2xl`}
-      >
-        {value}
-      </p>
-    </div>
+      <CoolValueDisplay value={value} /> 
+     </div>
   );
 }

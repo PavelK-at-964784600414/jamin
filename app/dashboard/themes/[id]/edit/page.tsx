@@ -1,32 +1,32 @@
-import Form from '@/app/ui/invoices/edit-form';
-import Breadcrumbs from '@/app/ui/invoices/breadcrumbs';
-import { fetchInvoiceById, fetchCustomers } from '@/app/lib/data';
+import Form from '@/app/ui/themes/edit-form';
+import Breadcrumbs from '@/app/ui/themes/breadcrumbs';
+import { fetchThemeById, fetchMembers } from '@/app/lib/data';
 import { notFound } from 'next/navigation';
 
  
 export default async function Page({ params }: { params: { id: string } }) {
     const id = params.id;
-    const [invoice, customers] = await Promise.all([
-        fetchInvoiceById(id),
-        fetchCustomers(),
+    const [theme, members] = await Promise.all([
+        fetchThemeById(id),
+        fetchMembers(id),
       ]);
 
-      if (!invoice) {
+      if (!theme) {
         notFound();
       }
     return (
     <main>
       <Breadcrumbs
         breadcrumbs={[
-          { label: 'Invoices', href: '/dashboard/invoices' },
+          { label: 'Themes', href: '/dashboard/themes' },
           {
-            label: 'Edit Invoice',
-            href: `/dashboard/invoices/${id}/edit`,
+            label: 'Edit Theme',
+            href: `/dashboard/themes/${id}/edit`,
             active: true,
           },
         ]}
       />
-      <Form invoice={invoice} customers={customers} />
+      <Form theme={theme} members={members} />
     </main>
   );
 }

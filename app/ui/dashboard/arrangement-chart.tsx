@@ -1,30 +1,22 @@
 import { generateYAxis } from '@/app/lib/utils';
 import { CalendarIcon } from '@heroicons/react/24/outline';
 import { lusitana } from '@/app/ui/fonts';
-import { fetchRevenue } from '@/app/lib/data';
+import { fetchArrangements } from '@/app/lib/data';
 
-// This component is representational only.
-// For data visualization UI, check out:
-// https://www.tremor.so/
-// https://www.chartjs.org/
-// https://airbnb.io/visx/
-
-export default async function RevenueChart() { // Make component async, remove the props
-  const revenue = await fetchRevenue(); // Fetch data inside the component
- 
+export default async function ArrangementChart() { // Make component async, remove the props
+  const arrangements = await fetchArrangements(); // Fetch data inside the component
   const chartHeight = 350;
-  // NOTE: Uncomment this code in Chapter 7
 
-  const { yAxisLabels, topLabel } = generateYAxis(revenue);
+  const { yAxisLabels, topLabel } = generateYAxis(arrangements);
 
-  if (!revenue || revenue.length === 0) {
+  if (!arrangements || arrangements.length === 0) {
     return <p className="mt-4 text-gray-400">No data available.</p>;
   }
 
   return (
     <div className="w-full md:col-span-4">
       <h2 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
-        Recent Revenue
+        Recent Arrangements
       </h2>
 
       <div className="rounded-xl bg-gray-50 p-4">
@@ -37,17 +29,19 @@ export default async function RevenueChart() { // Make component async, remove t
               <p key={label}>{label}</p>
             ))}
           </div>
-
-          {revenue.map((month) => (
-            <div key={month.month} className="flex flex-col items-center gap-2">
+          // Make component async, remove the props
+          // Fetch data inside the component
+          
+          {arrangements.map((arrangement) => (
+            <div key={arrangement.month} className="flex flex-col items-center gap-2">
               <div
                 className="w-full rounded-md bg-blue-300"
                 style={{
-                  height: `${(chartHeight / topLabel) * month.revenue}px`,
+                  height: `${(chartHeight / topLabel) * arrangement.arrangement}px`,
                 }}
               ></div>
               <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
-                {month.month}
+                {arrangement.month}
               </p>
             </div>
           ))}

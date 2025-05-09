@@ -1,4 +1,4 @@
-import Pagination from '@/app/ui/invoices/pagination';
+import Pagination from '@/app/ui/themes/pagination';
 import Search from '@/app/ui/search';
 import Table from '@/app/ui/members/table';
 import { fetchMembers, fetchMembersPages } from '@/app/lib/data';
@@ -18,8 +18,7 @@ export default async function Page({
   const query = searchParams?.query || '';
   const currentPage = Number(searchParams?.page) || 1;
   const totalPages = await fetchMembersPages(query);
-  const members = await fetchMembers();
-  console.log(members);
+  const members = await fetchMembers(query);
   return( 
     <div className="w-full">
       <div className="flex w-full items-center justify-between">

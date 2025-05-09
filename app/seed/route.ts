@@ -1,115 +1,136 @@
 import bcrypt from 'bcrypt';
 import { db } from '@vercel/postgres';
-import { invoices, customers, revenue, users } from '../lib/placeholder-data';
+import { members, themes } from '../lib/placeholder-data';
+import { NextResponse as Response } from 'next/server';
 
 const client = await db.connect();
+console.log('Connected to database'); 
 
-async function seedUsers() {
-  await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+async function seedTestTable() {
+  console.log('Seeding test table...');
   await client.sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL
+    CREATE TABLE IF NOT EXISTS test_table (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL
     );
   `;
 
-  const insertedUsers = await Promise.all(
-    users.map(async (user) => {
-      const hashedPassword = await bcrypt.hash(user.password, 10);
+  const result = await client.query(`
+    INSERT INTO test_table (name)
+    VALUES ('Test ')
+    RETURNING *;
+  `);
+
+  console.log('Test table seeded:', result.rows[0]);
+  return result.rows[0];
+}
+
+
+
+
+async function seedThemes() { 
+  console.log('Seeding themes...');
+  await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+  console.log('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+  await client.sql`
+    CREATE TABLE IF NOT EXISTS themes (
+      id SERIAL PRIMARY KEY,
+      member_id UUID NOT NULL,
+      name VARCHAR(64) NOT NULL,
+      seconds INT NOT NULL,
+      style VARCHAR(64) NOT NULL,
+      key VARCHAR(6) NOT NULL,
+      mode VARCHAR(20) NOT NULL,
+      chords TEXT NOT NULL,
+      tempo INT NOT NULL,
+      rythm VARCHAR(12) NOT NULL,
+      sample TEXT NULL,
+      recording_url TEXT NULL,
+      date VARCHAR(64) NOT NULL,
+      status VARCHAR(16) NOT NULL,
+      FOREIGN KEY (member_id) REFERENCES members(id)
+    );
+  `;
+  console.log('CREATE TABLE IF NOT EXISTS themes');
+  // const insertedThemes = await client.query(`
+  //   INSERT INTO themes (name)
+  //   VALUES ('Test ')
+  //   RETURNING *;
+  // `);
+
+//   const insertedThemes = await Promise.all(
+//     themes.map(async (theme) => {
+//         console.log('theme:', theme);
+//         return client.sql`
+//         INSERT INTO themes (id, member_id, name, seconds, style, key, mode, chords, tempo, rythm, sample, date, status)
+//         VALUES (${theme.id}, ${theme.member_id}, ${theme.name}, ${theme.seconds}, ${theme.style}, ${theme.key}, ${theme.mode}, ${theme.chords}, ${theme.tempo}, ${theme.rythm}, ${theme.sample}, ${theme.date}, ${theme.status})
+//         ON CONFLICT (id) DO NOTHING;
+//       `;
+//     }),
+//   );
+//   return insertedThemes;
+// }
+
+const insertedThemes = await Promise.all(
+  themes.map(async (theme) => {
+    console.log('theme:', theme);
+    return client.query(`
+      INSERT INTO themes (id, member_id, name, seconds, style, key, mode, chords, tempo, rythm, sample, date, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ON CONFLICT (id) DO NOTHING;
+    `, [theme.id, theme.member_id, theme.name, theme.seconds, theme.style, theme.key, theme.mode, theme.chords, theme.tempo, theme.rythm, theme.sample, theme.date, theme.status]);
+  }),
+);
+
+console.log('Themes seeded.');
+return insertedThemes;
+}
+
+
+async function seedMembers() {
+  await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+  await client.sql`
+    CREATE TABLE IF NOT EXISTS members (
+      id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+      user_name VARCHAR(64) NOT NULL,
+      email VARCHAR(64) NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      image_url TEXT NOT NULL,
+      first_name VARCHAR(32),
+      last_name VARCHAR(32),
+      country VARCHAR(32),
+      instrument VARCHAR(255)
+    );
+  `;
+  const insertedMembers = await Promise.all(
+    members.map(async (member) => {
+      const hashedPassword = await bcrypt.hash(member.password, 10);
+      console.log('member.details?.instrument:', member.details?.instrument);
       return client.sql`
-        INSERT INTO users (id, name, email, password)
-        VALUES (${user.id}, ${user.name}, ${user.email}, ${hashedPassword})
+        INSERT INTO members (id, user_name, email, password, image_url, first_name, last_name, country, instrument)
+        VALUES (${member.id}, ${member.user_name}, ${member.email}, ${hashedPassword}, ${member.image_url}, ${member.details?.first_name}, ${member.details?.last_name}, ${member.details?.country}, ${member.details?.instrument})
         ON CONFLICT (id) DO NOTHING;
       `;
     }),
   );
 
-  return insertedUsers;
+  return insertedMembers;
 }
 
-async function seedInvoices() {
-  await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-
-  await client.sql`
-    CREATE TABLE IF NOT EXISTS invoices (
-      id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-      customer_id UUID NOT NULL,
-      amount INT NOT NULL,
-      status VARCHAR(255) NOT NULL,
-      date DATE NOT NULL
-    );
-  `;
-
-  const insertedInvoices = await Promise.all(
-    invoices.map(
-      (invoice) => client.sql`
-        INSERT INTO invoices (customer_id, amount, status, date)
-        VALUES (${invoice.customer_id}, ${invoice.amount}, ${invoice.status}, ${invoice.date})
-        ON CONFLICT (id) DO NOTHING;
-      `,
-    ),
-  );
-
-  return insertedInvoices;
-}
-
-async function seedCustomers() {
-  await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-
-  await client.sql`
-    CREATE TABLE IF NOT EXISTS customers (
-      id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      image_url VARCHAR(255) NOT NULL
-    );
-  `;
-
-  const insertedCustomers = await Promise.all(
-    customers.map(
-      (customer) => client.sql`
-        INSERT INTO customers (id, name, email, image_url)
-        VALUES (${customer.id}, ${customer.name}, ${customer.email}, ${customer.image_url})
-        ON CONFLICT (id) DO NOTHING;
-      `,
-    ),
-  );
-
-  return insertedCustomers;
-}
-
-async function seedRevenue() {
-  await client.sql`
-    CREATE TABLE IF NOT EXISTS revenue (
-      month VARCHAR(4) NOT NULL UNIQUE,
-      revenue INT NOT NULL
-    );
-  `;
-
-  const insertedRevenue = await Promise.all(
-    revenue.map(
-      (rev) => client.sql`
-        INSERT INTO revenue (month, revenue)
-        VALUES (${rev.month}, ${rev.revenue})
-        ON CONFLICT (month) DO NOTHING;
-      `,
-    ),
-  );
-
-  return insertedRevenue;
-}
 
 export async function GET() {
   try {
+    console.log('Seeding database...');
     await client.sql`BEGIN`;
-    await seedUsers();
-    await seedCustomers();
-    await seedInvoices();
-    await seedRevenue();
+    console.log('beggin...');
+  // console.log(members);
+   await seedMembers();
+  // console.log('seedMembers...');
+  // console.log(themes);
+    await seedThemes();
+  // seedTestTable();
     await client.sql`COMMIT`;
-
+    console.log('Database seeded successfully');
     return Response.json({ message: 'Database seeded successfully' });
   } catch (error) {
     await client.sql`ROLLBACK`;

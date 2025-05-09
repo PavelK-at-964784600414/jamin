@@ -1,8 +1,5 @@
 import Image from 'next/image';
-import { lusitana } from '@/app/ui/fonts';
-import Search from '@/app/ui/search';
 import {
-  CustomersTableType,
   FormattedMembersTable,
 } from '@/app/lib/definitions';
 
@@ -23,13 +20,16 @@ export default async function MembersTable({
                       Name
                     </th>
                     <th scope="col" className="px-3 py-5 font-medium">
-                      Instument
+                      Instrument
                     </th>
                     <th scope="col" className="px-3 py-5 font-medium">
-                      Creations
+                      Themes
                     </th>
                     <th scope="col" className="px-3 py-5 font-medium">
-                      Jams
+                      Arrangements
+                    </th>
+                    <th scope="col" className="px-3 py-5 font-medium">
+                      Latest Theme
                     </th>
                   </tr>
                 </thead>
@@ -41,21 +41,29 @@ export default async function MembersTable({
                           <Image
                             src={member.image_url}
                             className="rounded-full"
-                            alt={`${member.name}'s profile picture`}
+                            alt={`${member.user_name}'s profile picture`}
                             width={28}
                             height={28}
                           />
-                          <p>{member.name}</p>
+                          <p>{member.user_name}</p>
                         </div>
                       </td>
                       <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
-                        {/* {member.instument}  */}
+                        {member.instrument}
                       </td>
                       <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
-                        {/* {member.creations} */}
+                        {member.themes_count}
                       </td>
                       <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
-                        {/* {member.contribution} */}
+                        {member.arrangements_count}
+                      </td>
+                      <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
+                        <h4>
+                          {member.theme_name}
+                        </h4>
+                        <div>
+                           -{' '} {member.latest_theme_date}
+                        </div>
                       </td>
                     </tr>
                   ))}

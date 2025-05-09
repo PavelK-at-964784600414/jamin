@@ -1,81 +1,60 @@
 import { sql } from '@vercel/postgres';
 import {
-  CustomerField,
-  CustomersTableType,
-  InvoiceForm,
-  InvoicesTable,
-  LatestInvoiceRaw,
-  Revenue,
+  MemberField,
+  MembersTableType,
+  ThemeForm,
+  ThemesTable,
+  LatestThemesRaw,
+  LatestThemes,
+  ThemePages,
 } from './definitions';
 import { formatCurrency } from './utils';
+const ITEMS_PER_PAGE = 6;
 
-export async function fetchRevenue() {
+
+export async function fetchLatestThemes() {
   try {
-    // Artificially delay a response for demo purposes.
-    // Don't do this in production :)
-
-    // console.log('Fetching revenue data...');
-    // await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    const data = await sql<Revenue>`SELECT * FROM revenue`;
-
-    // console.log('Data fetch completed after 3 seconds.');
-
+    const data = await sql<LatestThemes>`
+      SELECT themes.seconds, members.user_name AS member, members.image_url, themes.title, themes.date, themes.id
+      FROM themes
+      JOIN members ON themes.member_id = members.id
+      ORDER BY themes.date DESC
+      LIMIT 5;
+    `;
     return data.rows;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch revenue data.');
+    throw new Error('Failed to fetch the latest themes.');
   }
 }
 
-export async function fetchLatestInvoices() {
-  try {
-    const data = await sql<LatestInvoiceRaw>`
-      SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
-      FROM invoices
-      JOIN customers ON invoices.customer_id = customers.id
-      ORDER BY invoices.date DESC
-      LIMIT 5`;
-
-    const latestInvoices = data.rows.map((invoice) => ({
-      ...invoice,
-      amount: formatCurrency(invoice.amount),
-    }));
-    return latestInvoices;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the latest invoices.');
-  }
-}
 
 export async function fetchCardData() {
   try {
-    // You can probably combine these into a single SQL query
-    // However, we are intentionally splitting them to demonstrate
-    // how to initialize multiple queries in parallel with JS.
-    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
-    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
-    const invoiceStatusPromise = sql`SELECT
-         SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`;
+    const themeCountPromise = sql<{ count: number }[]>`SELECT COUNT(*) FROM themes`;
+    const memberCountPromise = sql<{ count: number }[]>`SELECT COUNT(*) FROM members`;
+    const themeStatusPromise = sql<{ complete: number; in_progress: number }[]>`
+      SELECT
+        SUM(CASE WHEN status = 'complete' THEN 1 ELSE 0 END) AS "complete",
+        SUM(CASE WHEN status = 'in progress' THEN 1 ELSE 0 END) AS "in_progress"
+      FROM themes`;
 
-    const data = await Promise.all([
-      invoiceCountPromise,
-      customerCountPromise,
-      invoiceStatusPromise,
+    const [themeCountResult, memberCountResult, themeStatusResult] = await Promise.all([
+      themeCountPromise,
+      memberCountPromise,
+      themeStatusPromise,
     ]);
 
-    const numberOfInvoices = Number(data[0].rows[0].count ?? '0');
-    const numberOfCustomers = Number(data[1].rows[0].count ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? '0');
-    const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? '0');
+    const numberOfThemes = themeCountResult['rows'][0]['count'];
+    const numberOfMembers = memberCountResult['rows'][0]['count'];
+    const totalArangements = themeStatusResult['rows'][0]['complete'];
+    const totalThemes = themeStatusResult['rows'][0]['in_progress'];
 
     return {
-      numberOfCustomers,
-      numberOfInvoices,
-      totalPaidInvoices,
-      totalPendingInvoices,
+      numberOfMembers,
+      numberOfThemes,
+      totalArangements,
+      totalThemes,
     };
   } catch (error) {
     console.error('Database Error:', error);
@@ -83,167 +62,198 @@ export async function fetchCardData() {
   }
 }
 
-const ITEMS_PER_PAGE = 6;
-export async function fetchFilteredInvoices(
-  query: string,
-  currentPage: number,
-) {
+
+export async function fetchFilteredThemes(query: string, currentPage: number) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const invoices = await sql<InvoicesTable>`
+    const themes = await sql<ThemesTable>`
       SELECT
-        invoices.id,
-        invoices.amount,
-        invoices.date,
-        invoices.status,
-        customers.name,
-        customers.email,
-        customers.image_url
-      FROM invoices
-      JOIN customers ON invoices.customer_id = customers.id
+        themes.id,
+        themes.seconds,
+        themes.date,
+        themes.status,
+        themes.title,
+        themes.chords,
+        themes.key,
+        themes.mode,
+        themes.tempo,
+        themes.title,
+        themes.description,
+        themes.recording_url,
+        members.user_name,
+        themes.instrument,
+        members.image_url
+      FROM themes
+      JOIN members ON themes.member_id = members.id
       WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
-      ORDER BY invoices.date DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+        members.user_name ILIKE ${`%${query}%`} OR
+        themes.instrument ILIKE ${`%${query}%`} OR
+        themes.seconds::text ILIKE ${`%${query}%`} OR
+        themes.date::text ILIKE ${`%${query}%`} OR
+        themes.status ILIKE ${`%${query}%`}
+      ORDER BY themes.date DESC
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
     `;
-
-    return invoices.rows;
+    return themes.rows;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch invoices.');
+    throw new Error('Failed to fetch themes.');
   }
 }
 
-export async function fetchInvoicesPages(query: string) {
+export async function fetchThemesPages(query: string) {
   try {
-    const count = await sql`SELECT COUNT(*)
-    FROM invoices
-    JOIN customers ON invoices.customer_id = customers.id
+    const count = await sql<ThemePages>`
+    SELECT COUNT(*)
+    FROM themes
+    JOIN members ON themes.member_id = members.id
     WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.email ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
-  `;
+      members.user_name ILIKE ${`%${query}%`} OR
+      themes.title ILIKE ${`%${query}%`} OR
+      themes.seconds::text ILIKE ${`%${query}%`} OR
+      themes.status ILIKE ${`%${query}%`}
+    `;
 
     const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of invoices.');
+    throw new Error('Failed to fetch total number of themes.');
   }
 }
 
-
+// add data.rows and totalPages to return statement, and what other things related on this return statement that needs to be updated
 export async function fetchMembersPages(query: string) {
   try {
-    // Fetch the count and customer details
-    const data = await sql<{ count: number } & CustomerField[]>`
+    const data = await sql`
       SELECT 
-        COUNT(*) OVER() AS count,  -- This calculates the total rows matching the query
-        id,
-        name,
-        image_url
-      FROM 
-        customers
-      WHERE 
-        name ILIKE ${`%${query}%`}
-      ORDER BY 
-        name ASC
+        COUNT(*) OVER() AS count,
+        members.id,
+        members.user_name,
+        members.instrument,
+        themes.title AS theme_name,
+        COUNT(DISTINCT themes.id) AS themes_count,
+        MAX(themes.date) AS latest_theme_date
+      FROM members
+      LEFT JOIN themes ON members.id = themes.member_id
+      WHERE themes.title ILIKE ${'%' + query + '%'}
+      GROUP BY members.id, themes.title
+      ORDER BY members.user_name ASC
     `;
-
-  
-    const totalPages = Math.ceil(Number(data['rowCount']) / ITEMS_PER_PAGE);
-
-    return totalPages;
+    if (data.rows.length === 0) {
+      return 0;
+    }
+    const totalPages = Math.ceil(Number(data.rows[0].count) / ITEMS_PER_PAGE);
+    return totalPages; //, data.rows;
   } catch (err) {
     console.error('Database Error:', err);
-    throw new Error('Failed to fetch all customers.');
+    throw new Error('Failed to fetch all members.');
   }
 }
 
-
-export async function fetchInvoiceById(id: string) {
+export async function fetchMembers(query: string) {
   try {
-    const data = await sql<InvoiceForm>`
+    const data = await sql`
       SELECT
-        invoices.id,
-        invoices.customer_id,
-        invoices.amount,
-        invoices.status
-      FROM invoices
-      WHERE invoices.id = ${id};
+        members.id,
+        members.user_name,
+        members.image_url,
+        members.instrument,
+        themes.title AS theme_name,
+        COUNT(DISTINCT themes.id) AS themes_count,
+        MAX(themes.date) AS latest_theme_date
+      FROM members
+      LEFT JOIN themes ON members.id = themes.member_id
+      WHERE
+        members.first_name ILIKE ${`%${query}%`} OR
+        themes.title ILIKE ${'%' + query + '%'}
+      GROUP BY members.id, themes.title
+      ORDER BY members.user_name ASC
     `;
 
-    const invoice = data.rows.map((invoice) => ({
-      ...invoice,
-      // Convert amount from cents to dollars
-      amount: invoice.amount / 100,
+    return data.rows;
+  } catch (err) {
+    console.error('Database Error:', err);
+    throw new Error('Failed to fetch all members.');
+  }
+}
+
+export async function fetchThemeById(id: string) {
+  try {
+    const data = await sql<ThemeForm>`
+      SELECT
+        themes.id,
+        themes.member_id,
+        themes.seconds,
+        themes.status
+      FROM themes
+      WHERE themes.id = ${id};
+    `;
+
+    const theme = data.rows.map((theme) => ({
+      ...theme,
+      seconds: theme.seconds / 100, // Convert seconds from cents to dollars
     }));
-    console.log(invoice); // Invoice is an empty array []
-    return invoice[0];
+    return theme[0];
   } catch (error) {
     console.error('Database Error:', error);
-   // throw new Error('Failed to fetch invoice.');
+    throw new Error('Failed to fetch theme.');
   }
 }
 
 
 
-export async function fetchMembers() {
+
+export async function fetchFilteredMembers(query: string) {
   try {
-    const data = await sql<CustomerField>`
+    const data = await sql<MembersTableType>`
       SELECT
-        id,
-        name,
-        image_url
-      FROM customers
-      ORDER BY name ASC
+        members.id,
+        members.user_name,
+        members.email,
+        members.image_url,
+        COUNT(themes.id) AS total_themes,
+        SUM(CASE WHEN themes.status = 'in progress' THEN themes.seconds ELSE 0 END) AS total_in_progress,
+        SUM(CASE WHEN themes.status = 'complete' THEN themes.seconds ELSE 0 END) AS total_complete
+      FROM members
+      LEFT JOIN themes ON members.id = themes.member_id
+      WHERE
+        members.name ILIKE ${`%${query}%`} OR
+        members.email ILIKE ${`%${query}%`}
+      GROUP BY members.id, members.name, members.email, members.image_url
+      ORDER BY members.name ASC
     `;
 
-    const customers = data.rows;
-    return customers;
-  } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch all customers.');
-  }
-}
-
-export async function fetchFilteredCustomers(query: string) {
-  try {
-    const data = await sql<CustomersTableType>`
-		SELECT
-		  customers.id,
-		  customers.name,
-		  customers.email,
-		  customers.image_url,
-		  COUNT(invoices.id) AS total_invoices,
-		  SUM(CASE WHEN invoices.status = 'pending' THEN invoices.amount ELSE 0 END) AS total_pending,
-		  SUM(CASE WHEN invoices.status = 'paid' THEN invoices.amount ELSE 0 END) AS total_paid
-		FROM customers
-		LEFT JOIN invoices ON customers.id = invoices.customer_id
-		WHERE
-		  customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`}
-		GROUP BY customers.id, customers.name, customers.email, customers.image_url
-		ORDER BY customers.name ASC
-	  `;
-
-    const customers = data.rows.map((customer) => ({
-      ...customer,
-      total_pending: formatCurrency(customer.total_pending),
-      total_paid: formatCurrency(customer.total_paid),
+    const members = data.rows.map((member) => ({
+      ...member,
+      total_in_progress: member.total_in_progress,
+      total_complete: member.total_complete,
     }));
 
-    return customers;
+    return members;
   } catch (err) {
     console.error('Database Error:', err);
-    throw new Error('Failed to fetch customer table.');
+    throw new Error('Failed to fetch member table.');
+  }
+}
+export async function fetchArrangements() {
+  try {
+    const data = await sql`
+      SELECT
+        date AS month,
+        SUM(seconds) AS arrangement
+      FROM (
+        SELECT date, seconds FROM themes WHERE title = 'Theme1'
+        UNION ALL
+        SELECT date, seconds FROM themes WHERE title = 'Theme2'
+      ) AS combined_themes
+      GROUP BY date
+      ORDER BY date;
+    `;
+    return data.rows;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch arrangements.');
   }
 }

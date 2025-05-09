@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ignore placeholder data file
+app/lib/placeholder-data.ts
+
+# ignore seed script
+scripts/seed.js

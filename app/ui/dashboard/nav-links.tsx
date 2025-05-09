@@ -6,7 +6,7 @@ import {
   DocumentDuplicateIcon,
   MusicalNoteIcon
 } from '@heroicons/react/24/outline';
-import Link from 'next/link';
+import { CoolLink } from '@/app/ui/dashboard/cool-link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 
@@ -17,7 +17,7 @@ const links = [
   { name: 'Home', href: '/dashboard', icon: HomeIcon },
   { name: 'Themes', href: '/dashboard/themes', icon: DocumentDuplicateIcon },
   { name: 'Members', href: '/dashboard/members', icon: UserGroupIcon },
-  { name: 'Jam Together', href: '/dashboard/jamtogether', icon: MusicalNoteIcon },
+  { name: 'Arrangements', href: '/dashboard/arrangements', icon: MusicalNoteIcon },
   
 ];
 
@@ -28,19 +28,8 @@ export default function NavLinks() {
       {links.map((link) => {
         const LinkIcon = link.icon;
         return (
-          <Link
-            key={link.name}
-            href={link.href}
-            className={clsx(
-              'flex h-[48px] grow items-center justify-center gap-2 text-black rounded-md bg-gray-50 p-3 text-sm font-medium hover:bg-orange-400 hover:text-blue-600 md:flex-none md:justify-start md:p-2 md:px-3 bg-orange-600',
-              {
-                ' text-blue-600 bg-orange-400': pathname === link.href,
-              },
-            )}
-          >
-            <LinkIcon className="w-6" />
-            <p className="hidden md:block">{link.name}</p>
-          </Link>
+          <CoolLink key={link.name} href={link.href} name={link.name} icon={link.icon} />
+
         );
       })}
     </>
