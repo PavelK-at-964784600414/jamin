@@ -78,7 +78,6 @@ export async function fetchFilteredThemes(query: string, currentPage: number) {
         themes.key,
         themes.mode,
         themes.tempo,
-        themes.title,
         themes.description,
         themes.recording_url,
         members.user_name,
@@ -88,6 +87,7 @@ export async function fetchFilteredThemes(query: string, currentPage: number) {
       JOIN members ON themes.member_id = members.id
       WHERE
         members.user_name ILIKE ${`%${query}%`} OR
+        themes.title ILIKE ${`%${query}%`} OR
         themes.instrument ILIKE ${`%${query}%`} OR
         themes.seconds::text ILIKE ${`%${query}%`} OR
         themes.date::text ILIKE ${`%${query}%`} OR
@@ -97,7 +97,7 @@ export async function fetchFilteredThemes(query: string, currentPage: number) {
     `;
     return themes.rows;
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error('Database Error fetching filtered themes:', error);
     throw new Error('Failed to fetch themes.');
   }
 }

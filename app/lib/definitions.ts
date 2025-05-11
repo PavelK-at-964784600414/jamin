@@ -67,18 +67,22 @@ export type LatestThemesRaw = Omit<LatestThemes, 'title'> & {
 };
 
 export type ThemesTable = {
-  seconds: string;
   id: string;
-  user_name: string;
-  name: string;
-  chords: string;
-  keySignature: string;
-  mode: string;
-  tempo: string;
-  instrument: string;
-  image_url: string;
+  seconds: number; // Corrected to number
   date: string;
   status: 'in progress' | 'complete';
+  title: string; // Added
+  chords: string;
+  key: string; // Corrected from keySignature to key
+  mode: string;
+  tempo: number; // Corrected to number
+  description: string; // Added
+  recording_url: string; // Added
+  user_name: string; // Kept user_name (from members.user_name)
+  instrument: string;
+  image_url: string; // (from members.image_url)
+  // Removed 'name: string;' as 'title' and 'user_name' cover the needs
+  // Removed 'keySignature: string;' replaced by 'key: string;'
 };
 
 // Member table related types

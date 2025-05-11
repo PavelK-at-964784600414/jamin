@@ -8,11 +8,6 @@ import { signOut } from '@/auth'
 export function CoolSignOut() {
   const [isHovered, setIsHovered] = useState(false)
 
-  // Create a server action for sign out
-  const handleSignOut = async () => {
-    await signOut({ redirect: true, redirectTo: '/login' });
-  }
-
   return (
     <div className="flex flex-col w-full gap-2">
       <motion.div
@@ -20,13 +15,16 @@ export function CoolSignOut() {
         whileHover={{ scale: 1.02 }}
         transition={{ duration: 0.2 }}
       />
-      <form action={handleSignOut}>
+      <form
+        action={async () => {
+          await signOut()
+        }}
+      >
         <motion.button
-          type="submit"
           className="relative overflow-hidden flex h-[48px] w-full items-center justify-center gap-2 rounded-md bg-black p-0.5"
           whileHover={{ scale: 1.05 }}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
+          onHoverStart={() => setIsHovered(true)}
+          onHoverEnd={() => setIsHovered(false)}
         >
           <motion.div
             className="flex h-full w-full items-center justify-center gap-2 rounded-md bg-gray-900 px-4 text-sm font-medium"
