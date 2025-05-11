@@ -1,18 +1,17 @@
-import { NextResponse } from 'next/server';
-import { auth } from './auth-config';
+export { auth as middleware } from "@/auth"
+import { NextRequest, NextResponse } from 'next/server';
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
 import { analyticsMiddleware } from './analyticsMiddleware';
 
-export async function middleware(request) {
-  // Apply analytics middleware first
-  analyticsMiddleware(request);
-  
-  // Then apply auth middleware
-  return auth(request);
+export default function middleware(request: NextRequest) {
+  // Apply analytics middleware
+  const response = analyticsMiddleware(request);
+
+  // Apply authentication middleware
+  return NextAuth(authConfig).auth(request, response);
 }
 
 export const config = {
-  matcher: [
-    // Match all paths except public assets and API routes that should be public
-    '/((?!api/public|_next/static|_next/image|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.mp3$|.*\\.wav$|login|signup).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.mp3$|.*\\.wav$).*)'],
 };
