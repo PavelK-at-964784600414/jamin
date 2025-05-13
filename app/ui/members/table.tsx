@@ -12,9 +12,9 @@ export default async function MembersTable({
       <div className="mt-6 flow-root">
         <div className="overflow-x-auto">
           <div className="inline-block min-w-full align-middle">
-            <div className="overflow-hidden rounded-md bg-gray-50 p-2 md:pt-0">
-              <table className="hidden min-w-full rounded-md text-gray-900 md:table">
-                <thead className="rounded-md bg-gray-50 text-left text-sm font-normal">
+            <div className="overflow-hidden rounded-md bg-gray-800 p-2 md:pt-0">
+              <table className="hidden min-w-full rounded-md text-gray-200 md:table">
+                <thead className="rounded-md bg-gray-800 text-left text-sm font-normal">
                   <tr>
                     <th scope="col" className="px-4 py-5 font-medium sm:pl-6">
                       Name
@@ -26,17 +26,17 @@ export default async function MembersTable({
                       Themes
                     </th>
                     <th scope="col" className="px-3 py-5 font-medium">
-                      Arrangements
+                      Collabs
                     </th>
                     <th scope="col" className="px-3 py-5 font-medium">
                       Latest Theme
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 text-gray-900">
+                <tbody className="divide-y divide-gray-700 text-gray-200">
                   {members.map((member) => (
                     <tr key={member.id} className="group">
-                      <td className="whitespace-nowrap bg-white py-5 pl-4 pr-3 text-sm text-black group-first-of-type:rounded-md group-last-of-type:rounded-md sm:pl-6">
+                      <td className="whitespace-nowrap bg-gray-700 py-5 pl-4 pr-3 text-sm text-gray-200 group-first-of-type:rounded-md group-last-of-type:rounded-md sm:pl-6">
                         <div className="flex items-center gap-3">
                           <Image
                             src={member.image_url}
@@ -48,21 +48,21 @@ export default async function MembersTable({
                           <p>{member.user_name}</p>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
+                      <td className="whitespace-nowrap bg-gray-700 px-4 py-5 text-sm">
                         {member.instrument}
                       </td>
-                      <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
+                      <td className="whitespace-nowrap bg-gray-700 px-4 py-5 text-sm">
                         {member.themes_count}
                       </td>
-                      <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
-                        {member.arrangements_count}
+                      <td className="whitespace-nowrap bg-gray-700 px-4 py-5 text-sm">
+                        {member.collabs_count}
                       </td>
-                      <td className="whitespace-nowrap bg-white px-4 py-5 text-sm">
-                        <h4>
+                      <td className="whitespace-nowrap bg-gray-700 px-4 py-5 text-sm">
+                        <h4 className="font-semibold">
                           {member.theme_name}
                         </h4>
-                        <div>
-                           -{' '} {member.latest_theme_date}
+                        <div className="text-gray-400">
+                           {member.latest_theme_date}
                         </div>
                       </td>
                     </tr>
