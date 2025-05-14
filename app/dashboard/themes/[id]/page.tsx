@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchThemeById, fetchLayersByThemeId } from '@/app/lib/data';
 import { ThemesTable } from '@/app/lib/definitions';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -24,17 +23,20 @@ export default function ThemePage() {
           throw new Error('Invalid theme ID');
         }
         
-        const themeData = await fetchThemeById(id);
+        // Fetch data from our API endpoint instead of directly from the database
+        const response = await fetch(`/api/themes/${id}`);
         
-        if (!themeData) {
-          notFound();
+        if (!response.ok) {
+          if (response.status === 404) {
+            notFound();
+          }
+          throw new Error('Failed to fetch theme data');
         }
         
-        setTheme(themeData);
+        const data = await response.json();
         
-        // Fetch layers (collaborations) for this theme
-        const layersData = await fetchLayersByThemeId(id);
-        setLayers(layersData);
+        setTheme(data.theme);
+        setLayers(data.layers || []);
       } catch (err) {
         console.error('Error loading theme:', err);
         setError('Failed to load theme. Please try again.');

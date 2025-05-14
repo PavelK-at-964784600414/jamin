@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchThemeById } from '@/app/lib/data';
 import AddLayerForm from '@/app/ui/themes/add-layer-form';
 import { ThemesTable } from '@/app/lib/definitions';
 import { notFound } from 'next/navigation';
@@ -20,13 +19,18 @@ export default function AddLayerPage() {
           throw new Error('Invalid theme ID');
         }
         
-        const themeData = await fetchThemeById(id);
+        // Fetch data from API endpoint instead of directly from the database
+        const response = await fetch(`/api/themes/${id}`);
         
-        if (!themeData) {
-          notFound();
+        if (!response.ok) {
+          if (response.status === 404) {
+            notFound();
+          }
+          throw new Error('Failed to fetch theme data');
         }
         
-        setTheme(themeData);
+        const data = await response.json();
+        setTheme(data.theme);
       } catch (err) {
         console.error('Error loading theme:', err);
         setError('Failed to load theme. Please try again.');

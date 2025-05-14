@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ThemesTable } from '@/app/lib/definitions';
-import { createLayer } from '@/app/lib/actions';
 import RecordingControls from './RecordingControls';
 import MediaPlayer from './MediaPlayer';
 import LayerMetadataForm from './LayerMetadataForm';
@@ -163,18 +162,27 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       formData.append('instrument', instrument);
       formData.append('mode', mode);
       formData.append('audioFile', file);
-      formData.append('themeId', theme.id);
-
-      // Call the server action to create the layer
-      const result = await createLayer(null, formData);
       
-      if (result?.errors || result?.message) {
-        setError(result.message || 'Failed to save layer. Please try again.');
+      // Call the API endpoint instead of directly calling the server action
+      const response = await fetch(`/api/themes/${theme.id}/add-layer`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        setError(result.error || 'Failed to save layer. Please try again.');
       } else {
         setSuccess('Layer saved successfully!');
         // Clear form/recording state after successful submission
         setFile(null);
         setRecordedChunks([]);
+        
+        // Redirect to the theme page after a short delay
+        setTimeout(() => {
+          window.location.href = `/dashboard/themes/${theme.id}`;
+        }, 1500);
       }
     } catch (err) {
       console.error('Error saving layer:', err);
