@@ -8,7 +8,6 @@ import { useActionState } from 'react';
 import { saveAs } from 'file-saver';
 import MetadataForm from './MetadataForm';
 import RecordingControls from './RecordingControls';
-import MediaPlayer from './MediaPlayer';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
 
 export default function CreateForm() {
@@ -28,9 +27,11 @@ export default function CreateForm() {
   const [file, setFile] = useState<File | null>(null);
   const [instrument, setInstrument] = useState('');
   const [mode, setMode] = useState(''); // Add mode state
+  const [trimStartTime, setTrimStartTime] = useState('');
+  const [trimEndTime, setTrimEndTime] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
-  const mediaRef = useRef<HTMLMediaElement | null>(null);
+  const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement | null>(null); // Change mediaRef to be compatible with both Audio and Video elements
   const metronomeRef = useRef<HTMLAudioElement | null>(null);
   const metronomeIntervalRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -63,7 +64,7 @@ export default function CreateForm() {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
   
       // Set up live visualization:
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)(); // Corrected AudioContext instantiation
       const sourceNode = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 2048;
@@ -189,6 +190,77 @@ export default function CreateForm() {
     }
   };
 
+  const handleTrimAudio = async () => {
+    if (!file || !mediaRef.current || isVideoMode) {
+      console.error('Cannot trim: No audio file, media element, or it is a video.');
+      alert('Trimming is currently only supported for audio recordings.');
+      return;
+    }
+
+    const startTime = parseFloat(trimStartTime);
+    const endTime = parseFloat(trimEndTime);
+    const duration = mediaRef.current.duration; // Ensure mediaRef.current is not null before accessing duration
+
+    if (isNaN(startTime) || isNaN(endTime) || startTime < 0 || endTime <= startTime || endTime > duration) {
+      alert(`Invalid trim times. Ensure 0 <= start < end <= ${duration.toFixed(2)} seconds.`);
+      return;
+    }
+
+    try {
+      // Ensure the media element's source is up to date
+      if (mediaRef.current.src !== mediaURL) {
+        mediaRef.current.src = mediaURL;
+        await new Promise(resolve => {
+          if (mediaRef.current) { // Check if mediaRef.current is not null
+            mediaRef.current.onloadedmetadata = resolve;
+          } else {
+            resolve(null); // Resolve immediately if no mediaRef
+          }
+        });
+      }
+      
+      mediaRef.current.currentTime = startTime;
+
+      const mediaElementForStream = mediaRef.current as HTMLMediaElement & { captureStream: () => MediaStream }; // Correctly type mediaRef.current for captureStream
+      const streamToRecord = mediaElementForStream.captureStream();
+      const recorderOptions = { mimeType: file.type || getSupportedMimeType() || 'audio/webm' };
+      const newMediaRecorder = new MediaRecorder(streamToRecord, recorderOptions);
+      const chunks: Blob[] = [];
+
+      newMediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      newMediaRecorder.onstop = () => {
+        const trimmedBlob = new Blob(chunks, { type: recorderOptions.mimeType });
+        const trimmedUrl = URL.createObjectURL(trimmedBlob);
+        const trimmedFile = new File([trimmedBlob], `trimmed_${file.name}`, { type: recorderOptions.mimeType });
+
+        setMediaURL(trimmedUrl);
+        setFile(trimmedFile);
+        alert('Trimming successful!');
+      };
+
+      newMediaRecorder.start();
+      mediaRef.current.play();
+
+      setTimeout(() => {
+        if (newMediaRecorder.state === 'recording') {
+          newMediaRecorder.stop();
+        }
+        if (mediaRef.current && !mediaRef.current.paused) {
+          mediaRef.current.pause();
+        }
+      }, (endTime - startTime) * 1000);
+
+    } catch (error) {
+      console.error('Error during trimming:', error);
+      alert('An error occurred while trimming the audio.');
+    }
+  };
+
   const handleSaveFile = async () => {
     if (file) {
       try {
@@ -266,12 +338,60 @@ export default function CreateForm() {
           onSaveFile={handleSaveFile}
           file={file}
         />
-        <MediaPlayer 
-          mediaURL={mediaURL}
-          isVideoMode={isVideoMode}
-          isValidBlobUrl={isValidBlobUrl}
-          onPlayMedia={handlePlayMedia}
-        />
+        {/* Replace MediaPlayer component with inline audio/video element */}
+        {mediaURL && isValidBlobUrl(mediaURL) && (
+          <div className="mt-4">
+            {isVideoMode ? (
+              <video ref={mediaRef as React.Ref<HTMLVideoElement>} src={mediaURL} controls className="w-full rounded-lg" />
+            ) : (
+              <audio ref={mediaRef as React.Ref<HTMLAudioElement>} src={mediaURL} controls className="w-full" />
+            )}
+          </div>
+        )}
+
+        {/* UI for Trimming Audio */}
+        {mediaURL && file && (
+          <div className="mt-4 p-4 border border-gray-700 rounded-lg bg-gray-800">
+            <h3 className="text-lg font-semibold text-white mb-2">Trim Audio</h3>
+            <div className="flex flex-col sm:flex-row gap-2 mb-2">
+              <div className="flex-1">
+                <label htmlFor="trimStartTime" className="block text-sm font-medium text-gray-300">
+                  Start Time (s)
+                </label>
+                <input
+                  type="number"
+                  id="trimStartTime"
+                  value={trimStartTime}
+                  onChange={(e) => setTrimStartTime(e.target.value)}
+                  placeholder="e.g., 0.5"
+                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2"
+                />
+              </div>
+              <div className="flex-1">
+                <label htmlFor="trimEndTime" className="block text-sm font-medium text-gray-300">
+                  End Time (s)
+                </label>
+                <input
+                  type="number"
+                  id="trimEndTime"
+                  value={trimEndTime}
+                  onChange={(e) => setTrimEndTime(e.target.value)}
+                  placeholder="e.g., 5.0"
+                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={handleTrimAudio}
+              type="button"
+              className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Trim Audio
+            </Button>
+             {mediaRef.current && <p className="mt-2 text-xs text-gray-400">Current duration: {mediaRef.current.duration ? mediaRef.current.duration.toFixed(2) : 'N/A'}s</p>}
+          </div>
+        )}
+        
         <canvas ref={canvasRef} width={500} height={100} className="mt-4 border border-gray-600" />
         <div className="mt-6 flex justify-end gap-4">
           <Link

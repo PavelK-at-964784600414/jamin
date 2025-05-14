@@ -181,24 +181,39 @@ export async function fetchMembers(query: string) {
 
 export async function fetchThemeById(id: string) {
   try {
-    const data = await sql<ThemeForm>`
+    const data = await sql<ThemesTable>`
       SELECT
-        themes.id,
-        themes.member_id,
-        themes.seconds,
-        themes.status
+        themes.*,
+        members.user_name,
+        members.image_url
       FROM themes
+      JOIN members ON themes.member_id = members.id
       WHERE themes.id = ${id};
     `;
-
-    const theme = data.rows.map((theme) => ({
-      ...theme,
-      seconds: theme.seconds / 100, // Convert seconds from cents to dollars
-    }));
-    return theme[0];
+    
+    return data.rows[0];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch theme.');
+  }
+}
+
+export async function fetchLayersByThemeId(id: string) {
+  try {
+    const data = await sql<ThemesTable[]>`
+      SELECT
+        layers.*,
+        members.user_name,
+        members.image_url
+      FROM themes AS layers
+      JOIN members ON layers.member_id = members.id
+      WHERE layers.parent_theme_id = ${id}
+      ORDER BY layers.date DESC;
+    `;
+    return data.rows;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch theme layers.');
   }
 }
 
@@ -237,12 +252,12 @@ export async function fetchFilteredMembers(query: string) {
     throw new Error('Failed to fetch member table.');
   }
 }
-export async function fetchArrangements() {
+export async function fetchCollabs() {
   try {
     const data = await sql`
       SELECT
         date AS month,
-        SUM(seconds) AS arrangement
+        SUM(seconds) AS collab
       FROM (
         SELECT date, seconds FROM themes WHERE title = 'Theme1'
         UNION ALL
@@ -254,6 +269,6 @@ export async function fetchArrangements() {
     return data.rows;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch arrangements.');
+    throw new Error('Failed to fetch collaborations.');
   }
 }
