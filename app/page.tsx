@@ -15,7 +15,7 @@ export default function Page() {
         <div className="flex flex-col justify-center gap-6 rounded-lg bg-gray-900 px-6 py-10 md:w-2/5 md:px-20 border border-gray-800 shadow-xl">
           <div className="relative w-0 h-0 border-l-[15px] border-r-[15px] border-b-[26px] border-l-transparent border-r-transparent border-b-violet-500" />
           <p className={`${lusitana.className} text-xl md:text-3xl md:leading-normal text-gray-100`}>
-            <strong>Welcome to our platform.</strong> Discover a modern experience designed for you.
+            <strong>Welcome to JamIn.</strong> Collaborate with musicians.
           </p>
           <Link
             href="/login"
@@ -27,9 +27,8 @@ export default function Page() {
         <div className="flex flex-col justify-center gap-6 rounded-lg bg-gray-900 p-6 md:w-3/5 md:p-16 border border-gray-800 shadow-xl">
           <div className="h-full w-full rounded-lg bg-gray-800 p-8 flex items-center justify-center">
             <p className="text-center text-gray-400">
-              <span className="block text-2xl font-bold text-violet-400 mb-2">Modern Dark Interface</span>
-              Your content will appear here. This sleek, dark-themed design enhances visibility and creates a premium
-              experience.
+              <span className="block text-2xl font-bold text-violet-400 mb-2">Play with musicians round the world</span>
+              Create new melody or add to existing one, share with other members, get score.
             </p>
           </div>
         </div>
