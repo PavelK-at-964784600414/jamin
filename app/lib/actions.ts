@@ -219,3 +219,106 @@ export async function register(
   }
 }
 
+export type LayerState = {
+  errors?: {
+    title?: string[];
+    description?: string[];
+    instrument?: string[];
+    audioFile?: string[];
+    themeId?: string[];
+  };
+  message?: string | null;
+};
+
+const CreateLayer = z.object({
+  title: z.string().nonempty(),
+  description: z.string().optional(),
+  genre: z.string().optional(),
+  keySignature: z.string().optional(),
+  tempo: z.number().optional(),
+  seconds: z.number().optional(),
+  audioFile: z.any().optional(),
+  instrument: z.string().nonempty(),
+  scale: z.string().optional(),
+  mode: z.string().optional(),
+  chords: z.string().optional(),
+  themeId: z.string().nonempty(),
+});
+
+export async function createLayer(prevState: LayerState | null, formData: FormData) {
+  // Get the current session from NextAuth
+  const session = await getServerSession(authConfig);
+  let memberId = session?.user?.id;
+  
+  if (!memberId) {
+    console.warn('User not authenticated. Using default member id for testing.');
+    memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
+  }
+
+  try {
+    const validatedFields = CreateLayer.safeParse({
+      title: formData.get('title'),
+      description: formData.get('description'),
+      genre: formData.get('genre'),
+      keySignature: formData.get('keySignature') ?? "",
+      tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
+      audioFile: formData.get('audioFile'),
+      instrument: formData.get('instrument'),
+      scale: formData.get('scale') ?? "",
+      mode: formData.get('mode') ?? "",
+      chords: formData.get('chords'),
+      themeId: formData.get('themeId'),
+    });
+    
+    if (!validatedFields.success) {
+      console.error('Validation failed:', validatedFields.error);
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        message: 'Missing or Invalid Fields. Failed to Create Layer.',
+      };
+    }
+
+    const { 
+      title, description, genre, keySignature, tempo, 
+      audioFile, instrument, scale, mode, chords, themeId 
+    } = validatedFields.data;
+    
+    let recording_url = null;
+    const status = 'complete'; // Layers are considered complete
+    const seconds = 0; // We'll extract this from the recording
+    
+    if (audioFile instanceof File) {
+      const fileKey = `layers/${Date.now()}-${audioFile.name}`;
+      recording_url = await uploadToS3(audioFile, fileKey);
+      console.log('Layer file uploaded, URL:', recording_url);
+    } else {
+      return {
+        message: 'No audio file provided. Failed to Create Layer.',
+      };
+    }
+
+    const date = new Date().toISOString().split('T')[0];
+
+    // Insert the layer as a collaboration theme linked to the original theme
+    await sql`
+      INSERT INTO themes (
+        member_id, seconds, key, mode, chords, tempo, date, status,
+        description, title, genre, recording_url, instrument, parent_theme_id
+      ) VALUES (
+        ${memberId}, ${seconds}, ${keySignature}, ${mode}, ${chords}, 
+        ${tempo}, ${date}, ${status}, ${description}, ${title}, 
+        ${genre}, ${recording_url}, ${instrument}, ${themeId}
+      )
+    `;
+  
+    console.log('Layer created successfully');
+    revalidatePath(`/dashboard/themes/${themeId}`);
+    redirect(`/dashboard/themes/${themeId}`);
+  } catch (error) {
+    console.error('Error creating layer:', error);
+    return {
+      message: 'Database Error: Failed to Create Layer.',
+    };
+  }
+}
+

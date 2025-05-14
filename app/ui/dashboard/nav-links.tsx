@@ -17,7 +17,7 @@ const links = [
   { name: 'Home', href: '/dashboard', icon: HomeIcon },
   { name: 'Themes', href: '/dashboard/themes', icon: DocumentDuplicateIcon },
   { name: 'Members', href: '/dashboard/members', icon: UserGroupIcon },
-  { name: 'Arrangements', href: '/dashboard/arrangements', icon: MusicalNoteIcon },
+  { name: 'Collab', href: '/dashboard/collab', icon: MusicalNoteIcon },
   
 ];
 

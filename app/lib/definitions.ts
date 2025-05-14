@@ -34,6 +34,7 @@ export type Theme = {
   instrument: string;
   date: string;
   status: 'in progress' | 'complete';
+  parent_theme_id?: string; // Reference to parent theme for layers
 };
 
 // New type for signup data
@@ -100,8 +101,11 @@ export type FormattedMembersTable = {
   id: string;
   user_name: string;
   image_url: string;
-  instrument: number;
-  themes: string;
+  instrument: string;
+  themes_count: number;
+  collabs_count: number;
+  theme_name: string;
+  latest_theme_date: string;
 };
 
 export type MemberField = {

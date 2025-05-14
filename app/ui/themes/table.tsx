@@ -112,8 +112,19 @@ export default function ThemesTable({
                         <p className="mt-1 text-xs p-2 bg-gray-700 rounded-md">{theme.description}</p>
                       </div>
                     )}
-                    <div className="mt-3 border-t border-gray-700 pt-3 flex items-center justify-end gap-3">
-                      {/* Buttons are already in the trigger, but could be duplicated here if needed */}
+                    <div className="mt-3 border-t border-gray-700 pt-3 flex items-center justify-between gap-3">
+                      <a 
+                        href={`/dashboard/themes/${theme.id}/add-layer`} 
+                        className="inline-flex items-center gap-2 px-3 py-1 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                        Add Layer
+                      </a>
+                      <div className="flex items-center gap-2">
+                        {/* Additional buttons can go here if needed */}
+                      </div>
                     </div>
                   </div>
                 </AccordionContent>
