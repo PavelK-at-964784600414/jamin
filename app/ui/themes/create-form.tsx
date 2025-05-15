@@ -11,6 +11,7 @@ import RecordingControls from './RecordingControls';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
 
 export default function CreateForm() {
+  // Use the server action directly with the form
   const initialState: State = { message: null, errors: {} };
   const [state, formAction] = useActionState(createTheme, initialState);
   const [title, setTitle] = useState('');
@@ -261,31 +262,24 @@ export default function CreateForm() {
     }
   };
 
-  const handleSaveFile = async () => {
-    if (file) {
-      try {
-        const formData = new FormData();
-        formData.append('audioFile', file);
-        formData.append('title', title);
-        formData.append('description', description);
-        formData.append('genre', genre);
-        formData.append('keySignature', keySignature);  
-        formData.append('scale', scale);
-        formData.append('chords', chords);
-        formData.append('tempo', tempo.toString());
-        formData.append('instrument', instrument);
-        formData.append('mode', mode); // Append the mode field
-
-        console.log('Submitting form with file:', file.name);
-        const response = await createTheme({}, formData);
-        
-        if (response?.message) {
-          console.error('Error saving recording:', response.message);
-        }
-      } catch (error) {
-        console.error('Error in handleSaveFile:', error);
-      }
+  // Submit file using the formAction via useRef to be included in the form data
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Function to prepare the form submission
+  const prepareSubmit = () => {
+    if (!file) {
+      alert('Please record or upload an audio file before submitting.');
+      return false;
     }
+    
+    // When we have a file, we'll inject it into the hidden file input so it's included in form submission
+    if (fileInputRef.current && file) {
+      // Create a DataTransfer to programmatically set files
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      fileInputRef.current.files = dataTransfer.files;
+    }
+    return true;
   };
 
   const isValidBlobUrl = (url: string) => {
@@ -304,6 +298,8 @@ export default function CreateForm() {
     }
   }, [mediaURL]);
 
+  // Use the formAction from useActionState which will handle the server redirect properly
+  
   return (
     <form action={formAction}>
       <div className="w-[500px] mx-auto">
@@ -314,8 +310,8 @@ export default function CreateForm() {
           onDescriptionChange={setDescription}
           genre={genre}
           onGenreChange={setGenre}
-          keySignature={keySignature}  // Changed from 'key'
-          onKeySignatureChange={setKeySignature}  // Changed from 'onKeyChange'
+          keySignature={keySignature}
+          onKeySignatureChange={setKeySignature}
           tempo={tempo}
           onTempoChange={setTempo}
           scale={scale}
@@ -324,9 +320,20 @@ export default function CreateForm() {
           onChordsChange={setChords}
           instrument={instrument}
           onInstrumentChange={setInstrument}
-          mode={mode}                     // Pass mode state
+          mode={mode}
           onModeChange={setMode}
         />
+        
+        {/* Hidden form fields to ensure values are submitted with the form */}
+        <input type="hidden" name="title" value={title} />
+        <input type="hidden" name="description" value={description} />
+        <input type="hidden" name="genre" value={genre} />
+        <input type="hidden" name="keySignature" value={keySignature} />
+        <input type="hidden" name="tempo" value={tempo.toString()} />
+        <input type="hidden" name="scale" value={scale} />
+        <input type="hidden" name="chords" value={chords} />
+        <input type="hidden" name="instrument" value={instrument} />
+        <input type="hidden" name="mode" value={mode} />
         <RecordingControls 
           isRecording={isRecording}
           isVideoMode={isVideoMode}
@@ -335,8 +342,16 @@ export default function CreateForm() {
           setMetronomeEnabled={setMetronomeEnabled}
           onStartStopRecording={isRecording ? handleStopRecording : handleStartRecording}
           onFileChange={handleFileChange}
-          onSaveFile={handleSaveFile}
           file={file}
+        />
+        
+        {/* Hidden input to store the file for form submission */}
+        <input 
+          type="file" 
+          name="audioFile" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          aria-hidden="true"
         />
         {/* Replace MediaPlayer component with inline audio/video element */}
         {mediaURL && isValidBlobUrl(mediaURL) && (
@@ -400,7 +415,11 @@ export default function CreateForm() {
           >
             Cancel
           </Link>
-          <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
+          <Button 
+            type="submit" 
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            onClick={(e) => !prepareSubmit() && e.preventDefault()}
+          >
             Create Theme
           </Button>
         </div>

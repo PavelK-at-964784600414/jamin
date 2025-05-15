@@ -9,7 +9,7 @@ export default function LoginPage() {
           {/* Header with gradient */}
           <div className="relative bg-gradient-to-r from-primary/90 to-primary/70 px-6 py-8">
             <div className="absolute inset-0 bg-[url('/placeholder.svg?height=100&width=100')] bg-[length:20px_20px] bg-repeat opacity-5"></div>
-            <div className="relative mb-2 w-32 text-white md:w-36">
+            <div className="relative mb-2 w-36 text-white md:w-40">
               <JaminLogo />
             </div>
             <h1 className="text-2xl font-bold text-white">Welcome Back</h1>

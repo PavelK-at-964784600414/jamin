@@ -10,7 +10,6 @@ interface RecordingControlsProps {
   setMetronomeEnabled: (value: boolean) => void;
   onStartStopRecording: () => void;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSaveFile: () => void;
   file: File | null;
 }
 
@@ -22,7 +21,6 @@ export default function RecordingControls({
   setMetronomeEnabled,
   onStartStopRecording,
   onFileChange,
-  onSaveFile,
   file,
 }: RecordingControlsProps) {
   return (
@@ -89,18 +87,7 @@ export default function RecordingControls({
             Upload File
           </label>
         </div>
-        {file && (
-          <div className="flex justify-center">
-            <Button
-              type="button"
-              onClick={onSaveFile}
-              className="flex items-center gap-2 px-5 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors duration-200"
-            >
-              <ArrowDownIcon className="h-6 w-6" />
-              Save File
-            </Button>
-          </div>
-        )}
+        {/* We'll use form submission instead of a separate save button */}
       </div>
     </div>
   );
