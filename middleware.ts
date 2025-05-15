@@ -1,17 +1,22 @@
-export { auth as middleware } from "@/auth"
 import { NextRequest, NextResponse } from 'next/server';
-import NextAuth from 'next-auth';
-import { authConfig } from './auth.config';
+import { auth } from './auth-config'; // Import from the correct location
 import { analyticsMiddleware } from './analyticsMiddleware';
+import { csrfMiddleware } from './app/lib/csrf';
 
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   // Apply analytics middleware
   const response = analyticsMiddleware(request);
+  
+  // Apply CSRF protection for API routes
+  const csrfResult = csrfMiddleware(request);
+  if (csrfResult) {
+    return csrfResult;
+  }
 
   // Apply authentication middleware
-  return NextAuth(authConfig).auth(request, response);
+  return auth(request);
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.mp3$|.*\\.wav$).*)'],
+  matcher: ['/((?!_next/static|_next/image|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.mp3$|.*\\.wav$).*)'],
 };

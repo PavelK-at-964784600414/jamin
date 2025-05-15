@@ -24,11 +24,22 @@ export default function ThemePage() {
         }
         
         // Fetch data from our API endpoint instead of directly from the database
-        const response = await fetch(`/api/themes/${id}`);
+        const response = await fetch(`/api/themes/${id}`, {
+          // Add cache: 'no-store' to avoid caching unauthorized responses
+          cache: 'no-store',
+          // Add credentials to ensure cookies are sent for authentication
+          credentials: 'include'
+        });
         
         if (!response.ok) {
           if (response.status === 404) {
             notFound();
+          } else if (response.status === 401) {
+            // Handle authentication errors
+            throw new Error('You must be logged in to view this theme');
+          } else if (response.status === 429) {
+            // Handle rate limiting
+            throw new Error('Too many requests. Please try again later.');
           }
           throw new Error('Failed to fetch theme data');
         }

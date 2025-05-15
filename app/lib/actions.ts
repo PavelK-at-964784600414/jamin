@@ -31,6 +31,7 @@ export type State = {
     audioFile?: string[];
   };
   message?: string | null;
+  success?: boolean; // Add success flag for handling client-side navigation
 };
 
 const CreateTheme = z.object({
@@ -87,18 +88,44 @@ export async function createTheme(prevState: State, formData: FormData) {
     let recording_url = null;
     const status = 'in progress';
     const seconds = 0;// need to get seconds fromrecording
+      // Check if we have a file to upload
+    if (audioFile) {
+      try {
+        // Check if it's a File object (client-side) or FormDataEntryValue (server-side)
+        if (audioFile instanceof File) {
+          const fileKey = `recordings/${Date.now()}-${audioFile.name}`;
+          recording_url = await uploadToS3(audioFile, fileKey);
+          console.log('File uploaded from File object, URL:', recording_url);
+        } else if (audioFile instanceof Blob) {
+          // Handle if it's a Blob
+          const fileKey = `recordings/${Date.now()}-recording.webm`;
+          recording_url = await uploadToS3(new File([audioFile], 'recording.webm', { type: 'audio/webm' }), fileKey);
+          console.log('File uploaded from Blob, URL:', recording_url);
+        } else {
+          console.error('Invalid file object:', typeof audioFile, audioFile);
+          throw new Error('Invalid file object provided');
+        }
+      } catch (error) {
+        console.error('Failed to upload file:', error);
+        throw error;
+      }
+    }
     
-    if (audioFile instanceof File) {
-      const fileKey = `recordings/${Date.now()}-${audioFile.name}`;
-      recording_url = await uploadToS3(audioFile, fileKey);
-      console.log('File uploaded, URL:', recording_url);
+    // If we still don't have a recording URL, throw an error - it's required
+    if (!recording_url) {
+      console.error('No recording_url after file upload attempt');
+      return {
+        errors: {
+          audioFile: ['Audio file is required. Please record or upload an audio file.']
+        },
+        message: 'Audio file is required.',
+      };
     }
 
     const date = new Date().toISOString().split('T')[0];
 
     // Use the memberId obtained from the session
     // member_id	seconds	key	mode	chords	tempo	date	status	description	title	genre	recording_url	instrument
-    recording_url = 'testing';
     await sql`
       INSERT INTO themes (
         member_id,	seconds,	key,	mode,	chords,	tempo,	date,	status,	description,	title,	genre,	recording_url,	instrument
@@ -106,13 +133,16 @@ export async function createTheme(prevState: State, formData: FormData) {
         ${memberId}, ${seconds}, ${key}, ${mode}, ${chords}, ${tempo}, ${date}, ${status}, ${description}, ${title}, ${genre} , ${recording_url}, ${instrument}
       )
     `;
-  
     console.log('Theme created successfully');
     revalidatePath('/dashboard/themes');
+    
+    // Redirect to the themes page after successful creation
+    // This works with standard form submissions
     redirect('/dashboard/themes');
   } catch (error) {
     console.error('Error creating theme:', error);
     return {
+      success: false,
       message: 'Database Error: Failed to Create Theme.',
     };
   }
@@ -128,7 +158,7 @@ export async function updateTheme(id: string, prevState: State, formData: FormDa
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Create Invoice.',
+      message: 'Missing Fields. Failed to Create Theme.',
     };
   }
   // Prepare data for insertion into the database
@@ -145,8 +175,8 @@ export async function updateTheme(id: string, prevState: State, formData: FormDa
     message: 'Database Error: Failed to Update Invoice.',
   };
 }
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
+  revalidatePath('/dashboard/themes');
+  redirect('/dashboard/themes');
 }
 
 export async function deleteTheme(id: string) {
@@ -228,6 +258,7 @@ export type LayerState = {
     themeId?: string[];
   };
   message?: string | null;
+  success?: boolean;
 };
 
 const CreateLayer = z.object({
@@ -309,10 +340,10 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         ${tempo}, ${date}, ${status}, ${description}, ${title}, 
         ${genre}, ${recording_url}, ${instrument}, ${themeId}
       )
-    `;
-  
-    console.log('Layer created successfully');
+    `;    console.log('Layer created successfully');
     revalidatePath(`/dashboard/themes/${themeId}`);
+    
+    // Redirect directly to the theme page
     redirect(`/dashboard/themes/${themeId}`);
   } catch (error) {
     console.error('Error creating layer:', error);
