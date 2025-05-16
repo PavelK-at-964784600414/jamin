@@ -30,39 +30,82 @@ export async function uploadToS3(file: File, key: string) {
       const arrayBuffer = await file.arrayBuffer();
       fileBuffer = new Uint8Array(arrayBuffer);
     } catch (arrayBufferError) {
-      console.warn('Error getting arrayBuffer, trying alternative approach:', arrayBufferError);
+      console.warn('Error getting arrayBuffer:', arrayBufferError);
       
-      // Alternative approach for Safari
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          try {
-            const arrayBuffer = event.target?.result as ArrayBuffer;
-            if (!arrayBuffer) {
-              throw new Error('FileReader did not produce a result');
+      // Check if we're in a browser environment where FileReader is available
+      if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+        // Browser-specific code using FileReader
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            try {
+              const arrayBuffer = event.target?.result as ArrayBuffer;
+              if (!arrayBuffer) {
+                throw new Error('FileReader did not produce a result');
+              }
+              
+              // Convert to Uint8Array for S3
+              const uint8Array = new Uint8Array(arrayBuffer);
+              
+              const command = new PutObjectCommand({
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: key,
+                Body: uint8Array,
+                ContentType: file.type || 'audio/webm',
+              });
+              
+              await s3Client.send(command);
+              const url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+              console.log('S3 upload successful (FileReader method):', url);
+              resolve(url);
+            } catch (uploadError) {
+              reject(uploadError);
+            }
+          };
+          reader.onerror = () => reject(new Error('FileReader failed'));
+          reader.readAsArrayBuffer(file);
+        });
+      } else {
+        // Server-side code - Attempt different approach for Node.js
+        try {
+          // Try to get buffer from Node.js specific methods
+          console.log('Attempting server-side file reading');
+          if ('buffer' in file && typeof file.buffer === 'function') {
+            const buffer = await file.buffer();
+            fileBuffer = new Uint8Array(buffer);
+          } else if ('stream' in file && typeof file.stream === 'function') {
+            // Handle stream-based files
+            const chunks: Uint8Array[] = [];
+            const reader = file.stream().getReader();
+            
+            let done = false;
+            while (!done) {
+              const { done: readerDone, value } = await reader.read();
+              if (readerDone) {
+                done = true;
+              } else if (value) {
+                chunks.push(value);
+              }
             }
             
-            // Convert to Uint8Array for S3
-            const uint8Array = new Uint8Array(arrayBuffer);
-            
-            const command = new PutObjectCommand({
-              Bucket: process.env.AWS_BUCKET_NAME,
-              Key: key,
-              Body: uint8Array,
-              ContentType: file.type || 'audio/webm',
-            });
-            
-            await s3Client.send(command);
-            const url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-            console.log('S3 upload successful (FileReader method):', url);
-            resolve(url);
-          } catch (uploadError) {
-            reject(uploadError);
+            // Combine all chunks
+            const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+            fileBuffer = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const chunk of chunks) {
+              fileBuffer.set(chunk, offset);
+              offset += chunk.length;
+            }
+          } else {
+            // Emergency fallback
+            console.error('Unable to read file using standard methods');
+            throw new Error('Unable to read file data in server environment');
           }
-        };
-        reader.onerror = () => reject(new Error('FileReader failed'));
-        reader.readAsArrayBuffer(file);
-      });
+        } catch (nodeError) {
+          console.error('Server-side file processing failed:', nodeError);
+          throw nodeError;
+        }
+      }
     }
     
     // Standard upload path
@@ -98,20 +141,27 @@ export async function getSignedUrl(key: string) {
  */
 export async function createSafariCompatibleFile(file: File): Promise<File> {
   try {
-    // Create a new Blob from the file to avoid Safari's readonly property issues
-    const fileBlob = new Blob([await file.arrayBuffer()], { type: file.type });
-    
-    // Create a new File with a fixed MIME type for Safari compatibility
-    const safeMimeType = file.type || 
-      (file.name.endsWith('.mp3') ? 'audio/mpeg' : 
-      (file.name.endsWith('.webm') ? 'audio/webm' : 
-      'application/octet-stream'));
-    
-    // Return a new File object with the same content but properly sanitized
-    return new File([fileBlob], file.name, { 
-      type: safeMimeType,
-      lastModified: file.lastModified 
-    });
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined') {
+      // Browser-safe approach: Create a new Blob from the file
+      const fileBlob = new Blob([await file.arrayBuffer()], { type: file.type });
+      
+      // Create a new File with a fixed MIME type for Safari compatibility
+      const safeMimeType = file.type || 
+        (file.name.endsWith('.mp3') ? 'audio/mpeg' : 
+        (file.name.endsWith('.webm') ? 'audio/webm' : 
+        'application/octet-stream'));
+      
+      // Return a new File object with the same content but properly sanitized
+      return new File([fileBlob], file.name, { 
+        type: safeMimeType,
+        lastModified: file.lastModified 
+      });
+    } else {
+      // Server-side approach: Just return the file as-is, since we can't use browser APIs
+      // The uploadToS3 function will handle server-side processing
+      return file;
+    }
   } catch (error) {
     console.error('Error creating Safari-compatible file:', error);
     // Return the original file as fallback

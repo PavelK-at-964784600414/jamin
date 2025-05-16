@@ -97,17 +97,21 @@ export async function createTheme(prevState: State, formData: FormData) {
     const status = 'in progress';
     const seconds = 0;// need to get seconds fromrecording
       // Check if we have a file to upload
-    if (audioFile) {
-      try {
+    if (audioFile) {      try {
         // Check if it's a File object (client-side) or FormDataEntryValue (server-side)
         if (audioFile instanceof File) {
           const fileKey = `recordings/${Date.now()}-${audioFile.name}`;
-          recording_url = await uploadToS3(audioFile, fileKey);
+          // Use the safe upload utility instead of direct uploadToS3
+          const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
+          recording_url = await uploadFileToS3WithRetry(audioFile, 'recordings');
           console.log('File uploaded from File object, URL:', recording_url);
         } else if (audioFile instanceof Blob) {
           // Handle if it's a Blob
           const fileKey = `recordings/${Date.now()}-recording.webm`;
-          recording_url = await uploadToS3(new File([audioFile], 'recording.webm', { type: 'audio/webm' }), fileKey);
+          const blobFile = new File([audioFile], 'recording.webm', { type: 'audio/webm' });
+          // Use the safe upload utility instead of direct uploadToS3
+          const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
+          recording_url = await uploadFileToS3WithRetry(blobFile, 'recordings');
           console.log('File uploaded from Blob, URL:', recording_url);
         } else {
           console.error('Invalid file object:', typeof audioFile, audioFile);
@@ -365,81 +369,124 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       audioFile, instrument, scale, mode, chords, themeId 
     } = validatedFields.data;
       let recording_url = null;
-    const status = 'complete'; // Layers are considered complete
-    const seconds = 0; // We'll extract this from the recording
-      if (audioFile) {
-      try {        // Handle various types of file objects that could come from different browsers
+    const status = 'complete'; // Layers are considered complete    const seconds = 0; // We'll extract this from the recording      
+    if (audioFile) {
+      try {
+        // Handle various types of file objects that could come from different browsers
         if (audioFile instanceof File) {
-          // Standard File object - most common case
+          // For server-side file handling, avoid browser-only APIs
           try {
-            // Always use the FileReader approach for better Safari compatibility
-            // FileReader is safer for Safari than direct arrayBuffer() calls
-            const safeFile = await new Promise<File>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                try {
-                  const arrayBuffer = event.target?.result as ArrayBuffer;
-                  if (!arrayBuffer) {
-                    throw new Error('FileReader did not produce a result');
-                  }
-                  
-                  // Create a completely new Blob to avoid Safari's readonly property issues
-                  const fileBlob = new Blob([arrayBuffer], { type: audioFile.type || 'audio/webm' });
-                  
-                  // Create a completely new File from the original File's data
-                  const safeFile = new File([fileBlob],
-                    audioFile.name || `recording-${Date.now()}.webm`, 
-                    { type: audioFile.type || 'audio/webm', lastModified: Date.now() }
-                  );
-                  
-                  resolve(safeFile);
-                } catch (error) {
-                  reject(error);
-                }
-              };
-              reader.onerror = () => reject(new Error('FileReader failed'));
-              reader.readAsArrayBuffer(audioFile);
-            });
-              // Use our new safe file
-            const fileKey = `layers/${Date.now()}-${safeFile.name}`;
-            recording_url = await uploadToS3(safeFile, fileKey);
-            console.log('Layer file uploaded using Safari-compatible approach, URL:', recording_url);
+            // Create a file name if needed
+            const fileName = audioFile.name || `recording-${Date.now()}.webm`;
+            
+            // Generate a unique key for S3
+            const fileKey = `layers/${themeId}/${Date.now()}-${fileName}`;
+            
+            // Use the uploadFileToS3WithRetry utility which handles environment differences
+            // This avoids direct FileReader usage on the server
+            const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
+            recording_url = await uploadFileToS3WithRetry(audioFile, 'layers/' + themeId);
+            console.log('Layer file uploaded successfully to S3:', recording_url);
           } catch (error) {
-            console.error('Error creating safe file:', error);
-            throw error;
+            console.error('Error uploading file to S3:', error);
+            return {
+              message: 'Failed to upload audio file. Please try again.',
+            };
           }
         } else if (audioFile instanceof Blob) {
           // Handle Blob type (might come from some browser recordings)
-          const fileKey = `layers/${Date.now()}-recording.webm`;
-          const blobAsFile = new File([audioFile], 'recording.webm', { 
-            type: audioFile.type || 'audio/webm',
-            lastModified: Date.now() // Use current timestamp for Safari compatibility
-          });
-          recording_url = await uploadToS3(blobAsFile, fileKey);
-          console.log('Layer file uploaded from Blob, URL:', recording_url);
+          try {
+            const fileKey = `layers/${themeId}/${Date.now()}-recording.webm`;
+            const blobAsFile = new File([audioFile], 'recording.webm', { 
+              type: audioFile.type || 'audio/webm',
+              lastModified: Date.now() 
+            });
+            // Use the uploadFileToS3WithRetry utility which handles environment differences
+            const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
+            recording_url = await uploadFileToS3WithRetry(blobAsFile, 'layers/' + themeId);
+            console.log('Layer file uploaded from Blob, URL:', recording_url);
+          } catch (error) {
+            console.error('Error uploading Blob to S3:', error);
+            return {
+              message: 'Failed to upload audio blob. Please try again.',
+            };
+          }
         } else {
           // For other types, attempt to convert to a usable format
           try {
-            const fileKey = `layers/${Date.now()}-recording.webm`;
-            // Try to create a new Buffer and then a File from the unknown type
-            const anyBlob = new Blob([audioFile], { type: 'audio/webm' });
-            const safeFile = new File([anyBlob], 'recording.webm', { 
-              type: 'audio/webm',
-              lastModified: Date.now() // Use current timestamp for Safari compatibility
-            });
-            recording_url = await uploadToS3(safeFile, fileKey);
-            console.log('Layer file uploaded from converted object, URL:', recording_url);
+            const fileKey = `layers/${themeId}/${Date.now()}-recording.webm`;
+            
+            // Handle various data formats - ensure we have a usable object for S3
+            let uploadableFile;
+            
+            if (typeof audioFile === 'string') {
+              // If it's a data URL or string representation
+              try {                // Try to create a Blob from base64 string if it looks like one
+                if (audioFile.startsWith('data:')) {
+                  const base64Data = audioFile.split(',')[1];
+                  // Use Buffer instead of atob for server compatibility
+                  const buffer = Buffer.from(base64Data, 'base64');
+                  const byteArray = new Uint8Array(buffer);
+                  
+                  uploadableFile = new File([byteArray], 'recording.webm', { 
+                    type: 'audio/webm',
+                    lastModified: Date.now()
+                  });
+                } else {
+                  // Handle plain text or URL strings
+                  uploadableFile = new File([audioFile], 'recording.webm', { 
+                    type: 'text/plain',
+                    lastModified: Date.now()
+                  });
+                }
+              } catch (parseError) {
+                console.error('Error parsing string audio data:', parseError);
+                return {
+                  message: 'Invalid audio data format. Please try again with a proper audio file.',
+                };
+              }
+            } else if (Buffer.isBuffer(audioFile)) {
+              // Handle Node.js Buffer type
+              uploadableFile = new File([audioFile], 'recording.webm', { 
+                type: 'audio/webm',
+                lastModified: Date.now()
+              });
+            } else if (ArrayBuffer.isView(audioFile) || audioFile instanceof ArrayBuffer) {
+              // Handle ArrayBuffer or TypedArray
+              uploadableFile = new File([audioFile], 'recording.webm', { 
+                type: 'audio/webm',
+                lastModified: Date.now()
+              });
+            } else {
+              // Last resort - try to convert unknown type to a blob
+              try {
+                const anyBlob = new Blob([audioFile], { type: 'audio/webm' });
+                uploadableFile = new File([anyBlob], 'recording.webm', { 
+                  type: 'audio/webm',
+                  lastModified: Date.now()
+                });
+              } catch (blobError) {
+                console.error('Failed to create blob from unknown type:', blobError);
+                return {
+                  message: 'Unsupported file format. Please try again with a different file.',
+                };
+              }
+            }            
+            // Upload the converted file using the utility function that's safe for server-side
+            const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
+            recording_url = await uploadFileToS3WithRetry(uploadableFile, 'layers/' + themeId);
+            console.log('Layer file uploaded from converted format, URL:', recording_url);
           } catch (conversionError) {
-            console.error('Failed to convert audio file:', conversionError);
+            console.error('Failed to convert or upload audio file:', conversionError);
             return {
               message: 'Unsupported file format. Please try again with a different file.',
             };
           }
         }
       } catch (uploadError) {
-        console.error('Error uploading file:', uploadError);
+        console.error('Error in file upload process:', uploadError);
         return {
-          message: 'Failed to upload audio file. Please try again.',
+          message: 'Failed to process audio file. Please try again.',
         };
       }
     } else {
