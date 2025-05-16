@@ -362,14 +362,13 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         errors: validatedFields.error.flatten().fieldErrors,
         message: 'Missing or Invalid Fields. Failed to Create Layer.',
       };
-    }
-
-    const { 
+    }    const { 
       title, description, genre, keySignature, tempo, 
       audioFile, instrument, scale, mode, chords, themeId 
     } = validatedFields.data;
       let recording_url = null;
-    const status = 'complete'; // Layers are considered complete    const seconds = 0; // We'll extract this from the recording      
+    const status = 'complete'; // Layers are considered complete
+    const seconds = 0; // We'll extract this from the recording      
     if (audioFile) {
       try {
         // Handle various types of file objects that could come from different browsers

@@ -36,6 +36,38 @@ export function processBase64DataUrl(dataUrl: string): Uint8Array {
 }
 
 /**
+ * Process a base64 data URL into a buffer/array that works in both browser and server
+ * environments
+ * 
+ * @param dataUrl A data URL string (e.g., "data:audio/webm;base64,...")
+ * @returns A Uint8Array containing the decoded data
+ */
+export function processBase64DataUrl(dataUrl: string): Uint8Array {
+  // Extract the base64 part
+  const base64Data = dataUrl.split(',')[1];
+  
+  // Different handling for browser vs server
+  if (typeof window !== 'undefined') {
+    // Browser environment
+    try {
+      const binaryString = atob(base64Data);
+      const byteArray = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        byteArray[i] = binaryString.charCodeAt(i);
+      }
+      return byteArray;
+    } catch (error) {
+      console.error('Browser atob failed:', error);
+      // Fallback to Buffer in case we're in a Node.js environment
+      return new Uint8Array(Buffer.from(base64Data, 'base64'));
+    }
+  } else {
+    // Server environment
+    return new Uint8Array(Buffer.from(base64Data, 'base64'));
+  }
+}
+
+/**
  * Enhanced file upload function with better error handling and retries.
  * This function is safe to use in both client and server environments.
  * 

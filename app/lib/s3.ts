@@ -8,6 +8,7 @@ const cleanSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY!.split('#')[0].tr
 console.log(`S3 Client - Clean Access Key ID length: ${cleanAccessKeyId.length}`);
 console.log(`S3 Client - Using Access Key ID: ${cleanAccessKeyId.substring(0, 4)}...`);
 
+// Create S3 client with cleaned credentials
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
   credentials: {
