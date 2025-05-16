@@ -1,4 +1,3 @@
-import getServerSession  from 'next-auth';
 import { NextResponse } from 'next/server';
 import { authConfig } from '@/auth.config';
 
@@ -7,7 +6,9 @@ import { authConfig } from '@/auth.config';
  * @returns An error response if not authenticated, null if authenticated
  */
 export async function checkAuth() {
-  const session = await getServerSession(authConfig);
+  // Use dynamic import to avoid issues with module resolution
+  const { auth } = await import('../../../auth-config.js');
+  const session = await auth();
   
   if (!session) {
     return NextResponse.json(
@@ -24,7 +25,9 @@ export async function checkAuth() {
  * @returns The member ID or null if not authenticated
  */
 export async function getCurrentMemberId() {
-  const session = await getServerSession(authConfig);
+  // Use dynamic import to avoid issues with module resolution
+  const { auth } = await import('../../../auth-config.js');
+  const session = await auth();
   return session?.user?.id || null;
 }
 

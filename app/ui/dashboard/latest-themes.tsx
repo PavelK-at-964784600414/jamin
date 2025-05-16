@@ -21,13 +21,13 @@ export default async function LatestThemes() {
                   <Image
                     className="h-10 w-10 rounded-full"
                     src={imageUrl}
-                    alt={theme.name}
+                    alt={theme.title}
                     width={40}
                     height={40}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-white md:text-base">
-                      {theme.name}
+                      {theme.title}
                     </p>
                     <p className="truncate text-sm text-gray-400 sm:block">
                       {theme.member}

@@ -63,27 +63,27 @@ export type ThemePages = {
 };
 
 export type LatestThemesRaw = Omit<LatestThemes, 'title'> & {
-  name: string;
+  title: string; // Updated from 'name' to 'title'
   seconds: number;
 };
 
 export type ThemesTable = {
   id: string;
-  seconds: number; // Corrected to number
+  seconds: number; 
   date: string;
   status: 'in progress' | 'complete';
-  title: string; // Added
+  title: string; // Primary field - the database uses this column now
+  // Remove name field entirely as it's no longer needed after migration
   chords: string;
-  key: string; // Corrected from keySignature to key
+  key: string; 
   mode: string;
-  tempo: number; // Corrected to number
-  description: string; // Added
-  recording_url: string; // Added
-  user_name: string; // Kept user_name (from members.user_name)
+  tempo: number;
+  description: string;
+  recording_url: string;
+  user_name: string; // From members.user_name
   instrument: string;
-  image_url: string; // (from members.image_url)
-  // Removed 'name: string;' as 'title' and 'user_name' cover the needs
-  // Removed 'keySignature: string;' replaced by 'key: string;'
+  image_url: string; // From members.image_url
+  parent_theme_id?: string; // For layered themes
 };
 
 // Member table related types
@@ -118,7 +118,7 @@ export type MemberField = {
 export type ThemeForm = {
   id: string;
   user_name: string;
-  name: string;
+  title: string;
   description?: string;
   seconds: number;
   keySignature: string;

@@ -36,7 +36,7 @@ async function seedThemes() {
     CREATE TABLE IF NOT EXISTS themes (
       id SERIAL PRIMARY KEY,
       member_id UUID NOT NULL,
-      name VARCHAR(64) NOT NULL,
+      title VARCHAR(64) NOT NULL,
       seconds INT NOT NULL,
       style VARCHAR(64) NOT NULL,
       key VARCHAR(6) NOT NULL,
@@ -62,8 +62,8 @@ async function seedThemes() {
 //     themes.map(async (theme) => {
 //         console.log('theme:', theme);
 //         return client.sql`
-//         INSERT INTO themes (id, member_id, name, seconds, style, key, mode, chords, tempo, rythm, sample, date, status)
-//         VALUES (${theme.id}, ${theme.member_id}, ${theme.name}, ${theme.seconds}, ${theme.style}, ${theme.key}, ${theme.mode}, ${theme.chords}, ${theme.tempo}, ${theme.rythm}, ${theme.sample}, ${theme.date}, ${theme.status})
+//         INSERT INTO themes (id, member_id, title, seconds, style, key, mode, chords, tempo, rythm, sample, date, status)
+//         VALUES (${theme.id}, ${theme.member_id}, ${theme.title}, ${theme.seconds}, ${theme.style}, ${theme.key}, ${theme.mode}, ${theme.chords}, ${theme.tempo}, ${theme.rythm}, ${theme.sample}, ${theme.date}, ${theme.status})
 //         ON CONFLICT (id) DO NOTHING;
 //       `;
 //     }),
@@ -75,10 +75,10 @@ const insertedThemes = await Promise.all(
   themes.map(async (theme) => {
     console.log('theme:', theme);
     return client.query(`
-      INSERT INTO themes (id, member_id, name, seconds, style, key, mode, chords, tempo, rythm, sample, date, status)
+      INSERT INTO themes (id, member_id, title, seconds, style, key, mode, chords, tempo, rythm, sample, date, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       ON CONFLICT (id) DO NOTHING;
-    `, [theme.id, theme.member_id, theme.name, theme.seconds, theme.style, theme.key, theme.mode, theme.chords, theme.tempo, theme.rythm, theme.sample, theme.date, theme.status]);
+    `, [theme.id, theme.member_id, theme.title, theme.seconds, theme.style, theme.key, theme.mode, theme.chords, theme.tempo, theme.rythm, theme.sample, theme.date, theme.status]);
   }),
 );
 

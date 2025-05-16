@@ -73,22 +73,22 @@ export default function ThemesTable({
                         <span className="text-sm text-gray-400">{theme.user_name}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        {theme.recording_url && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent accordion from toggling
-                              handlePlayClick(theme.recording_url!);
-                            }}
-                            className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
-                            aria-label={`Play theme ${theme.title}`}
-                            title="Play Theme"
-                          >
-                            <PlayIcon className="w-6 h-6" />
-                          </button>
-                        )}
-                        <UpdateTheme id={theme.id} />
-                        <DeleteTheme id={theme.id} />
+                    <div className="flex items-center gap-4 ml-auto mr-8">
+                      {theme.recording_url && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent accordion from toggling
+                            handlePlayClick(theme.recording_url!);
+                          }}
+                          className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
+                          aria-label={`Play theme ${theme.title}`}
+                          title="Play Theme"
+                        >
+                          <PlayIcon className="w-6 h-6" />
+                        </button>
+                      )}
+                      <UpdateTheme id={theme.id} />
+                      <DeleteTheme id={theme.id} />
                     </div>
                   </div>
                 </AccordionTrigger>

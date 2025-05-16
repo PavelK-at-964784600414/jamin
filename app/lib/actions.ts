@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 import { signIn, signUp } from '@/auth';
 import { AuthError } from 'next-auth';
 import { uploadToS3 } from './s3';
-import getServerSession from 'next-auth';
+import { auth } from '@/auth';
 import { authConfig } from '@/auth.config';
 
 const FormSchema = z.object({
@@ -52,7 +52,7 @@ const CreateTheme = z.object({
 export async function createTheme(prevState: State, formData: FormData) {
   
   // Get the current session from NextAuth
-  const session = await getServerSession(authConfig);
+  const session = await auth();
   let memberId = session?.user?.id;
   console.log('session details:', session);
   if (!memberId) {
@@ -150,43 +150,62 @@ export async function createTheme(prevState: State, formData: FormData) {
  
 export async function updateTheme(id: string, prevState: State, formData: FormData) {
   const validatedFields = CreateTheme.safeParse({
-    customerId: formData.get('customerId'),
-    seconds: formData.get('seconds'),
-    status: formData.get('status'),
+    title: formData.get('title'),
+    description: formData.get('description'),
+    genre: formData.get('genre'),
+    key: formData.get('keySignature') ?? "",
+    tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
+    seconds: formData.get('seconds') ? Number(formData.get('seconds')) : 0,
+    instrument: formData.get('instrument'),
+    mode: formData.get('mode') ?? "",
+    chords: formData.get('chords'),
   });
+  
   console.log(validatedFields);
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Create Theme.',
+      message: 'Missing Fields. Failed to Update Theme.',
     };
   }
+  
   // Prepare data for insertion into the database
-  const { customerId, seconds, status } = validatedFields.data;
+  const { title, description, genre, key, tempo, seconds, instrument, mode, chords } = validatedFields.data;
 
- try{
-  await sql`
-    UPDATE themes
-    SET member_id = ${customerId}, seconds = ${seconds}, status = ${status}
-    WHERE id = ${id}
-  `;
-} catch (error) {
-  return {
-    message: 'Database Error: Failed to Update Invoice.',
-  };
-}
+  try {
+    await sql`
+      UPDATE themes
+      SET 
+        title = ${title}, 
+        description = ${description}, 
+        genre = ${genre},
+        key = ${key},
+        tempo = ${tempo}, 
+        seconds = ${seconds},
+        instrument = ${instrument},
+        mode = ${mode},
+        chords = ${chords}
+      WHERE id = ${id}
+    `;
+  } catch (error) {
+    return {
+      message: 'Database Error: Failed to Update Theme.',
+    };
+  }
+  
   revalidatePath('/dashboard/themes');
   redirect('/dashboard/themes');
 }
 
 export async function deleteTheme(id: string) {
-  throw new Error('Failed to Delete Invoice');
-    try{
-      await sql`DELETE FROM invoices WHERE id = ${id}`;
-      revalidatePath('/dashboard/invoices');
-    } catch (error) {
+  try {
+    await sql`DELETE FROM themes WHERE id = ${id}`;
+    revalidatePath('/dashboard/themes');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete theme:', error);
     return {
-      message: 'Database Error: Failed to Delete Invoice.',
+      message: 'Database Error: Failed to Delete Theme.',
     };
   }
 }
@@ -259,6 +278,7 @@ export type LayerState = {
   };
   message?: string | null;
   success?: boolean;
+  themeId?: string; // Add themeId for client-side navigation
 };
 
 const CreateLayer = z.object({
@@ -278,7 +298,7 @@ const CreateLayer = z.object({
 
 export async function createLayer(prevState: LayerState | null, formData: FormData) {
   // Get the current session from NextAuth
-  const session = await getServerSession(authConfig);
+  const session = await auth();
   let memberId = session?.user?.id;
   
   if (!memberId) {
@@ -313,15 +333,68 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       title, description, genre, keySignature, tempo, 
       audioFile, instrument, scale, mode, chords, themeId 
     } = validatedFields.data;
-    
-    let recording_url = null;
+      let recording_url = null;
     const status = 'complete'; // Layers are considered complete
     const seconds = 0; // We'll extract this from the recording
-    
-    if (audioFile instanceof File) {
-      const fileKey = `layers/${Date.now()}-${audioFile.name}`;
-      recording_url = await uploadToS3(audioFile, fileKey);
-      console.log('Layer file uploaded, URL:', recording_url);
+      if (audioFile) {
+      try {
+        // Handle various types of file objects that could come from different browsers
+        if (audioFile instanceof File) {
+          // Standard File object - most common case
+          try {
+            const fileKey = `layers/${Date.now()}-${audioFile.name || 'recording.webm'}`;
+            recording_url = await uploadToS3(audioFile, fileKey);
+            console.log('Layer file uploaded from File object, URL:', recording_url);
+          } catch (safariError) {
+            // Safari may fail with the standard approach, so create a clean File
+            console.warn('Standard file upload failed, trying Safari-compatible approach:', safariError);
+            
+            // Create a completely new File from the original File's data
+            const arrayBuffer = await audioFile.arrayBuffer();
+            const safeBlob = new Blob([arrayBuffer], { type: audioFile.type || 'audio/webm' });
+            const safeFile = new File([safeBlob], 
+              audioFile.name || `recording-${Date.now()}.webm`, 
+              { type: audioFile.type || 'audio/webm', lastModified: Date.now() }
+            );
+            
+            const fileKey = `layers/${Date.now()}-${safeFile.name}`;
+            recording_url = await uploadToS3(safeFile, fileKey);
+            console.log('Layer file uploaded using Safari-compatible approach, URL:', recording_url);
+          }
+        } else if (audioFile instanceof Blob) {
+          // Handle Blob type (might come from some browser recordings)
+          const fileKey = `layers/${Date.now()}-recording.webm`;
+          const blobAsFile = new File([audioFile], 'recording.webm', { 
+            type: audioFile.type || 'audio/webm',
+            lastModified: Date.now() // Use current timestamp for Safari compatibility
+          });
+          recording_url = await uploadToS3(blobAsFile, fileKey);
+          console.log('Layer file uploaded from Blob, URL:', recording_url);
+        } else {
+          // For other types, attempt to convert to a usable format
+          try {
+            const fileKey = `layers/${Date.now()}-recording.webm`;
+            // Try to create a new Buffer and then a File from the unknown type
+            const anyBlob = new Blob([audioFile], { type: 'audio/webm' });
+            const safeFile = new File([anyBlob], 'recording.webm', { 
+              type: 'audio/webm',
+              lastModified: Date.now() // Use current timestamp for Safari compatibility
+            });
+            recording_url = await uploadToS3(safeFile, fileKey);
+            console.log('Layer file uploaded from converted object, URL:', recording_url);
+          } catch (conversionError) {
+            console.error('Failed to convert audio file:', conversionError);
+            return {
+              message: 'Unsupported file format. Please try again with a different file.',
+            };
+          }
+        }
+      } catch (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        return {
+          message: 'Failed to upload audio file. Please try again.',
+        };
+      }
     } else {
       return {
         message: 'No audio file provided. Failed to Create Layer.',
@@ -343,12 +416,18 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     `;    console.log('Layer created successfully');
     revalidatePath(`/dashboard/themes/${themeId}`);
     
-    // Redirect directly to the theme page
-    redirect(`/dashboard/themes/${themeId}`);
+    // Return success instead of redirecting so client can handle navigation
+    return {
+      success: true,
+      message: null,
+      errors: {},
+      themeId: themeId, // Include themeId for client-side navigation
+    };
   } catch (error) {
     console.error('Error creating layer:', error);
     return {
       message: 'Database Error: Failed to Create Layer.',
+      success: false,
     };
   }
 }

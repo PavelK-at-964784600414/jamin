@@ -86,8 +86,9 @@ export function CreateTheme() {
 export function UpdateTheme({ id }: { id: string }) {
   return (
     <Link
-      href={`/dashboard/invoices/${id}/edit`}
+      href={`/dashboard/themes/${id}/edit`}
       className="rounded-md border p-2 hover:bg-gray-100"
+      onClick={(e) => e.stopPropagation()} // Prevent accordion from toggling
     >
       <PencilIcon className="w-5" />
     </Link>
@@ -97,12 +98,29 @@ export function UpdateTheme({ id }: { id: string }) {
 export function DeleteTheme({ id }: { id: string }) {
   const deleteInvoiceWithId = deleteTheme.bind(null, id);
  
+  // Using a div instead of a button to prevent nesting buttons
   return (
-    <form action={deleteInvoiceWithId}>
-      <button className="rounded-md border p-2 hover:bg-gray-100">
-        <span className="sr-only">Delete</span>
-        <TrashIcon className="w-5" />
-      </button>
-    </form>
+    <div 
+      className="rounded-md border p-2 hover:bg-gray-100 cursor-pointer"
+      onClick={(e) => {
+        e.stopPropagation(); // Prevent accordion from toggling
+        // Create and submit a form programmatically
+        const form = document.createElement('form');
+        form.style.display = 'none';
+        form.method = 'post';
+        form.action = '/api/themes/delete';
+        
+        const input = document.createElement('input');
+        input.name = 'id';
+        input.value = id;
+        form.appendChild(input);
+        
+        document.body.appendChild(form);
+        form.submit();
+      }}
+    >
+      <span className="sr-only">Delete</span>
+      <TrashIcon className="w-5" />
+    </div>
   );
 }

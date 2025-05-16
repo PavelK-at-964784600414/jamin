@@ -180,18 +180,24 @@ export async function fetchMembers(query: string) {
 }
 
 export async function fetchThemeById(id: string) {
+  console.log('fetchThemeById Fetching theme by ID:', id);
   try {
+    // Now only select title as we've completed the schema transition
     const data = await sql<ThemesTable>`
       SELECT
         themes.*,
+        themes.title,
         members.user_name,
         members.image_url
       FROM themes
       JOIN members ON themes.member_id = members.id
       WHERE themes.id = ${id};
     `;
-    
-    return data.rows[0];
+    console.log('Fetched theme data:', data);
+    const theme = data.rows[0];
+    console.log('Theme:', theme);
+    // We no longer need to handle name fallback since we're now using title exclusively
+    return theme;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch theme.');

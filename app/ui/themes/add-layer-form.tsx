@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ThemesTable } from '@/app/lib/definitions';
 import { createLayer, LayerState } from '@/app/lib/actions';
 import { useFormState } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import RecordingControls from './RecordingControls';
 import MediaPlayer from './MediaPlayer';
 import LayerMetadataForm from './LayerMetadataForm';
@@ -12,16 +13,11 @@ interface AddLayerFormProps {
   theme: ThemesTable;
 }
 
-// Create a client wrapper for the server action
-function ClientLayerAction(formData: FormData) {
-  // Call the server action directly
-  return createLayer(null, formData);
-}
-
 export default function AddLayerForm({ theme }: AddLayerFormProps) {
-  // Set up form state
+  // Initialize the form state for server action response
   const initialState: LayerState = { message: null, errors: {} };
-  const [state, formAction] = useFormState(ClientLayerAction, initialState);
+  // Use useFormState directly with server action
+  const [state, formAction] = useFormState(createLayer, initialState);
   
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -194,44 +190,129 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       return false;
     }
     
-    // When we have a file, inject it into the hidden file input so it's included in form submission
-    if (fileInputRef.current && file) {
-      try {
-        // Create a DataTransfer to programmatically set files
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        fileInputRef.current.files = dataTransfer.files;
-      } catch (err) {
-        console.error('Error setting file input:', err);
-        setError('Failed to prepare file for upload. Please try again.');
-        return false;
-      }
+    // No longer using DataTransfer API which causes Safari issues
+    if (!file) {
+      setError('No audio file selected. Please record or upload a file.');
+      return false;
     }
     
     return true;
   };
   
-  // Handle form submission using the server action
-  const handleSubmit = async (formData: FormData) => {
+  // Form validation and submission is now handled inline in the form action
+
+  // Function for form validation - Safari-friendly
+  const validateFormData = () => {
+    return prepareFormSubmission();
+  };
+
+  const router = useRouter();
+
+  useEffect(() => {
+    // After form submission via formAction, handle success or errors
+    if (state?.message) {
+      setError(state.message);
+    } else if (state?.success) {
+      // If the submission was successful
+      setSuccess('Layer saved successfully!');
+      setFile(null);
+      setRecordedChunks([]);
+      
+      // Add a small delay before redirecting so user can see the success message
+      const redirectTimer = setTimeout(() => {
+        if (state.themeId) {
+          router.push(`/dashboard/themes/${state.themeId}`);
+        }
+      }, 1500);
+      
+      // Clean up the timer if the component unmounts
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [state, router]);
+
+  // Handle form submission in a Safari-compatible way
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setIsSubmitting(true);
-    
+
+    // First validate the form data
+    if (!validateFormData()) {
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Add the theme ID to the form data
-      formData.append('themeId', theme.id);
+      // Create a fresh FormData instance for Safari compatibility
+      const safeFormData = new FormData();
+      
+      // Manually append all form fields
+      safeFormData.append('title', title);
+      safeFormData.append('description', description);
+      safeFormData.append('genre', genre);
+      safeFormData.append('keySignature', keySignature);
+      safeFormData.append('tempo', tempo.toString());
+      safeFormData.append('scale', scale);
+      safeFormData.append('chords', chords);
+      safeFormData.append('instrument', instrument);
+      safeFormData.append('mode', mode);
+      safeFormData.append('themeId', theme.id);
+      
+      // Special handling for file upload in Safari
+      if (file) {
+        try {
+          // First, clone the file to avoid readonly property issues
+          const fileArrayBuffer = await file.arrayBuffer();
+          
+          // Create a new Blob and then a new File to ensure Safari compatibility
+          const fileBlob = new Blob([fileArrayBuffer], { type: file.type || 'audio/webm' });
+          
+          // Determine a safe MIME type
+          const safeMimeType = file.type || 
+            (file.name.endsWith('.mp3') ? 'audio/mpeg' : 
+            (file.name.endsWith('.webm') ? 'audio/webm' : 
+            'application/octet-stream'));
+          
+          // Create a new File with the safe MIME type
+          // Using a new object completely disconnected from the original file
+          const fileName = file.name || `recording-${Date.now()}.webm`;
+          const safeFile = new File([fileBlob], fileName, { 
+            type: safeMimeType,
+            lastModified: Date.now() // Use current timestamp instead of original lastModified
+          });
+          
+          // Append the safe file to the form data
+          safeFormData.append('audioFile', safeFile);
+          console.log('Using Safari-compatible file upload approach');
+        } catch (error) {
+          console.error('Error processing file for Safari:', error);
+          try {
+            // Alternative approach for Safari - create a completely new file with minimal properties
+            const blobType = file.type || 'audio/webm';
+            const blobName = file.name || `recording-${Date.now()}.webm`;
+            
+            // Use slice() to create a new Blob without modifying the original File object
+            const fileBlob = file.slice(0, file.size, blobType);
+            const fileName = file.name || `recording-${Date.now()}.webm`;
+            const safeFile = new File([fileBlob], fileName, { 
+              type: file.type || 'audio/webm',
+              lastModified: Date.now() // Use current timestamp for Safari compatibility
+            });
+            safeFormData.append('audioFile', safeFile);
+            console.log('Using alternative Safari-compatible approach');
+          } catch (fallbackError) {
+            console.error('Fallback approach failed:', fallbackError);
+            // Last resort - try direct append
+            safeFormData.append('audioFile', file);
+            console.log('Using direct file append as last resort');
+          }
+        }
+      }
       
       // Submit form using the server action
-      const result = await formAction(formData);
-      
-      if (result?.message) {
-        setError(result.message);
-      } else {
-        setSuccess('Layer saved successfully!');
-        // Clear form state after successful submission
-        setFile(null);
-        setRecordedChunks([]);
-      }
-    } catch (err) {
-      console.error('Error saving layer:', err);
+      await formAction(safeFormData);
+    } catch (e) {
+      console.error('Error saving layer:', e);
+      // Using the correctly typed error state
       setError('Failed to save layer. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -239,7 +320,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   };
 
   return (
-    <form action={formAction} onSubmit={(e) => !prepareFormSubmission() && e.preventDefault()}>
+    <form onSubmit={handleFormSubmit}>
       <div className="bg-gray-900 rounded-lg p-6 shadow-lg">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-white mb-4">Add a New Layer</h2>

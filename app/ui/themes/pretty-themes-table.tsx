@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 interface Theme {
   id: string
-  name: string
+  title: string
   image_url: string
   instrument: string
   seconds: number
@@ -32,7 +32,7 @@ export default async function  PrettyThemesTable = ({ themes = [] }: PrettyTheme
         <AccordionItem key={theme.id}>
           <AccordionTrigger>
             <div className="flex items-center justify-between">
-              <span>{theme.name}</span>
+              <span>{theme.title}</span>
               <ChevronDownIcon className="h-5 w-5" />
             </div>
           </AccordionTrigger>
@@ -41,12 +41,12 @@ export default async function  PrettyThemesTable = ({ themes = [] }: PrettyTheme
               <Image
                 className="h-10 w-10 rounded-full"
                 src={theme.image_url}
-                alt={theme.name}
+                alt={theme.title}
                 width={40}
                 height={40}
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{theme.name}</p>
+                <p className="truncate text-sm font-semibold">{theme.title}</p>
                 <p className="truncate text-sm text-gray-400">{theme.instrument}</p>
               </div>
               <p className="truncate text-sm font-medium text-gray-300">{theme.seconds}</p>
