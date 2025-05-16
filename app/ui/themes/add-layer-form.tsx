@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import RecordingControls from './RecordingControls';
 import MediaPlayer from './MediaPlayer';
 import LayerMetadataForm from './LayerMetadataForm';
+import { getSupportedAudioFormats, validateAudioFile } from '@/app/lib/audio-utils';
 
 interface AddLayerFormProps {
   theme: ThemesTable;
@@ -105,8 +106,19 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         setMediaStream(stream);
         
-        // Create media recorder
-        const mediaRecorder = new MediaRecorder(stream);
+        // Create media recorder with explicit MIME type to ensure compatibility
+        const formats = getSupportedAudioFormats();
+        const mimeType = isVideoMode 
+          ? formats.video.preferredFormat 
+          : formats.audio.preferredFormat;
+        
+        console.log(`Using media recorder with MIME type: ${mimeType}`);
+        
+        // Create media recorder with the best supported MIME type
+        const mediaRecorder = new MediaRecorder(stream, { 
+          mimeType: mimeType,
+          audioBitsPerSecond: 128000 // 128 kbps for good audio quality
+        });
         mediaRecorderRef.current = mediaRecorder;
         
         // Set up data handlers
@@ -118,10 +130,29 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
         };
         
         mediaRecorder.onstop = () => {
-          const mimeType = isVideoMode ? 'video/webm' : 'audio/webm';
+          // Get the proper MIME type from the recorder
+          const mimeType = mediaRecorder.mimeType || (isVideoMode ? 'video/webm' : 'audio/webm');
+          console.log(`Recording completed with MIME type: ${mimeType}`);
+          
+          // Create blob with explicit MIME type
           const recordedBlob = new Blob(chunks, { type: mimeType });
-          const fileName = `layer-${Date.now()}.${isVideoMode ? 'webm' : 'webm'}`;
-          const recordedFile = new File([recordedBlob], fileName, { type: mimeType });
+          
+          // Create filename with appropriate extension based on MIME type
+          let extension = 'webm';
+          if (mimeType.includes('mp4')) extension = 'mp4';
+          else if (mimeType.includes('mp3')) extension = 'mp3';
+          else if (mimeType.includes('wav')) extension = 'wav';
+          
+          const fileName = `layer-${Date.now()}.${extension}`;
+          
+          // Create File with explicit MIME type
+          const recordedFile = new File([recordedBlob], fileName, { 
+            type: mimeType,
+            lastModified: Date.now()
+          });
+          
+          console.log(`Created recording file: ${fileName}, size: ${recordedBlob.size} bytes, type: ${mimeType}`);
+          
           setFile(recordedFile);
           setRecordedChunks(chunks);
         };
@@ -148,9 +179,28 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   };
 
   // Handle file upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      
+      // Validate the audio file
+      try {
+        // Check if the file is a valid audio file
+        const isValid = await validateAudioFile(selectedFile);
+        
+        if (isValid) {
+          console.log('File validated successfully:', selectedFile.name);
+          setFile(selectedFile);
+          setError(null);
+        } else {
+          console.error('Invalid audio file:', selectedFile.name);
+          setError('The selected file appears to be invalid or corrupted. Please try another file.');
+          e.target.value = ''; // Reset the input
+        }
+      } catch (validationError) {
+        console.error('Error validating file:', validationError);
+        setFile(selectedFile); // Still set the file, we'll try to handle it
+      }
     }
   };
 
@@ -172,7 +222,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   ];
 
   // Function to prepare form submission - validates inputs and prepares file
-  const prepareFormSubmission = () => {
+  const prepareFormSubmission = async () => {
     setError(null);
     
     // File validation
@@ -189,8 +239,26 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     
     // File type validation
     if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
-      setError('Invalid file type. Please upload a supported audio format.');
-      return false;
+      // If file type is not in allowed list, check if it's a known audio type
+      const isAudioFile = file.type.startsWith('audio/') || file.type.startsWith('video/');
+      if (!isAudioFile) {
+        setError('Invalid file type. Please upload a supported audio format.');
+        return false;
+      }
+      // If it's an audio type but not in our allowed list, we'll still try to process it
+      console.warn(`File type ${file.type} not in allowed list, but appears to be audio/video`);
+    }
+    
+    // Validate that the audio file is playable
+    try {
+      const isValid = await validateAudioFile(file);
+      if (!isValid) {
+        console.warn('Audio validation detected potential issues with the file');
+        // We'll still continue, but log the warning
+      }
+    } catch (error) {
+      console.error('Error validating audio file:', error);
+      // Continue despite validation error
     }
     
     // Title validation
@@ -211,8 +279,8 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   // Form validation and submission is now handled inline in the form action
 
   // Function for form validation - Safari-friendly
-  const validateFormData = () => {
-    return prepareFormSubmission();
+  const validateFormData = async () => {
+    return await prepareFormSubmission();
   };
 
   const router = useRouter();
@@ -245,7 +313,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     setIsSubmitting(true);
 
     // First validate the form data
-    if (!validateFormData()) {
+    if (!await validateFormData()) {
       setIsSubmitting(false);
       return;
     }

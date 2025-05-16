@@ -36,38 +36,6 @@ export function processBase64DataUrl(dataUrl: string): Uint8Array {
 }
 
 /**
- * Process a base64 data URL into a buffer/array that works in both browser and server
- * environments
- * 
- * @param dataUrl A data URL string (e.g., "data:audio/webm;base64,...")
- * @returns A Uint8Array containing the decoded data
- */
-export function processBase64DataUrl(dataUrl: string): Uint8Array {
-  // Extract the base64 part
-  const base64Data = dataUrl.split(',')[1];
-  
-  // Different handling for browser vs server
-  if (typeof window !== 'undefined') {
-    // Browser environment
-    try {
-      const binaryString = atob(base64Data);
-      const byteArray = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        byteArray[i] = binaryString.charCodeAt(i);
-      }
-      return byteArray;
-    } catch (error) {
-      console.error('Browser atob failed:', error);
-      // Fallback to Buffer in case we're in a Node.js environment
-      return new Uint8Array(Buffer.from(base64Data, 'base64'));
-    }
-  } else {
-    // Server environment
-    return new Uint8Array(Buffer.from(base64Data, 'base64'));
-  }
-}
-
-/**
  * Enhanced file upload function with better error handling and retries.
  * This function is safe to use in both client and server environments.
  * 
@@ -91,12 +59,47 @@ export async function uploadFileToS3WithRetry(
     const finalFileName = fileName || file.name || `upload-${timestamp}.bin`;
     const key = `${folderPath}/${timestamp}-${randomSuffix}-${finalFileName}`;
     
+    // Ensure file has a proper MIME type for server processing
+    let safeMimeType = 'audio/webm';
+    if (file.type && file.type !== '') {
+      safeMimeType = file.type;
+    } else if (finalFileName) {
+      // Try to determine MIME type from extension
+      if (finalFileName.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
+      else if (finalFileName.endsWith('.wav')) safeMimeType = 'audio/wav';
+      else if (finalFileName.endsWith('.webm')) safeMimeType = 'audio/webm';
+      else if (finalFileName.endsWith('.mp4')) safeMimeType = 'video/mp4';
+    }
+    console.log(`Server-side upload using MIME type: ${safeMimeType}`);
+    
+    // Create a file with proper MIME type if needed
+    let fileToUpload = file;
+    if (file.type !== safeMimeType) {
+      try {
+        // Try to create a new file with proper MIME type
+        const arrayBuffer = await file.arrayBuffer();
+        fileToUpload = new File([arrayBuffer], finalFileName, { 
+          type: safeMimeType,
+          lastModified: Date.now()
+        });
+        console.log('Created file with corrected MIME type for server upload');
+      } catch (error) {
+        console.warn('Could not create file with corrected MIME type:', error);
+        // Continue with original file
+      }
+    }
+    
     // Upload directly without browser-specific processing
     try {
-      return await uploadToS3(file, key);
-    } catch (error: any) {
+      const url = await uploadToS3(fileToUpload, key);
+      if (typeof url !== 'string') {
+        throw new Error('Upload failed: Invalid URL returned');
+      }
+      console.log(`Server upload successful with MIME type ${fileToUpload.type}:`, url);
+      return url;
+    } catch (error) {
       console.error('Server-side S3 upload failed:', error);
-      throw new Error(`Failed to upload file: ${error.message}`);
+      throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -105,11 +108,38 @@ export async function uploadFileToS3WithRetry(
     // Prepare the file with Safari compatibility fixes
     const safeFile = await createSafariCompatibleFile(file);
     
+    // Verify MIME type and correct if needed
+    let fileToUpload = safeFile;
+    if (!safeFile.type || safeFile.type === '') {
+      // Try to determine MIME type from extension
+      let safeMimeType = 'audio/webm'; // Default
+      const filename = safeFile.name || '';
+      
+      if (filename.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
+      else if (filename.endsWith('.wav')) safeMimeType = 'audio/wav';
+      else if (filename.endsWith('.webm')) safeMimeType = 'audio/webm';
+      else if (filename.endsWith('.mp4')) safeMimeType = 'video/mp4';
+      
+      // Create a new file with the proper MIME type
+      try {
+        const arrayBuffer = await safeFile.arrayBuffer();
+        fileToUpload = new File([arrayBuffer], safeFile.name, {
+          type: safeMimeType,
+          lastModified: safeFile.lastModified || Date.now()
+        });
+        console.log(`Fixed MIME type to ${safeMimeType} for upload`);
+      } catch (error) {
+        console.warn('Could not create file with corrected MIME type:', error);
+        // Continue with original file
+      }
+    }
+    
     // Generate a unique key for S3
     const timestamp = Date.now();
     const randomSuffix = Math.floor(Math.random() * 10000);
-    const finalFileName = fileName || safeFile.name;
+    const finalFileName = fileName || fileToUpload.name;
     const key = `${folderPath}/${timestamp}-${randomSuffix}-${finalFileName}`;
+    console.log(`Client-side upload using MIME type: ${fileToUpload.type}`);
     
     // Try to upload with retries
     let lastError: Error | undefined;
@@ -118,13 +148,16 @@ export async function uploadFileToS3WithRetry(
     
     while (retries < MAX_RETRIES) {
       try {
-        console.log(`S3 upload attempt ${retries + 1} for ${key}`);
-        const url = await uploadToS3(safeFile, key);
+        console.log(`S3 upload attempt ${retries + 1} for ${key}, MIME type: ${fileToUpload.type}`);
+        const url = await uploadToS3(fileToUpload, key);
+        if (typeof url !== 'string') {
+          throw new Error('Upload failed: Invalid URL returned');
+        }
         console.log(`S3 upload successful: ${url}`);
         return url;
       } catch (error) {
         retries++;
-        lastError = error as Error;
+        lastError = error instanceof Error ? error : new Error(String(error));
         console.error(`S3 upload attempt ${retries} failed:`, error);
         
         // If we have retries left, wait before trying again

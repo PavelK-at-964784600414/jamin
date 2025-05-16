@@ -5,8 +5,6 @@ import { getSignedUrl as s3GetSignedUrl } from '@aws-sdk/s3-request-presigner';
 const cleanAccessKeyId = process.env.AWS_ACCESS_KEY_ID!.split('#')[0].trim();
 const cleanSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY!.split('#')[0].trim();
 
-console.log(`S3 Client - Clean Access Key ID length: ${cleanAccessKeyId.length}`);
-console.log(`S3 Client - Using Access Key ID: ${cleanAccessKeyId.substring(0, 4)}...`);
 
 // Create S3 client with cleaned credentials
 const s3Client = new S3Client({
@@ -48,11 +46,27 @@ export async function uploadToS3(file: File, key: string) {
               // Convert to Uint8Array for S3
               const uint8Array = new Uint8Array(arrayBuffer);
               
+              // Determine a safe and appropriate MIME type
+              let contentType = file.type || 'audio/webm';
+              
+              // Try to infer MIME type from the key/filename if not provided by the file
+              if (!contentType || contentType === '') {
+                if (key.endsWith('.mp3')) contentType = 'audio/mpeg';
+                else if (key.endsWith('.wav')) contentType = 'audio/wav';
+                else if (key.endsWith('.webm')) contentType = 'audio/webm';
+                else if (key.endsWith('.mp4')) contentType = 'video/mp4';
+                else if (key.endsWith('.m4a')) contentType = 'audio/mp4';
+                // Default to webm for audio content
+                else contentType = 'audio/webm';
+              }
+              
+              console.log(`S3 upload (FileReader method) using content type: ${contentType} for key: ${key}`);
+              
               const command = new PutObjectCommand({
                 Bucket: process.env.AWS_BUCKET_NAME,
                 Key: key,
                 Body: uint8Array,
-                ContentType: file.type || 'audio/webm',
+                ContentType: contentType,
               });
               
               await s3Client.send(command);
@@ -110,11 +124,27 @@ export async function uploadToS3(file: File, key: string) {
     }
     
     // Standard upload path
+    // Determine a safe and appropriate MIME type
+    let contentType = file.type || 'audio/webm';
+    
+    // Try to infer MIME type from the key/filename if not provided by the file
+    if (!contentType || contentType === '') {
+      if (key.endsWith('.mp3')) contentType = 'audio/mpeg';
+      else if (key.endsWith('.wav')) contentType = 'audio/wav';
+      else if (key.endsWith('.webm')) contentType = 'audio/webm';
+      else if (key.endsWith('.mp4')) contentType = 'video/mp4';
+      else if (key.endsWith('.m4a')) contentType = 'audio/mp4';
+      // Default to webm for audio content
+      else contentType = 'audio/webm';
+    }
+    
+    console.log(`S3 upload using content type: ${contentType} for key: ${key}`);
+    
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key,
       Body: fileBuffer,
-      ContentType: file.type || 'audio/webm',
+      ContentType: contentType,
     });
 
     await s3Client.send(command);
