@@ -14,10 +14,19 @@ interface AddLayerFormProps {
 }
 
 export default function AddLayerForm({ theme }: AddLayerFormProps) {
-  // Initialize the form state for server action response
-  const initialState: LayerState = { message: null, errors: {} };
-  // Use useFormState directly with server action
-  const [state, formAction] = useFormState(createLayer, initialState);
+  // Initialize the form state for server action response with proper typing
+  const initialState: LayerState = { 
+    message: null, 
+    errors: {},
+    success: false,
+    themeId: undefined 
+  };
+  
+  // Use useFormState with explicit typing to resolve type errors
+  const [state, formAction] = useFormState<LayerState, FormData>(
+    (prevState, formData) => createLayer(prevState, formData),
+    initialState
+  );
   
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -260,48 +269,67 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       // Special handling for file upload in Safari
       if (file) {
         try {
-          // First, clone the file to avoid readonly property issues
-          const fileArrayBuffer = await file.arrayBuffer();
-          
-          // Create a new Blob and then a new File to ensure Safari compatibility
-          const fileBlob = new Blob([fileArrayBuffer], { type: file.type || 'audio/webm' });
-          
-          // Determine a safe MIME type
-          const safeMimeType = file.type || 
-            (file.name.endsWith('.mp3') ? 'audio/mpeg' : 
-            (file.name.endsWith('.webm') ? 'audio/webm' : 
-            'application/octet-stream'));
-          
-          // Create a new File with the safe MIME type
-          // Using a new object completely disconnected from the original file
-          const fileName = file.name || `recording-${Date.now()}.webm`;
-          const safeFile = new File([fileBlob], fileName, { 
-            type: safeMimeType,
-            lastModified: Date.now() // Use current timestamp instead of original lastModified
+          // Use FileReader approach first which is more compatible with Safari
+          const safeFile = await new Promise<File>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              try {
+                const arrayBuffer = event.target?.result as ArrayBuffer;
+                if (!arrayBuffer) {
+                  throw new Error('FileReader did not produce a result');
+                }
+                
+                // Determine a safe MIME type
+                let safeMimeType = file.type || 'audio/webm';
+                if (!safeMimeType || safeMimeType === '') {
+                  // If no mime type, try to determine from extension
+                  if (file.name.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
+                  else if (file.name.endsWith('.wav')) safeMimeType = 'audio/wav';
+                  else if (file.name.endsWith('.webm')) safeMimeType = 'audio/webm';
+                  else if (file.name.endsWith('.mp4')) safeMimeType = 'video/mp4';
+                  else safeMimeType = 'audio/webm'; // Default fallback
+                }
+                
+                // Create a completely new blob and file object
+                const fileBlob = new Blob([arrayBuffer], { type: safeMimeType });
+                const fileName = file.name || `recording-${Date.now()}.webm`;
+                
+                // Create a new File with the content
+                const newFile = new File([fileBlob], fileName, { 
+                  type: safeMimeType,
+                  lastModified: Date.now() // Use current timestamp for consistency
+                });
+                
+                resolve(newFile);
+              } catch (error) {
+                reject(error);
+              }
+            };
+            reader.onerror = () => reject(new Error('FileReader failed'));
+            reader.readAsArrayBuffer(file);
           });
           
           // Append the safe file to the form data
           safeFormData.append('audioFile', safeFile);
-          console.log('Using Safari-compatible file upload approach');
+          console.log('Using FileReader approach for Safari compatibility');
         } catch (error) {
-          console.error('Error processing file for Safari:', error);
+          console.error('Error with FileReader approach:', error);
           try {
-            // Alternative approach for Safari - create a completely new file with minimal properties
+            // Fallback: Try to create a new simple Blob and File
             const blobType = file.type || 'audio/webm';
-            const blobName = file.name || `recording-${Date.now()}.webm`;
-            
-            // Use slice() to create a new Blob without modifying the original File object
-            const fileBlob = file.slice(0, file.size, blobType);
             const fileName = file.name || `recording-${Date.now()}.webm`;
+            
+            // Just create a simple copy using slice()
+            const fileBlob = file.slice(0, file.size, blobType);
             const safeFile = new File([fileBlob], fileName, { 
-              type: file.type || 'audio/webm',
-              lastModified: Date.now() // Use current timestamp for Safari compatibility
+              type: blobType,
+              lastModified: Date.now()
             });
             safeFormData.append('audioFile', safeFile);
-            console.log('Using alternative Safari-compatible approach');
+            console.log('Using slice fallback for Safari compatibility');
           } catch (fallbackError) {
-            console.error('Fallback approach failed:', fallbackError);
-            // Last resort - try direct append
+            console.error('All safe approaches failed:', fallbackError);
+            // Last resort - direct append and hope for the best
             safeFormData.append('audioFile', file);
             console.log('Using direct file append as last resort');
           }
@@ -309,7 +337,14 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       }
       
       // Submit form using the server action
+      console.log('Submitting form with data', {
+        title: safeFormData.get('title'),
+        hasFile: !!safeFormData.get('audioFile')
+      });
+      
       await formAction(safeFormData);
+      
+      // The form submission result is handled in the useEffect through the updated state
     } catch (e) {
       console.error('Error saving layer:', e);
       // Using the correctly typed error state

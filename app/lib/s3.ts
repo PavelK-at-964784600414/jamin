@@ -1,12 +1,22 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl as s3GetSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+// Clean up AWS credentials from any comments or extra whitespace
+const cleanAccessKeyId = process.env.AWS_ACCESS_KEY_ID!.split('#')[0].trim();
+const cleanSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY!.split('#')[0].trim();
+
+console.log(`S3 Client - Clean Access Key ID length: ${cleanAccessKeyId.length}`);
+console.log(`S3 Client - Using Access Key ID: ${cleanAccessKeyId.substring(0, 4)}...`);
+
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: cleanAccessKeyId,
+    secretAccessKey: cleanSecretAccessKey,
   },
+  // Add retry configuration for better error handling
+  retryMode: 'standard',
+  maxAttempts: 3,
 });
 
 export async function uploadToS3(file: File, key: string) {

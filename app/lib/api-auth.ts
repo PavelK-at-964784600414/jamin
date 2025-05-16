@@ -7,8 +7,8 @@ import { authConfig } from '@/auth.config';
  */
 export async function checkAuth() {
   // Use dynamic import to avoid issues with module resolution
-  const { auth } = await import('../../../auth-config.js');
-  const session = await auth();
+  const authModule = await import('@/auth-config.js');
+  const session = await authModule.auth();
   
   if (!session) {
     return NextResponse.json(
@@ -26,8 +26,8 @@ export async function checkAuth() {
  */
 export async function getCurrentMemberId() {
   // Use dynamic import to avoid issues with module resolution
-  const { auth } = await import('../../../auth-config.js');
-  const session = await auth();
+  const authModule = await import('@/auth-config.js');
+  const session = await authModule.auth();
   return session?.user?.id || null;
 }
 

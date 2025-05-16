@@ -7,8 +7,8 @@ import { redirect } from 'next/navigation';
 import { signIn, signUp } from '@/auth';
 import { AuthError } from 'next-auth';
 import { uploadToS3 } from './s3';
-import { auth } from '@/auth';
 import { authConfig } from '@/auth.config';
+// We'll use dynamic import instead of static import for auth
 
 const FormSchema = z.object({
   id: z.string(),
@@ -50,11 +50,19 @@ const CreateTheme = z.object({
 
 
 export async function createTheme(prevState: State, formData: FormData) {
+    // Get the current session from NextAuth
+  let session;
+  try {
+    // Dynamically import the auth function from auth-config.js
+    const authModule = await import('@/auth-config.js');
+    session = await authModule.auth();
+    console.log('session details:', session);
+  } catch (authError) {
+    console.error('Auth import or execution failed:', authError);
+    // Continue with fallback
+  }
   
-  // Get the current session from NextAuth
-  const session = await auth();
   let memberId = session?.user?.id;
-  console.log('session details:', session);
   if (!memberId) {
     console.warn('User not authenticated. Using default member id for testing.');
     memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
@@ -223,7 +231,7 @@ export async function authenticate(
     });
     
     // Check if authentication failed
-    if (result?.error) {
+    if (result && 'error' in result) {
       return 'Invalid credentials.';
     }
     
@@ -296,9 +304,32 @@ const CreateLayer = z.object({
   themeId: z.string().nonempty(),
 });
 
-export async function createLayer(prevState: LayerState | null, formData: FormData) {
-  // Get the current session from NextAuth
-  const session = await auth();
+export async function createLayer(prevState: LayerState | null, formData: FormData) {  // Get the current session from NextAuth using dynamic import
+  let session;
+  try {
+    // Dynamically import the auth function from auth-config.js
+    // Import the entire module first to ensure it's loaded correctly
+    const authModule = await import('@/auth-config.js');
+    
+    // Check if auth exists in the module and is a function
+    if (typeof authModule.auth === 'function') {
+      session = await authModule.auth();
+      console.log('Auth session obtained through direct module access');
+    } else {
+      // If not found directly, try destructuring (in case of named exports)
+      const { auth } = authModule;
+      if (typeof auth === 'function') {
+        session = await auth();
+        console.log('Auth session obtained through destructured import');
+      } else {
+        console.error('Auth function not found in imported module');
+      }
+    }
+  } catch (authError) {
+    console.error('Auth import or execution failed:', authError);
+    // Continue with fallback
+  }
+  
   let memberId = session?.user?.id;
   
   if (!memberId) {
@@ -337,29 +368,45 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     const status = 'complete'; // Layers are considered complete
     const seconds = 0; // We'll extract this from the recording
       if (audioFile) {
-      try {
-        // Handle various types of file objects that could come from different browsers
+      try {        // Handle various types of file objects that could come from different browsers
         if (audioFile instanceof File) {
           // Standard File object - most common case
           try {
-            const fileKey = `layers/${Date.now()}-${audioFile.name || 'recording.webm'}`;
-            recording_url = await uploadToS3(audioFile, fileKey);
-            console.log('Layer file uploaded from File object, URL:', recording_url);
-          } catch (safariError) {
-            // Safari may fail with the standard approach, so create a clean File
-            console.warn('Standard file upload failed, trying Safari-compatible approach:', safariError);
-            
-            // Create a completely new File from the original File's data
-            const arrayBuffer = await audioFile.arrayBuffer();
-            const safeBlob = new Blob([arrayBuffer], { type: audioFile.type || 'audio/webm' });
-            const safeFile = new File([safeBlob], 
-              audioFile.name || `recording-${Date.now()}.webm`, 
-              { type: audioFile.type || 'audio/webm', lastModified: Date.now() }
-            );
-            
+            // Always use the FileReader approach for better Safari compatibility
+            // FileReader is safer for Safari than direct arrayBuffer() calls
+            const safeFile = await new Promise<File>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                try {
+                  const arrayBuffer = event.target?.result as ArrayBuffer;
+                  if (!arrayBuffer) {
+                    throw new Error('FileReader did not produce a result');
+                  }
+                  
+                  // Create a completely new Blob to avoid Safari's readonly property issues
+                  const fileBlob = new Blob([arrayBuffer], { type: audioFile.type || 'audio/webm' });
+                  
+                  // Create a completely new File from the original File's data
+                  const safeFile = new File([fileBlob],
+                    audioFile.name || `recording-${Date.now()}.webm`, 
+                    { type: audioFile.type || 'audio/webm', lastModified: Date.now() }
+                  );
+                  
+                  resolve(safeFile);
+                } catch (error) {
+                  reject(error);
+                }
+              };
+              reader.onerror = () => reject(new Error('FileReader failed'));
+              reader.readAsArrayBuffer(audioFile);
+            });
+              // Use our new safe file
             const fileKey = `layers/${Date.now()}-${safeFile.name}`;
             recording_url = await uploadToS3(safeFile, fileKey);
             console.log('Layer file uploaded using Safari-compatible approach, URL:', recording_url);
+          } catch (error) {
+            console.error('Error creating safe file:', error);
+            throw error;
           }
         } else if (audioFile instanceof Blob) {
           // Handle Blob type (might come from some browser recordings)
@@ -412,16 +459,17 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         ${memberId}, ${seconds}, ${keySignature}, ${mode}, ${chords}, 
         ${tempo}, ${date}, ${status}, ${description}, ${title}, 
         ${genre}, ${recording_url}, ${instrument}, ${themeId}
-      )
-    `;    console.log('Layer created successfully');
-    revalidatePath(`/dashboard/themes/${themeId}`);
+      )    `;    console.log('Layer created successfully');
+    // Make sure themeId is a string before using it with revalidatePath
+    const pathToRevalidate = `/dashboard/themes/${String(themeId)}`;
+    revalidatePath(pathToRevalidate);
     
     // Return success instead of redirecting so client can handle navigation
     return {
       success: true,
       message: null,
       errors: {},
-      themeId: themeId, // Include themeId for client-side navigation
+      themeId: String(themeId), // Include themeId for client-side navigation
     };
   } catch (error) {
     console.error('Error creating layer:', error);
