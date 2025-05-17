@@ -1,4 +1,11 @@
-import { Revenue } from './definitions';
+// The Revenue type is not used, removed the import
+
+// Define a generic chart data type to replace the missing Revenue type
+type ChartData = {
+  revenue: number;
+  month?: string;
+  [key: string]: any;
+};
 
 export const formatCurrency = (amount: number) => {
   return (amount / 100).toLocaleString('en-US', {
@@ -21,7 +28,7 @@ export const formatDateToLocal = (
   return formatter.format(date);
 };
 
-export const generateYAxis = (revenue: Revenue[]) => {
+export const generateYAxis = (revenue: ChartData[]) => {
   // Calculate what labels we need to display on the y-axis
   // based on highest record and in 1000s
   const yAxisLabels = [];

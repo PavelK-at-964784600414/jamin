@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl as s3GetSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // Clean up AWS credentials from any comments or extra whitespace
 const cleanAccessKeyId = process.env.AWS_ACCESS_KEY_ID!.split('#')[0].trim();
@@ -157,13 +157,14 @@ export async function uploadToS3(file: File, key: string) {
   }
 }
 
-export async function getSignedUrl(key: string) {
+export async function generateSignedUrl(key: string) {
   const command = new GetObjectCommand({
     Bucket: process.env.AWS_BUCKET_NAME,
     Key: key,
   });
 
-  return await s3GetSignedUrl(s3Client, command, { expiresIn: 3600 });
+  // Using getSignedUrl from the AWS SDK v3
+  return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 }
 
 /**

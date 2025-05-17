@@ -18,10 +18,9 @@ export default function LoginPage() {
           {/* Form container */}
           <div className="p-6">
             <LoginForm />
-            {/* Updated Sign up link */}
-            <div className="mt-6 text-center text-sm text-slate-400">
+            {/* Updated Sign up link */}            <div className="mt-6 text-center text-sm text-slate-400">
               <p>
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <a
                   href="/signup"
                   className="font-medium text-primary hover:text-primary/80 transition-colors"

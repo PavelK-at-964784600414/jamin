@@ -11,13 +11,15 @@ import { ThemesTable as ThemesTableType } from '@/app/lib/definitions';
 export default async function Page({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     query?: string;
     page?: string;
-  };
+  }>;
 }) {
-  const query = searchParams?.query || '';
-  const currentPage = Number(searchParams?.page) || 1;
+  // Resolve the searchParams Promise
+  const resolvedSearchParams = await searchParams || {};
+  const query = resolvedSearchParams.query || '';
+  const currentPage = Number(resolvedSearchParams.page) || 1;
 
   const [totalPages, themes] = await Promise.all([
     fetchThemesPages(query),

@@ -5,10 +5,20 @@ import { sql } from '@vercel/postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { signIn, signUp } from '@/auth';
-import { AuthError } from 'next-auth';
+// Remove the type import as it's causing issues
 import { uploadToS3 } from './s3';
 import { authConfig } from '@/auth.config';
 // We'll use dynamic import instead of static import for auth
+
+// Helper function to check if an error is an auth error
+function isAuthError(error: unknown): error is { type: string } {
+  return (
+    typeof error === 'object' && 
+    error !== null && 
+    'type' in error &&
+    typeof (error as any).type === 'string'
+  );
+}
 
 const FormSchema = z.object({
   id: z.string(),
@@ -30,7 +40,7 @@ export type State = {
     tempo?: string[];
     audioFile?: string[];
   };
-  message?: string | null;
+  message: string | null;
   success?: boolean; // Add success flag for handling client-side navigation
 };
 
@@ -244,10 +254,9 @@ export async function authenticate(
     
     // Return success to clear any previous error state
     // The useEffect in the login form will handle the redirect
-    return undefined;
-  } catch (error) {
+    return undefined;  } catch (error) {
     console.error('Authentication error:', error);
-    if (error instanceof AuthError) {
+    if (isAuthError(error)) {
       switch (error.type) {
         case 'CredentialsSignin':
           return 'Invalid credentials.';
@@ -266,9 +275,8 @@ export async function register(
   try {
     await signUp(undefined, formData);
     console.log('Registered successfully   ');
-    redirect('/login');
-  } catch (error) {
-    if (error instanceof AuthError) {
+    redirect('/login');  } catch (error) {
+    if (isAuthError(error)) {
       switch (error.type) {
         case 'CredentialsSignin':
           return 'Invalid credentials.';

@@ -4,8 +4,9 @@ import { fetchThemeById, fetchMembers } from '@/app/lib/data';
 import { notFound } from 'next/navigation';
 
  
-export default async function Page({ params }: { params: { id: string } }) {
-    const id = params.id;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+    // Resolve the params Promise
+    const { id } = await params;
     const [theme, members] = await Promise.all([
         fetchThemeById(id),
         fetchMembers(id),

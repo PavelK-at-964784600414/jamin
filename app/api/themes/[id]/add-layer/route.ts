@@ -20,9 +20,12 @@ const LayerSchema = z.object({
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Resolve the params Promise to get the id
+    const { id } = await context.params;
+    
     // Check CSRF validation
     const csrfError = validateApiCsrf(request);
     if (csrfError) return csrfError;
@@ -51,7 +54,7 @@ export async function POST(
     }
     
     const formData = await request.formData();
-    formData.append('themeId', params.id);
+    formData.append('themeId', id);
     
     // Validate file
     const audioFile = formData.get('audioFile');
@@ -105,7 +108,7 @@ export async function POST(
       return NextResponse.json({ 
         success: true,
         message: 'Layer created successfully',
-        redirectTo: `/dashboard/themes/${params.id}`
+        redirectTo: `/dashboard/themes/${id}`
       });
     } catch (error) {
       // If the server action threw an error, it might be a validation error

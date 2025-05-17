@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
-    "@aws-sdk/s3-request-presigner": "^3.758.0",
+    "@aws-sdk/s3-request-presigner": "^3.812.0",
     "@heroicons/react": "^2.1.4",
     "@tailwindcss/forms": "^0.5.7",
     "@vercel/postgres": "^0.10.0",
@@ -19,7 +19,7 @@
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.471.2",
     "next": "^15.0.0-rc.0",
-    "next-auth": "5.0.0-beta.25",
+    "next-auth": "^4.24.11",
     "postcss": "8.4.38",
     "react": "^19.0.0-rc-f994737d14-20240522",
     "react-dom": "^19.0.0-rc-f994737d14-20240522",
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "20.14.8",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",

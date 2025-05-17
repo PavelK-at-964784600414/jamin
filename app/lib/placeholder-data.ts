@@ -1,5 +1,8 @@
 import { Member, Theme } from './definitions';
 
+// Note: This file is only used for development and seeding the database with test data.
+// It should not be imported in production code.
+
 const themes: Theme[] = [
   {
     id: '1',

@@ -175,11 +175,9 @@ export default function SignupForm() {
             <div className="mt-1 text-sm text-red-500">
               <p>Password must:</p>
               <ul>
-                {getError('password')
-                  .split(', ')
-                  .map((err) => (
-                    <li key={err}>- {err}</li>
-                  ))}
+                {getError('password')?.split(', ').map((err) => (
+                  <li key={err}>- {err}</li>
+                ))}
               </ul>
             </div>
           )}

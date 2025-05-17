@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 
 interface CoolValueDisplayProps {
-  value: number
+  value: number | string
 }
 
 export function CoolValueDisplay({ value }: CoolValueDisplayProps) {

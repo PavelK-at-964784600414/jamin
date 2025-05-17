@@ -19,17 +19,15 @@ interface Theme {
 }
 
 interface PrettyThemesTableProps {
-  themes?: Theme[]
-  
+  themes: Theme[]
 }
 
-export default async function  PrettyThemesTable = ({ themes = [] }: PrettyThemesTableProps) => {
-    themes = await fetchFilteredThemes(query, currentPage);
-    console.log("PrettyThemesTable: ", themes); 
+export default function PrettyThemesTable({ themes }: PrettyThemesTableProps) {
+  console.log("PrettyThemesTable: ", themes); 
   return (
-    <Accordion>
+    <Accordion type="single">
       {themes.map((theme) => (
-        <AccordionItem key={theme.id}>
+        <AccordionItem key={theme.id} value={theme.id}>
           <AccordionTrigger>
             <div className="flex items-center justify-between">
               <span>{theme.title}</span>
@@ -50,8 +48,8 @@ export default async function  PrettyThemesTable = ({ themes = [] }: PrettyTheme
                 <p className="truncate text-sm text-gray-400">{theme.instrument}</p>
               </div>
               <p className="truncate text-sm font-medium text-gray-300">{theme.seconds}</p>
-              <UpdateTheme themeId={theme.id} />
-              <DeleteTheme themeId={theme.id} />
+              <UpdateTheme id={theme.id} />
+              <DeleteTheme id={theme.id} />
             </div>
           </AccordionContent>
         </AccordionItem>

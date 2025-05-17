@@ -116,23 +116,3 @@ export function getSupportedAudioFormats() {
   console.log('Browser supported audio formats:', result);
   return result;
 }
-
-/**
- * Convert AudioBlob to MP3 format (if Web Audio API is available)
- * This is a placeholder for a more sophisticated conversion that could
- * be implemented with audio worklets or libraries like lamejs
- */
-export async function ensureCompatibleAudioFormat(
-  blob: Blob,
-  targetFormat: string = 'audio/webm'
-): Promise<Blob> {
-  // If blob is already in the target format, return it
-  if (blob.type === targetFormat) {
-    return blob;
-  }
-  
-  // For now, just re-type the blob
-  // A full implementation would convert between formats
-  console.log(`Retyping blob from ${blob.type} to ${targetFormat}`);
-  return new Blob([await blob.arrayBuffer()], { type: targetFormat });
-}

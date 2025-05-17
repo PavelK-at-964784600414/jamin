@@ -4,7 +4,12 @@ import { lusitana } from '@/app/ui/fonts';
 import { fetchCollabs } from '@/app/lib/data';
 
 export default async function CollabChart() {
-  const collabs = await fetchCollabs();
+  const collabsData = await fetchCollabs();
+  // Convert to the format expected by generateYAxis
+  const collabs = collabsData.map(item => ({
+    month: item.month,
+    revenue: Number(item.collab) || 0 // Ensure it's a number and default to 0 if null
+  }));
   const chartHeight = 350;
 
   const { yAxisLabels, topLabel } = generateYAxis(collabs);
@@ -35,7 +40,7 @@ export default async function CollabChart() {
               <div
                 className="w-full rounded-md bg-blue-300"
                 style={{
-                  height: `${(chartHeight / topLabel) * collab.collab}px`,
+                  height: `${(chartHeight / topLabel) * collab.revenue}px`,
                 }}
               ></div>
               <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">

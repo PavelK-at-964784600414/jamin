@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export function analyticsMiddleware(request: NextRequest) {
   // Track analytics
-  const ipAddress = request.headers.get('x-forwarded-for') || request.ip || 'Unknown IP';
+  const ipAddress = request.headers.get('x-forwarded-for') || 'Unknown IP';
   console.log('Tracking analytics for:', request.url);
   console.log('User agent:', request.headers.get('user-agent'));
   console.log('IP address:', ipAddress);

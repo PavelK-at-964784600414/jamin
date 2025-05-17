@@ -1,11 +1,25 @@
-import type { NextAuthConfig } from 'next-auth';
- 
+// Define our own type structure for Auth to avoid import issues
+type AuthSession = {
+  user?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    image?: string;
+  };
+};
+
+type AuthorizedCallback = {
+  auth: AuthSession | null;
+  request: { nextUrl: URL };
+};
+
+// Define the structure for our auth config without relying on the imported type
 export const authConfig = {
   pages: {
     signIn: '/login',
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request: { nextUrl } }: AuthorizedCallback) {
       const isLoggedIn = !!auth?.user;
       const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
       if (isOnDashboard) {
@@ -18,4 +32,4 @@ export const authConfig = {
     },
   },
   providers: [], // Add providers with an empty array for now
-} satisfies NextAuthConfig;
+};

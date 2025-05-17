@@ -1,10 +1,12 @@
 import { fetchThemeById } from '@/app/lib/data';
 import { notFound } from 'next/navigation';
 import AddLayerPageContent from './add-layer-content';
+import { themeFormToThemesTable } from '@/app/lib/type-converters';
 
 // This is a server component that will fetch the theme data server-side
-export default async function AddLayerPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default async function AddLayerPage({ params }: { params: Promise<{ id: string }> }) {
+  // Resolve the params Promise
+  const { id } = await params;
   
   try {
     if (!id) {
@@ -12,11 +14,14 @@ export default async function AddLayerPage({ params }: { params: { id: string } 
     }
     
     // Fetch the theme data server-side
-    const theme = await fetchThemeById(id);
+    const themeForm = await fetchThemeById(id);
     
-    if (!theme) {
+    if (!themeForm) {
       notFound();
     }
+    
+    // Convert ThemeForm to ThemesTable for the AddLayerPageContent
+    const theme = themeFormToThemesTable(themeForm);
     
     // Now we're guaranteed to have a theme
     return <AddLayerPageContent theme={theme} />;

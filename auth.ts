@@ -58,14 +58,21 @@ export async function signUp(state: FormState, formData: FormData) {
     return {
       errors: validatedFields.error.flatten(),
     }
-  }
-  // Prepare data for insertion into database
+  }  // Prepare data for insertion into database
   const { userName, email, password, firstName, lastName, country, instrument} = validatedFields.data
   // Hash the user's password before storing it
   const hashedPassword = await bcrypt.hash(password, 10)
  
   // Insert the user into the database
-  const data = await insertMember(userName, email, hashedPassword, firstName, lastName, country, instrument)
+  const data = await insertMember(
+    userName, 
+    email, 
+    hashedPassword, 
+    firstName || null, 
+    lastName || null, 
+    country || null, 
+    instrument || null
+  )
   
   if (data) {
     return data

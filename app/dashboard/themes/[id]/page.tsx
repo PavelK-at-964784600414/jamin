@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { ThemesTable } from '@/app/lib/definitions';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { MicrophoneIcon, PlayIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
 import MediaPlayer from '@/app/ui/themes/MediaPlayer';
 
@@ -150,7 +151,13 @@ export default function ThemePage() {
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
                         {layer.image_url ? (
-                          <img src={layer.image_url} alt={layer.user_name} className="w-full h-full object-cover" />
+                          <Image 
+                            src={layer.image_url} 
+                            alt={layer.user_name} 
+                            width={40} 
+                            height={40} 
+                            className="w-full h-full object-cover" 
+                          />
                         ) : (
                           <MusicalNoteIcon className="h-6 w-6 text-gray-300" />
                         )}

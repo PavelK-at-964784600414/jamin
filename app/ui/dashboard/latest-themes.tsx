@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import Image from 'next/image';
 import { lusitana } from '@/app/ui/fonts';
 import { fetchLatestThemes } from '@/app/lib/data';
+import { formatDateToLocal } from '@/app/lib/utils';
 
 export default async function LatestThemes() {
   const latestThemes = await fetchLatestThemes();
@@ -30,13 +31,13 @@ export default async function LatestThemes() {
                       {theme.title}
                     </p>
                     <p className="truncate text-sm text-gray-400 sm:block">
-                      {theme.member}
+                      {theme.user_name}
                     </p>
                   </div>
                   <p
                     className={`${lusitana.className} truncate text-sm font-medium text-gray-300 md:text-base`}
                   >
-                    {theme.seconds}
+                    {formatDateToLocal(theme.date)}
                   </p>
                 </div>
                 {i < latestThemes.length - 1 && (

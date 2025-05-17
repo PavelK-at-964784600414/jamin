@@ -29,15 +29,15 @@ export default async function ArrangementChart() { // Make component async, remo
               <p key={label}>{label}</p>
             ))}
           </div>
-          // Make component async, remove the props
-          // Fetch data inside the component
+          {/* Make component async, remove the props */}
+          {/* Fetch data inside the component */}
           
           {arrangements.map((arrangement) => (
             <div key={arrangement.month} className="flex flex-col items-center gap-2">
               <div
                 className="w-full rounded-md bg-blue-300"
                 style={{
-                  height: `${(chartHeight / topLabel) * arrangement.arrangement}px`,
+                  height: `${(chartHeight / topLabel) * arrangement.revenue}px`,
                 }}
               ></div>
               <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">

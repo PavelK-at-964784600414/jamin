@@ -6,9 +6,12 @@ import { validateApiCsrf } from '@/app/lib/api-security';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Resolve the params Promise to get the id
+    const { id } = await context.params;
+    
     // Check CSRF validation for non-GET requests
     const csrfError = validateApiCsrf(request);
     if (csrfError) return csrfError;
@@ -35,8 +38,6 @@ export async function GET(
         }
       );
     }
-    
-    const id = params.id;
     
     // Get theme data
     const themeData = await fetchThemeById(id);

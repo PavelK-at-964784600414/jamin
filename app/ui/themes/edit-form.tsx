@@ -1,15 +1,9 @@
 'use client';
 
 import { MemberField, ThemeForm } from '@/app/lib/definitions';
-import {
-  CheckIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  UserCircleIcon,
-} from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { Button } from '@/app/ui/button';
-import { updateTheme, State } from '@/app/lib/actions';
+import { updateTheme } from '@/app/lib/actions';
 import { useActionState } from 'react';
 
 export default function EditThemeForm({
@@ -20,143 +14,177 @@ export default function EditThemeForm({
   members: MemberField[];
 }) {
   const updateThemeWithId = updateTheme.bind(null, theme.id);
-  const initialState: State = { message: null, errors: {} };
+  // Define the initial state matching the type expected by useActionState
+  const initialState = { message: '', errors: {} };
   const [state, formAction] = useActionState(updateThemeWithId, initialState);
-  console.log(state); 
-
+  
   return (
     <form action={formAction}>
       <input type="hidden" name="id" value={theme.id} />
       <div className="rounded-md bg-gray-50 p-4 md:p-6">
+        {/* Title Field */}
         <div className="mb-4">
-          <label htmlFor="customer" className="mb-2 block text-sm font-medium">
-            Choose customer
+          <label htmlFor="title" className="mb-2 block text-sm font-medium">
+            Title
           </label>
-          <div className="relative">
-            <select
-              id="customer"
-              name="customerId"
-              className="peer block w-full cursor-pointer rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-              defaultValue={theme.title}
-              aria-describedby="customer-error"
-            >
-              <option value="" disabled>
-                Select a customer
-              </option>
-              {members.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.first_name}
-                </option>
-              ))}
-            </select>
-            <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
-          </div>
-          <div id="customer-error" aria-live="polite" aria-atomic="true">
-          {state.errors?.customerId &&
-            state.errors.customerId.map((error: string) => (
-              <p className="mt-2 text-sm text-red-500" key={error}>
-                {error}
-              </p>
-            ))}
-          </div>
+          <input
+            id="title"
+            name="title"
+            defaultValue={theme.title}
+            placeholder="Enter theme title"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.title && state.errors.title.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
         </div>
 
-        {/* Invoice Amount */}
+        {/* Description Field */}
         <div className="mb-4">
-          <label htmlFor="amount" className="mb-2 block text-sm font-medium">
-            Choose an amount
+          <label htmlFor="description" className="mb-2 block text-sm font-medium">
+            Description
           </label>
-          <div className="relative mt-2 rounded-md">
-            <div className="relative">
-              <input
-                id="amount"
-                name="amount"
-                type="number"
-                step="0.01"
-                defaultValue={invoice.amount}
-                placeholder="Enter USD amount"
-                className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-                aria-describedby="amount-error"
-              />
-              <CurrencyDollarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-            </div>
-            <div id="amount-error" aria-live="polite" aria-atomic="true">
-              {state.errors?.amount &&
-                state.errors.amount.map((error: string) => (
-                  <p className="mt-2 text-sm text-red-500" key={error}>
-                    {error}
-                  </p>
-                ))}
-            </div>
-          </div>
+          <textarea
+            id="description"
+            name="description"
+            defaultValue={theme.description || ''}
+            placeholder="Enter theme description"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+            rows={3}
+          />
+          {state.errors?.description && state.errors.description.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
         </div>
 
-        {/* Invoice Status */}
-        <fieldset>
-          <legend className="mb-2 block text-sm font-medium">
-            Set the invoice status
-          </legend>
-          <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
-            <div className="flex gap-4">
-              <div className="flex items-center">
-                <input
-                  id="pending"
-                  name="status"
-                  type="radio"
-                  value="pending"
-                  defaultChecked={invoice.status === 'pending'}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  aria-describedby="status-error"
-               />
-                <label
-                  htmlFor="pending"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600"
-                >
-                  Pending <ClockIcon className="h-4 w-4" />
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="paid"
-                  name="status"
-                  type="radio"
-                  value="paid"
-                  defaultChecked={invoice.status === 'paid'}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  aria-describedby="status-error"
-                />
-                <label
-                  htmlFor="paid"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
-                >
-                  Paid <CheckIcon className="h-4 w-4" />
-                </label>
-              </div>
-            </div>
-          </div>
-          <div id="status-error" aria-live="polite" aria-atomic="true">
-            {state.errors?.status &&
-              state.errors.status.map((error: string) => (
-                <p className="mt-2 text-sm text-red-500" key={error}>
-                  {error}
-                </p>
-            ))}
-          </div>
-          <div id="message" aria-live="polite" aria-atomic="true">
-            <p className="mt-2 text-sm text-red-500" key={state.message}>
-              {state.message}
-            </p>
-          </div>
-        </fieldset>
+        {/* Genre Field */}
+        <div className="mb-4">
+          <label htmlFor="genre" className="mb-2 block text-sm font-medium">
+            Genre
+          </label>
+          <input
+            id="genre"
+            name="genre"
+            defaultValue=""
+            placeholder="Enter genre"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.genre && state.errors.genre.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
+        </div>
+
+        {/* Key Signature Field */}
+        <div className="mb-4">
+          <label htmlFor="keySignature" className="mb-2 block text-sm font-medium">
+            Key Signature
+          </label>
+          <input
+            id="keySignature"
+            name="keySignature"
+            defaultValue={theme.keySignature}
+            placeholder="E.g. C, D, F#"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.key && state.errors.key.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
+        </div>
+
+        {/* Mode Field */}
+        <div className="mb-4">
+          <label htmlFor="mode" className="mb-2 block text-sm font-medium">
+            Mode
+          </label>
+          <input
+            id="mode"
+            name="mode"
+            defaultValue={theme.mode}
+            placeholder="E.g. Major, Minor, Dorian"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.mode && state.errors.mode.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
+        </div>
+
+        {/* Chords Field */}
+        <div className="mb-4">
+          <label htmlFor="chords" className="mb-2 block text-sm font-medium">
+            Chord Progression
+          </label>
+          <input
+            id="chords"
+            name="chords"
+            defaultValue={theme.chords}
+            placeholder="E.g. C-Am-F-G"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.chords && state.errors.chords.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
+        </div>
+
+        {/* Tempo Field */}
+        <div className="mb-4">
+          <label htmlFor="tempo" className="mb-2 block text-sm font-medium">
+            Tempo (BPM)
+          </label>
+          <input
+            id="tempo"
+            name="tempo"
+            type="number"
+            defaultValue={theme.tempo}
+            placeholder="E.g. 120"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.tempo && state.errors.tempo.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
+        </div>
+
+        {/* Instrument Field */}
+        <div className="mb-4">
+          <label htmlFor="instrument" className="mb-2 block text-sm font-medium">
+            Instrument
+          </label>
+          <input
+            id="instrument"
+            name="instrument"
+            defaultValue={theme.instrument}
+            placeholder="E.g. Guitar, Piano, Drums"
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.instrument && state.errors.instrument.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
+        </div>
+
+        {/* Seconds Field */}
+        <div className="mb-4">
+          <label htmlFor="seconds" className="mb-2 block text-sm font-medium">
+            Duration (seconds)
+          </label>
+          <input
+            id="seconds"
+            name="seconds"
+            type="number"
+            defaultValue={theme.seconds}
+            className="peer block w-full rounded-md border border-gray-200 py-2 px-3 text-sm"
+          />
+          {state.errors?.seconds && state.errors.seconds.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>{error}</p>
+          ))}
+        </div>
       </div>
       <div className="mt-6 flex justify-end gap-4">
         <Link
-          href="/dashboard/invoices"
+          href={`/dashboard/themes/${theme.id}`}
           className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
         >
           Cancel
         </Link>
-        <Button type="submit">Edit Invoice</Button>
+        <Button type="submit">Update Theme</Button>
       </div>
     </form>
   );
