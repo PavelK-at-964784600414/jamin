@@ -1,0 +1,54 @@
+
+> build
+> next build
+
+   ▲ Next.js 15.3.2
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+(node:63354) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ Compiled successfully in 1000ms
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/14) ...
+On dashboard page
+   Generating static pages (3/14) 
+   Generating static pages (6/14) 
+   Generating static pages (10/14) 
+ ✓ Generating static pages (14/14)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    1.63 kB         142 kB
+├ ○ /_not-found                            978 B         102 kB
+├ ƒ /api/auth/[...nextauth]                151 B         101 kB
+├ ƒ /api/themes/[id]                       151 B         101 kB
+├ ƒ /api/themes/[id]/add-layer             151 B         101 kB
+├ ƒ /api/themes/delete                     151 B         101 kB
+├ ○ /dashboard                             903 B         143 kB
+├ ○ /dashboard/collab                      151 B         101 kB
+├ ƒ /dashboard/members                   3.26 kB         113 kB
+├ ƒ /dashboard/themes                    6.75 kB         152 kB
+├ ƒ /dashboard/themes/[id]               3.28 kB         113 kB
+├ ƒ /dashboard/themes/[id]/add-layer     6.66 kB         108 kB
+├ ƒ /dashboard/themes/[id]/edit          1.79 kB         106 kB
+├ ○ /dashboard/themes/create              5.4 kB         110 kB
+├ ○ /login                                3.1 kB         143 kB
+├ ○ /opengraph-image.png                     0 B            0 B
+└ ○ /signup                              17.1 kB         157 kB
++ First Load JS shared by all             101 kB
+  ├ chunks/4bd1b696-d5b2e2029f817536.js  53.2 kB
+  ├ chunks/684-3bc1b2419bc91394.js         46 kB
+  └ other shared chunks (total)          1.92 kB
+
+
+ƒ Middleware                             33.5 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
