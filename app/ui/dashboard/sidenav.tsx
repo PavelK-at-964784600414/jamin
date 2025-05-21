@@ -2,7 +2,7 @@ import Link from 'next/link';
 import NavLinks from '@/app/ui/dashboard/nav-links';
 import JamInLogo from '@/app/ui/jamin-logo';
 import { PowerIcon } from '@heroicons/react/24/outline';
-import { signOut } from '@/auth';
+// Removed server-side signOut import; using `CoolSignOut` client component for logout
 import { CoolSignOut } from '@/app/ui/dashboard/cool-sign-out'
 
 

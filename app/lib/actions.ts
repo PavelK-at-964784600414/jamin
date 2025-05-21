@@ -4,11 +4,8 @@ import { z } from 'zod';
 import { sql } from '@vercel/postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { signIn, signUp } from '@/auth';
-// Remove the type import as it's causing issues
+import { auth, signIn, signUp, signOut } from '@/auth';
 import { uploadToS3 } from './s3';
-import { authConfig } from '@/auth.config';
-// We'll use dynamic import instead of static import for auth
 
 // Helper function to check if an error is an auth error
 function isAuthError(error: unknown): error is { type: string } {
@@ -63,13 +60,10 @@ export async function createTheme(prevState: State, formData: FormData) {
     // Get the current session from NextAuth
   let session;
   try {
-    // Dynamically import the auth function from auth-config.js
-    const authModule = await import('@/auth-config.js');
-    session = await authModule.auth();
+    session = await auth();
     console.log('session details:', session);
   } catch (authError) {
-    console.error('Auth import or execution failed:', authError);
-    // Continue with fallback
+    console.error('Auth execution failed:', authError);
   }
   
   let memberId = session?.user?.id;
@@ -232,40 +226,19 @@ export async function deleteTheme(id: string) {
   }
 }
 
+// Server action to authenticate and redirect to dashboard
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
 ) {
-  try {
-    // Use the signIn function imported from auth.ts which is an async wrapper
-    const result = await signIn('credentials', {
-      email: formData.get('email') as string,
-      password: formData.get('password') as string,
-      redirect: false,
-    });
-    
-    // Check if authentication failed
-    if (result && 'error' in result) {
-      return 'Invalid credentials.';
-    }
-    
-    // If we get here, authentication was successful
-    console.log('Authentication successful - redirecting to dashboard');
-    
-    // Return success to clear any previous error state
-    // The useEffect in the login form will handle the redirect
-    return undefined;  } catch (error) {
-    console.error('Authentication error:', error);
-    if (isAuthError(error)) {
-      switch (error.type) {
-        case 'CredentialsSignin':
-          return 'Invalid credentials.';
-        default:
-          return 'Something went wrong.';
-      }
-    }
-    return 'Something went wrong. Please try again.';
+  'use server';
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+  const res = await signIn('credentials', { redirect: false, email, password });
+  if (!res || !res.ok) {
+    return 'Invalid credentials.';
   }
+  return undefined;
 }
 
 export async function register(
@@ -273,19 +246,29 @@ export async function register(
   formData: FormData,
 ) {
   try {
-    await signUp(undefined, formData);
-    console.log('Registered successfully   ');
-    redirect('/login');  } catch (error) {
-    if (isAuthError(error)) {
-      switch (error.type) {
-        case 'CredentialsSignin':
-          return 'Invalid credentials.';
-        default:
-          return 'Something went wrong.';
-      }
-    }
-    throw error;
+    // Extract signup fields from formData
+    const userName = formData.get('userName') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const firstName = (formData.get('firstName') as string) || null;
+    const lastName = (formData.get('lastName') as string) || null;
+    const country = (formData.get('country') as string) || null;
+    const instrument = (formData.get('instrument') as string) || null;
+
+    // Call signUp helper
+    await signUp(userName, email, password, firstName, lastName, country, instrument);
+    redirect('/login');
+  } catch (error) {
+    console.error('Registration error:', error);
+    return 'Something went wrong. Please try again.';
   }
+}
+
+// Add logout action
+export async function logoutAction() {
+  // Call NextAuth signOut server action and redirect
+  await signOut();
+  redirect('/login');
 }
 
 export type LayerState = {
@@ -319,27 +302,10 @@ const CreateLayer = z.object({
 export async function createLayer(prevState: LayerState | null, formData: FormData) {  // Get the current session from NextAuth using dynamic import
   let session;
   try {
-    // Dynamically import the auth function from auth-config.js
-    // Import the entire module first to ensure it's loaded correctly
-    const authModule = await import('@/auth-config.js');
-    
-    // Check if auth exists in the module and is a function
-    if (typeof authModule.auth === 'function') {
-      session = await authModule.auth();
-      console.log('Auth session obtained through direct module access');
-    } else {
-      // If not found directly, try destructuring (in case of named exports)
-      const { auth } = authModule;
-      if (typeof auth === 'function') {
-        session = await auth();
-        console.log('Auth session obtained through destructured import');
-      } else {
-        console.error('Auth function not found in imported module');
-      }
-    }
+    session = await auth();
+    console.log('session details:', session);
   } catch (authError) {
-    console.error('Auth import or execution failed:', authError);
-    // Continue with fallback
+    console.error('Auth execution failed:', authError);
   }
   
   let memberId = session?.user?.id;
