@@ -1,5 +1,4 @@
-// Import only handlers from auth.js
+// Import the NextAuth handlers from auth.ts
 import { handlers } from '@/auth';
-
-// Re-export NextAuth handlers for API routes
+// Export for Next.js API routes
 export const { GET, POST } = handlers;
