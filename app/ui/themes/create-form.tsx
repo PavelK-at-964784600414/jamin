@@ -9,11 +9,25 @@ import { saveAs } from 'file-saver';
 import MetadataForm from './MetadataForm';
 import RecordingControls from './RecordingControls';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
 
 export default function CreateForm() {
+  const router = useRouter();
   // Use the server action directly with the form
-  const initialState: State = { message: null, errors: {} };
-  const [state, formAction] = useActionState(createTheme, initialState);
+  const initialState = { message: null, errors: {}, success: false };
+  type ThemeFormState = typeof initialState;
+  const [state, formAction] = useActionState(
+    async (_state: ThemeFormState, formData: FormData): Promise<ThemeFormState> => {
+      const result = await createTheme(_state, formData);
+      if (result === undefined) return { message: null, errors: {}, success: true };
+      return {
+        message: null, // Always null for compatibility
+        errors: result.errors ?? {},
+        success: !!result.success,
+      };
+    },
+    initialState
+  );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [genre, setGenre] = useState('');
@@ -48,6 +62,12 @@ export default function CreateForm() {
     }
     return '';
   };
+
+  useEffect(() => {
+    if (state && state.success) {
+      router.push('/dashboard/themes');
+    }
+  }, [state, router]);
 
   const handleStartRecording = async () => {
     if (!navigator.mediaDevices || !window.MediaRecorder) {
@@ -424,7 +444,7 @@ export default function CreateForm() {
           </Button>
         </div>
         <div id="message" aria-live="polite" aria-atomic="true">
-          {state.message && (
+          {state && state.message && (
             <p className="mt-2 text-sm text-red-500" key={state.message}>
               {state.message}
             </p>

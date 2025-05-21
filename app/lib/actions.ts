@@ -93,6 +93,7 @@ export async function createTheme(prevState: State, formData: FormData) {
       return {
         errors: validatedFields.error.flatten().fieldErrors,
         message: 'Missing or Invalid Fields. Failed to Create Theme.',
+        success: false,
       };
     }
 
@@ -135,6 +136,7 @@ export async function createTheme(prevState: State, formData: FormData) {
           audioFile: ['Audio file is required. Please record or upload an audio file.']
         },
         message: 'Audio file is required.',
+        success: false,
       };
     }
 
@@ -151,10 +153,8 @@ export async function createTheme(prevState: State, formData: FormData) {
     `;
     console.log('Theme created successfully');
     revalidatePath('/dashboard/themes');
-    
-    // Redirect to the themes page after successful creation
-    // This works with standard form submissions
-    redirect('/dashboard/themes');
+    // Always return a State object for useActionState compatibility
+    return { message: null, errors: {}, success: true };
   } catch (error) {
     console.error('Error creating theme:', error);
     return {
@@ -257,7 +257,8 @@ export async function register(
 
     // Call signUp helper
     await signUp(userName, email, password, firstName, lastName, country, instrument);
-    redirect('/login');
+    // Success: let client handle redirect
+    return undefined;
   } catch (error) {
     console.error('Registration error:', error);
     return 'Something went wrong. Please try again.';
