@@ -59,40 +59,39 @@ export default function ThemesTable({
             {themes.map((theme) => (
               <AccordionItem key={theme.id} value={theme.id}>
                 <AccordionTrigger>
-                  <div className="flex w-full items-center justify-between text-gray-200">
-                    <div className="flex items-center gap-3">
-                      <Image
-                        src={theme.image_url}
-                        className="rounded-full"
-                        width={32} // Slightly larger for better visibility
-                        height={32}
-                        alt={`${theme.user_name}'s profile picture`}
-                      />
-                      <div className="flex flex-col text-left">
-                        <span className="font-semibold text-base">{theme.title}</span>
-                        <span className="text-sm text-gray-400">{theme.user_name}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 ml-auto mr-8">
-                      {theme.recording_url && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent accordion from toggling
-                            handlePlayClick(theme.recording_url!);
-                          }}
-                          className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
-                          aria-label={`Play theme ${theme.title}`}
-                          title="Play Theme"
-                        >
-                          <PlayIcon className="w-6 h-6" />
-                        </button>
-                      )}
-                      <UpdateTheme id={theme.id} />
-                      <DeleteTheme id={theme.id} />
+                  <div className="flex w-full items-center gap-3 text-gray-200">
+                    <Image
+                      src={theme.image_url}
+                      className="rounded-full"
+                      width={32}
+                      height={32}
+                      alt={`${theme.user_name}'s profile picture`}
+                    />
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-base">{theme.title}</span>
+                      <span className="text-sm text-gray-400">{theme.user_name}</span>
                     </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
+                  <div className="flex items-center gap-4 mb-4">
+                    {theme.recording_url && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePlayClick(theme.recording_url!);
+                        }}
+                        className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
+                        aria-label={`Play theme ${theme.title}`}
+                        title="Play Theme"
+                        type="button"
+                      >
+                        <PlayIcon className="w-6 h-6" />
+                      </button>
+                    )}
+                    <UpdateTheme id={theme.id} />
+                    <DeleteTheme id={theme.id} />
+                  </div>
                   <div className="space-y-3 text-sm text-gray-300">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                       <div><strong>Length:</strong> {typeof theme.seconds === 'number' ? `${Math.floor(theme.seconds / 60)}:${(theme.seconds % 60).toString().padStart(2, '0')}` : 'N/A'}</div>

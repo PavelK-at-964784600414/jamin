@@ -2,14 +2,24 @@
 
 import { useState, useEffect } from 'react';
 import { useActionState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/app/ui/button';
 import { register } from '@/app/lib/actions';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { SignupFormSchema } from '@/app/lib/definitions';
 
 export default function SignupForm() {
+  const router = useRouter();
   // Keep your existing hook unchanged
   const [errorMessage, formAction, isPending] = useActionState(register, undefined);
+
+  // Only redirect after a form submission, not on initial mount
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  const handleFormAction = async (formData: FormData) => {
+    setHasSubmitted(true);
+    return formAction(formData);
+  };
 
   // Local state for all input fields
   const [firstName, setFirstName] = useState('');
@@ -45,12 +55,18 @@ export default function SignupForm() {
     }
   }, [userName, email, password, confirmPassword, firstName, lastName, country, instrument]);
 
+  useEffect(() => {
+    if (hasSubmitted && errorMessage === undefined && !isPending) {
+      router.push('/login');
+    }
+  }, [hasSubmitted, errorMessage, isPending, router]);
+
   // Helper to get error messages for a field
   const getError = (field: string) =>
     localErrors[field] ? localErrors[field].join(', ') : null;
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={handleFormAction} className="space-y-4">
       <div className="rounded-md bg-gray-800 p-6">
         <div>
           <label htmlFor="firstName" className="block text-sm font-medium text-white">
