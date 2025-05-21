@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { authConfig } from '@/auth.config';
+import { auth } from '@/auth';
 
 /**
  * Helper function to check if a user is authenticated in API routes
  * @returns An error response if not authenticated, null if authenticated
  */
 export async function checkAuth() {
-  // Use dynamic import to avoid issues with module resolution
-  const authModule = await import('@/auth-config.js');
-  const session = await authModule.auth();
+  // Get session from NextAuth
+  const session = await auth();
   
   if (!session) {
     return NextResponse.json(
@@ -25,9 +24,8 @@ export async function checkAuth() {
  * @returns The member ID or null if not authenticated
  */
 export async function getCurrentMemberId() {
-  // Use dynamic import to avoid issues with module resolution
-  const authModule = await import('@/auth-config.js');
-  const session = await authModule.auth();
+  // Get session from NextAuth
+  const session = await auth();
   return session?.user?.id || null;
 }
 

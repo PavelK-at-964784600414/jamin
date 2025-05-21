@@ -1,7 +1,7 @@
 import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiCsrf } from '@/app/lib/api-security';
-import { auth } from '@/auth-config';
+import { auth } from '@/auth';
 
 export async function DELETE(request: NextRequest) {
   try {

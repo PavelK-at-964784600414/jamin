@@ -1,96 +1,72 @@
-'use server';
-
-import { z } from 'zod';
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 import { sql } from '@vercel/postgres';
-import type { Member} from '@/app/lib/definitions';
-import { FormState, SignupFormSchema, LoginFormSchema } from '@/app/lib/definitions';
 import bcrypt from 'bcryptjs';
- 
-async function getMember(email: string): Promise<Member | undefined> {
-  try {
-    const user = await sql<Member>`SELECT * FROM members WHERE email=${email}`;
-    return user.rows[0];
-  } catch (error) {
-    console.error('Failed to fetch user:', error);
-    throw new Error('Failed to fetch user.');
-  }
-}
 
-async function insertMember(
+// NextAuth v5 configuration
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  pages: { signIn: '/login', error: '/login' },
+  session: { strategy: 'jwt' },
+  callbacks: {
+    async authorized({ auth, request: { nextUrl } }) {
+      const user = auth?.user;
+      if (nextUrl.pathname.startsWith('/dashboard')) return !!user;
+      if (user && nextUrl.pathname === '/login') return Response.redirect(new URL('/dashboard', nextUrl));
+      return true;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.image = user.image;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Assign token properties to session.user
+      session.user.id = token.id as string;
+      session.user.name = token.name as string;
+      session.user.email = token.email as string;
+      session.user.image = token.image as string | undefined;
+      return session;
+    }
+  },
+  providers: [
+    CredentialsProvider({
+      credentials: { email: {}, password: {} },
+      async authorize(credentials) {
+        const email = credentials?.email;
+        const password = credentials?.password;
+        if (typeof email !== 'string' || typeof password !== 'string') return null;
+        const res = await sql`SELECT * FROM members WHERE email=${email}`;
+        const user = res.rows[0];
+        if (!user) return null;
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) return null;
+        return { id: user.id, name: user.user_name, email: user.email, image: user.image_url };
+      }
+    })
+  ]
+});
+
+// Signup helper
+export async function signUp(
   userName: string,
   email: string,
   password: string,
   firstName: string | null,
   lastName: string | null,
   country: string | null,
-  instrument: string | null,
-): Promise<Member | undefined> {
-  // Generate a unique ID for the new member
+  instrument: string | null
+) {
+  const hashed = await bcrypt.hash(password, 10);
   const id = crypto.randomUUID();
-  const image_url = '/members/evil-rabbit.png';
-  
-  try {
-    const { rows } = await sql<Member>`INSERT INTO members (id, user_name, email, password, image_url, first_name, last_name, country, instrument)
-        VALUES (${id}, ${userName}, ${email}, ${password}, ${image_url}, ${firstName}, ${lastName}, ${country}, ${instrument}) RETURNING *`;
-    return rows[0];
-  } catch (error) {
-    console.error('Failed to insert user:', error);
-    throw new Error('Failed to insert user.');
-  }
-}
-
-export async function signUp(state: FormState, formData: FormData) {
-  
-  // Validate form fields
-  const validatedFields = SignupFormSchema.safeParse({
-    userName: formData.get('userName'),
-    email: formData.get('email'),
-    password: formData.get('password'),
-    confirmPassword: formData.get('confirmPassword'),
-    firstName: formData.get('firstName'),
-    lastName: formData.get('lastName'),
-    country: formData.get('country'),
-    instrument: formData.get('instrument'),
-  })
-  
-  // If any form fields are invalid, return early
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten(),
-    }
-  }  // Prepare data for insertion into database
-  const { userName, email, password, firstName, lastName, country, instrument} = validatedFields.data
-  // Hash the user's password before storing it
-  const hashedPassword = await bcrypt.hash(password, 10)
- 
-  // Insert the user into the database
-  const data = await insertMember(
-    userName, 
-    email, 
-    hashedPassword, 
-    firstName || null, 
-    lastName || null, 
-    country || null, 
-    instrument || null
-  )
-  
-  if (data) {
-    return data
-  } else {
-    return {
-      message: 'Failed to create user. Please try again.',
-    }
-  }
-}
-
-// Create an async wrapper for the signIn function
-export async function signIn(provider: string, options?: any) {
-  const { signIn: nextAuthSignIn } = await import('./auth-config');
-  return nextAuthSignIn(provider, options);
-}
-
-// Create a server action for signOut
-export async function signOut(options?: { redirect?: boolean; redirectTo?: string }) {
-  const { signOut: nextAuthSignOut } = await import('./auth-config');
-  return nextAuthSignOut(options);
+  const img = '/members/evil-rabbit.png';
+  const res = await sql`
+    INSERT INTO members (id, user_name, email, password, image_url, first_name, last_name, country, instrument)
+    VALUES (${id}, ${userName}, ${email}, ${hashed}, ${img}, ${firstName}, ${lastName}, ${country}, ${instrument})
+    RETURNING *
+  `;
+  return res.rows[0];
 }
