@@ -4,6 +4,8 @@
  * with compatibility fixes for different browsers.
  */
 
+import { uploadFileToS3WithRetry } from '@/app/lib/upload-utils';
+
 /**
  * Check if an audio file is valid and playable
  * @param file The file to check
