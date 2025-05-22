@@ -469,6 +469,17 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       };
     }
 
+    // After uploading both layer recording and retrieving parent theme, mix the two audio files
+    const { fetchThemeById } = await import('./data');
+    const parentTheme = await fetchThemeById(themeId);
+    if (recording_url && parentTheme.sample) {
+      // Use a server-side ffmpeg utility to mix original theme and new layer audio
+      const { mixAudioFiles } = await import('./audio-mix-server');
+      const mixedUrl = await mixAudioFiles(parentTheme.sample, recording_url);
+      recording_url = mixedUrl;
+      console.log('Mixed audio URL:', recording_url);
+    }
+
     const date = new Date().toISOString().split('T')[0];
 
     // Insert the layer as a collaboration theme linked to the original theme
