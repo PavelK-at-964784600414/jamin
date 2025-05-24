@@ -1,5 +1,7 @@
 // Server-only audio mixing utilities for Next.js (Node.js only)
 
+import ffmpegPath from 'ffmpeg-static';
+
 /**
  * Mix two audio files by downloading them, combining using ffmpeg, and uploading the result to S3.
  * @param originalUrl URL of the original theme audio
@@ -32,7 +34,7 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
 
   // Mix using ffmpeg (requires ffmpeg in PATH)
   await exec(
-    `ffmpeg -y -i "${originalPath}" -i "${layerPath}" -filter_complex "[0:a][1:a]amix=inputs=2:duration=longest" -c:a libopus "${outputPath}"`
+    `${ffmpegPath} -y -i "${originalPath}" -i "${layerPath}" -filter_complex "[0:a][1:a]amix=inputs=2:duration=longest" -c:a libopus "${outputPath}"`
   );
 
   // Read and upload mixed output

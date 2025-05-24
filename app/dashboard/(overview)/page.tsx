@@ -6,16 +6,17 @@ import { lusitana } from '@/app/ui/fonts';
 import { fetchCardData } from '@/app/lib/data';
 import { Suspense } from 'react';
 import { CollabChartSkeleton, LatestThemesSkeleton, CardsSkeleton } from '@/app/ui/skeletons';
- 
-
 
 export default async function Page() {
   console.log('On dashboard page');
+
   return (
     <main>
+      {/* Dashboard title now rendered here, or specific page title */}
       <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
-        Dashboard
+        Dashboard Overview
       </h1>
+
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Suspense fallback={<CardsSkeleton />}>
           <CardWrapper />

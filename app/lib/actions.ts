@@ -272,6 +272,12 @@ export async function logoutAction() {
   redirect('/login');
 }
 
+// Google sign-in server action
+export async function googleSignIn() {
+  'use server';
+  await signIn('google', { callbackUrl: '/dashboard' });
+}
+
 export type LayerState = {
   errors?: {
     title?: string[];

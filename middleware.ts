@@ -1,7 +1,11 @@
-// Use NextAuth v5 middleware from our auth.ts
-export { auth as middleware } from './auth';
+import NextAuth from 'next-auth';
+import { nextAuthConfig } from './auth'; // Import the exported config
 
-// Configure middleware to run on dashboard routes only
+const { auth: middleware } = NextAuth(nextAuthConfig); // Initialize NextAuth and get the middleware
+
+export default middleware;
+
+// Configure middleware to run on specific paths
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'], // Apply to all paths except specified static ones
 };
