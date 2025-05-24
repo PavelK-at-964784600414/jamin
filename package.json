@@ -3,6 +3,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:https": "NODE_OPTIONS='--openssl-legacy-provider' next dev -p 3000 --ssl-cert ./localhost.pem --ssl-key ./localhost-key.pem",
     "start": "next start",
     "lint": "next lint"
   },
@@ -15,6 +16,7 @@
     "autoprefixer": "10.4.19",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
+    "ffmpeg-static": "^5.2.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.471.2",
