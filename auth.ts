@@ -29,6 +29,58 @@ export const nextAuthConfig: NextAuthConfig = { // Export nextAuthConfig
   pages: { signIn: '/login', error: '/login' },
   session: { strategy: 'jwt' },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google") {
+        // For Google sign-in, profile should be available and contain user details
+        if (!profile?.email) {
+          console.error("[AUTH_SIGNIN_GOOGLE] Email not found in Google profile");
+          return false; // Or redirect to an error page
+        }
+        try {
+          const googleUserEmail = profile.email;
+          const googleUserName = profile.name;
+          const googleUserImage = (profile as any).picture; // Google often uses 'picture' for image URL
+          const googleUserId = user.id; // This is the ID from Google, to be used as our member_id
+
+          if (!googleUserId) {
+            console.error("[AUTH_SIGNIN_GOOGLE] User ID not found from Google account");
+            return false;
+          }
+
+          // Check if user already exists in our members table by their Google ID
+          const existingMember = await sql`SELECT * FROM members WHERE id = ${googleUserId}`;
+
+          if (existingMember.rows.length === 0) {
+            // User does not exist, create them
+            console.log(`[AUTH_SIGNIN_GOOGLE] New Google user: ${googleUserEmail}. Creating member record.`);
+            // Add a placeholder for the password field for Google users
+            const placeholderPassword = 'OAUTH_USER_NO_PASSWORD'; 
+            await sql`
+              INSERT INTO members (id, email, user_name, image_url, created_at, password)
+              VALUES (${googleUserId}, ${googleUserEmail}, ${googleUserName}, ${googleUserImage}, NOW(), ${placeholderPassword})
+            `;
+            console.log(`[AUTH_SIGNIN_GOOGLE] Member record created for ${googleUserEmail} with ID ${googleUserId}`);
+          } else {
+            // User exists, optionally update their details if they changed
+            console.log(`[AUTH_SIGNIN_GOOGLE] Existing Google user: ${googleUserEmail}. Verifying details.`);
+            const member = existingMember.rows[0];
+            if (member.user_name !== googleUserName || member.image_url !== googleUserImage) {
+              await sql`
+                UPDATE members 
+                SET user_name = ${googleUserName}, image_url = ${googleUserImage} 
+                WHERE id = ${googleUserId}
+              `;
+              console.log(`[AUTH_SIGNIN_GOOGLE] Updated details for ${googleUserEmail}`);
+            }
+          }
+          return true; // Allow sign-in
+        } catch (error) {
+          console.error("[AUTH_SIGNIN_GOOGLE] Error processing Google sign-in:", error);
+          return false; // Prevent sign-in on error
+        }
+      }
+      return true; // Default to allow other sign-ins (e.g., credentials)
+    },
     async authorized({ auth, request }: AuthorizedCallbackParams) { // Re-enabled authorized callback
       const { pathname } = request.nextUrl;
       const isLoggedIn = !!auth?.user;
