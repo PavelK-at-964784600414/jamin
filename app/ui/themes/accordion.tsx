@@ -5,17 +5,32 @@ import { ChevronDownIcon } from '@heroicons/react/24/outline'; // Using Heroicon
 interface AccordionContextProps {
   openItem: string | null;
   setOpenItem: (value: string | null) => void;
+  onValueChange?: (value: string | null) => void; // Add onValueChange to context if needed for deeper components
 }
 
 const AccordionContext = createContext<AccordionContextProps | undefined>(undefined);
 
-export const Accordion = ({ children, type = 'single' }: { children: ReactNode, type?: 'single' | 'multiple' }) => {
-  // For simplicity, this example will only fully support 'single' type behavior
-  // Multiple would require openItems to be an array of strings
-  const [openItem, setOpenItem] = useState<string | null>(null);
+export const Accordion = ({
+  children,
+  type = 'single',
+  onValueChange, // Accept onValueChange prop
+}: {
+  children: ReactNode;
+  type?: 'single' | 'multiple';
+  onValueChange?: (value: string | null) => void; // Define prop type
+}) => {
+  const [openItem, setOpenItemInternal] = useState<string | null>(null);
+
+  const handleSetOpenItem = (value: string | null) => {
+    setOpenItemInternal(value);
+    if (onValueChange) {
+      onValueChange(value);
+    }
+  };
 
   return (
-    <AccordionContext.Provider value={{ openItem, setOpenItem }}>
+    // Pass the new handler to context
+    <AccordionContext.Provider value={{ openItem, setOpenItem: handleSetOpenItem, onValueChange }}>
       <div className="w-full space-y-1 rounded-md">{children}</div>
     </AccordionContext.Provider>
   );
@@ -60,6 +75,7 @@ export const AccordionTrigger = ({ children, isOpen, value }: AccordionTriggerPr
     // This case might occur if used outside cloneElement, though less likely with current AccordionItem setup
     throw new Error("AccordionTrigger must be used within an AccordionItem");
   }
+  // Use the context setOpenItem which now also calls onValueChange
   return (
     <button
       onClick={() => context.setOpenItem(context.openItem === value ? null : value!)}

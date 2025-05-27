@@ -3,24 +3,22 @@
 import Image from 'next/image';
 import { UpdateTheme, DeleteTheme } from '@/app/ui/themes/buttons';
 import { formatDateToLocal } from '@/app/lib/utils';
-import { ThemesTable as ThemesTableType } from '@/app/lib/definitions';
+import { ThemesTable as ThemesTableType, ThemesTable as Layer } from '@/app/lib/definitions'; // Add Layer type alias for clarity
 import MediaPlayerModal from '@/app/ui/themes/MediaPlayer';
-import React, { useState, useEffect } from 'react';
-import { PlayIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import React, { useState } from 'react';
+import { PlayIcon } from '@heroicons/react/24/outline';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/app/ui/themes/accordion'; // Import accordion components
+import { getLayersForThemeAction } from '@/app/lib/actions'; // Import the new server action
 
 export default function ThemesTable({
   themes,
 }: {
   themes: ThemesTableType[];
 }) {
+  console.log('[Client] ThemesTable received themes:', JSON.stringify(themes?.map(t => t.id) || 'No themes')); // Log theme IDs on client
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
+  const [layersByTheme, setLayersByTheme] = useState<{ [key: string]: Layer[] }>({});
 
   const handlePlayClick = (mediaUrl: string) => {
     setSelectedMediaUrl(mediaUrl);
@@ -32,10 +30,18 @@ export default function ThemesTable({
     setSelectedMediaUrl(null);
   };
 
-  if (!hydrated) {
-    // Or a loading skeleton consistent with dark theme
-    return <div className="mt-6 w-full h-40 rounded-md bg-gray-800 animate-pulse"></div>;
-  }
+  const handleAccordionChange = async (themeId: string | null) => {
+    if (themeId && !layersByTheme[themeId]) { // Check if themeId is not null
+      try {
+        // Call the server action instead of the direct data fetching function
+        const fetchedLayers = await getLayersForThemeAction(themeId);
+        setLayersByTheme(prev => ({ ...prev, [themeId]: Array.isArray(fetchedLayers) ? fetchedLayers : [] }));
+      } catch (error) {
+        console.error('Failed to fetch layers for theme:', themeId, error);
+        setLayersByTheme(prev => ({ ...prev, [themeId]: [] }));
+      }
+    }
+  };
 
   if (!themes || themes.length === 0) {
     return (
@@ -54,8 +60,7 @@ export default function ThemesTable({
       />
       <div className="mt-6 flow-root">
         <div className="inline-block min-w-full align-middle">
-          {/* Main container for accordion will have dark background from accordion.tsx */}
-          <Accordion type="single">
+          <Accordion type="single" onValueChange={handleAccordionChange}>
             {themes.map((theme) => (
               <AccordionItem key={theme.id} value={theme.id}>
                 <AccordionTrigger>
@@ -121,10 +126,39 @@ export default function ThemesTable({
                         </svg>
                         Add Layer
                       </a>
-                      <div className="flex items-center gap-2">
-                        {/* Additional buttons can go here if needed */}
-                      </div>
                     </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <h4 className="text-md font-semibold text-gray-200 mb-2">Layers:</h4>
+                    {layersByTheme[theme.id] === undefined ? (
+                      <p className="text-sm text-gray-400">Loading layers...</p>
+                    ) : layersByTheme[theme.id].length > 0 ? (
+                      <ul className="space-y-2">
+                        {layersByTheme[theme.id].map(layer => (
+                          <li key={layer.id} className="p-2 bg-gray-750 rounded-md">
+                            <p className="text-sm font-medium text-yellow-500">{layer.title}</p>
+                            <p className="text-xs text-gray-400">Instrument: {layer.instrument}</p>
+                            <p className="text-xs text-gray-400">Added by: {layer.user_name} on {formatDateToLocal(layer.date)}</p>
+                            {layer.recording_url && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePlayClick(layer.recording_url!);
+                                }}
+                                className="mt-1 p-1 text-gray-400 hover:text-yellow-500 transition-colors text-xs flex items-center"
+                                aria-label={`Play layer ${layer.title}`}
+                                title="Play Layer"
+                                type="button"
+                              >
+                                <PlayIcon className="w-4 h-4 mr-1" /> Play Layer
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-400">No layers for this theme yet.</p>
+                    )}
                   </div>
                 </AccordionContent>
               </AccordionItem>

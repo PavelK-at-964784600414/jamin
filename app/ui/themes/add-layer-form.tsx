@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useActionState } from 'react'; // Changed import
 import { ThemesTable } from '@/app/lib/definitions';
 import { createLayer, LayerState } from '@/app/lib/actions';
-import { useFormState } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import RecordingControls from './RecordingControls';
 import MediaPlayer from './MediaPlayer';
@@ -23,9 +22,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     themeId: undefined 
   };
   
-  // Use useFormState with explicit typing to resolve type errors
-  const [state, formAction] = useFormState<LayerState, FormData>(
-    (prevState, formData) => createLayer(prevState, formData),
+  // Use useActionState with explicit typing
+  const [state, formAction, isPending] = useActionState<LayerState, FormData>( // Changed to useActionState and added isPending
+    createLayer, // Pass the server action directly
     initialState
   );
   
@@ -56,10 +55,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   const [instrument, setInstrument] = useState('');
   const [mode, setMode] = useState(theme.mode);
 
-  // Form submission state
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Form submission state - isSubmitting can potentially be replaced by isPending from useActionState
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null); // Added success state
 
   // Initialize theme audio element
   useEffect(() => {
@@ -224,6 +222,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   // Function to prepare form submission - validates inputs and prepares file
   const prepareFormSubmission = async () => {
     setError(null);
+    setSuccess(null); // Reset success message on new submission attempt
     
     // File validation
     if (!file) {
@@ -289,6 +288,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     // After form submission via formAction, handle success or errors
     if (state?.message) {
       setError(state.message);
+      setSuccess(null); // Clear success message if there's an error
     } else if (state?.success) {
       // If the submission was successful
       setSuccess('Layer saved successfully!');
@@ -304,17 +304,19 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       
       // Clean up the timer if the component unmounts
       return () => clearTimeout(redirectTimer);
+    } else {
+      // If there's no message and no success, clear both (e.g., initial state or after a non-error/non-success update)
+      setError(null);
+      setSuccess(null);
     }
   }, [state, router]);
 
   // Handle form submission in a Safari-compatible way
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
     // First validate the form data
     if (!await validateFormData()) {
-      setIsSubmitting(false);
       return;
     }
 
@@ -417,8 +419,6 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       console.error('Error saving layer:', e);
       // Using the correctly typed error state
       setError('Failed to save layer. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -532,10 +532,10 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             <div className="mt-6 flex justify-end">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isPending} // Use isPending from useActionState
                 className="px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-600"
               >
-                {isSubmitting ? 'Saving...' : 'Save Layer'}
+                {isPending ? 'Saving...' : 'Save Layer'} {/* Use isPending */}
               </button>
             </div>
           </div>
