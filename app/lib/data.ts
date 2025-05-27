@@ -7,10 +7,10 @@ import {
   LatestThemesRaw,
   LatestThemes,
   ThemePages,
+  LayerWithParentTheme, // This was missing before
 } from './definitions';
 import { formatCurrency } from './utils';
 const ITEMS_PER_PAGE = 6;
-
 
 export async function fetchLatestThemes() {
   try {
@@ -27,7 +27,6 @@ export async function fetchLatestThemes() {
     throw new Error('Failed to fetch the latest themes.');
   }
 }
-
 
 export async function fetchCardData() {
   try {
@@ -61,7 +60,6 @@ export async function fetchCardData() {
     throw new Error('Failed to fetch card data.');
   }
 }
-
 
 export async function fetchFilteredThemes(query: string, currentPage: number) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -240,16 +238,7 @@ export async function fetchThemeById(id: string) {
 
 export async function fetchLayersByThemeId(id: string) {
   try {
-    const data = await sql<ThemesTable[]>`
-      SELECT
-        layers.*,
-        members.user_name,
-        members.image_url
-      FROM themes AS layers
-      JOIN members ON layers.member_id = members.id
-      WHERE layers.parent_theme_id = ${id}
-      ORDER BY layers.date DESC;
-    `;
+    const data = await sql<ThemesTable>`SELECT collabs.*, members.user_name, members.image_url FROM collabs JOIN members ON collabs.member_id = members.id WHERE collabs.parent_theme_id = ${id} ORDER BY collabs.date DESC;`;
     return data.rows;
   } catch (error) {
     console.error('Database Error:', error);
@@ -257,8 +246,31 @@ export async function fetchLayersByThemeId(id: string) {
   }
 }
 
-
-
+export async function fetchAllLayersWithParentThemes() {
+  try {
+    const data = await sql<LayerWithParentTheme>`
+      SELECT
+        layers.id AS layer_id,
+        layers.title AS layer_title,
+        layers.instrument AS layer_instrument,
+        layers.date AS layer_date,
+        layer_creator.user_name AS layer_creator_name,
+        parent_theme.id AS parent_theme_id,
+        parent_theme.title AS parent_theme_title,
+        parent_creator.user_name AS parent_theme_creator_name
+      FROM collabs AS layers
+      JOIN members AS layer_creator ON layers.member_id = layer_creator.id
+      JOIN themes AS parent_theme ON layers.parent_theme_id = parent_theme.id
+      JOIN members AS parent_creator ON parent_theme.member_id = parent_creator.id
+      WHERE layers.parent_theme_id IS NOT NULL
+      ORDER BY parent_theme.date DESC, layers.date ASC;
+    `;
+    return data.rows;
+  } catch (error) {
+    console.error('Database Error fetching all layers with parent themes:', error);
+    throw new Error('Failed to fetch all layers with parent themes.');
+  }
+}
 
 export async function fetchFilteredMembers(query: string) {
   try {

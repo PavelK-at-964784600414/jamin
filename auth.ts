@@ -6,6 +6,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google'; // Uncommented GoogleProvider
 import { sql } from '@vercel/postgres';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid'; // Import uuid
 import type { JWT } from 'next-auth/jwt';
 import type { Session } from 'next-auth';
 import type { NextRequest } from 'next/server'; // Re-enabled NextRequest
@@ -187,6 +188,29 @@ export async function signUp(
   country: string | null,
   instrument: string | null
 ) {
-  console.log("signUp function called (currently minimal)");
-  return { message: "SignUp temporarily disabled for auth debugging." };
+  console.log(`[AUTH_SIGNUP] Attempting to sign up user: ${email}`);
+  try {
+    // Check if user already exists
+    const existingUser = await sql`SELECT * FROM members WHERE email = ${email}`;
+    if (existingUser.rows.length > 0) {
+      console.warn(`[AUTH_SIGNUP] User already exists with email: ${email}`);
+      return { error: "User already exists with this email." };
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userId = uuidv4(); // Generate a new UUID for the user
+
+    // Insert new user into the database
+    await sql`
+      INSERT INTO members (id, user_name, email, password, first_name, last_name, country, instrument, created_at, image_url)
+      VALUES (${userId}, ${userName}, ${email}, ${hashedPassword}, ${firstName}, ${lastName}, ${country}, ${instrument}, NOW(), NULL)
+    `;
+
+    console.log(`[AUTH_SIGNUP] User ${email} signed up successfully with ID: ${userId}`);
+    return { success: "User signed up successfully. Please log in." };
+  } catch (error) {
+    console.error(`[AUTH_SIGNUP] Error during sign up for ${email}:`, error);
+    return { error: "An error occurred during sign up. Please try again." };
+  }
 }

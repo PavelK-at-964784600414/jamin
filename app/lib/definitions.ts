@@ -189,3 +189,15 @@ export type FormState =
       })
       .trim(),
   });
+
+export type LayerWithParentTheme = {
+  layer_id: string;
+  layer_title: string;
+  layer_instrument: string;
+  layer_date: string;
+  layer_creator_name: string;
+  parent_theme_id: string;
+  parent_theme_title: string;
+  parent_theme_creator_name: string;
+};
+

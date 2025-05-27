@@ -322,19 +322,51 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
   }
 
+  const themeId = formData.get('themeId') as string;
+
+  if (!themeId) {
+    return {
+      message: 'Parent theme ID is missing.',
+      success: false,
+      errors: { themeId: ['Parent theme ID is required.'] },
+    };
+  }
+
+  // Import data fetching functions once at the top of the try block
+  const { fetchThemeById, fetchLayersByThemeId } = await import('./data');
+
   try {
+    // Fetch parent theme and existing layers concurrently
+    const [parentThemeData, existingLayers] = await Promise.all([
+      fetchThemeById(themeId), // Fetches ThemeForm
+      fetchLayersByThemeId(themeId) // Fetches ThemesTable[]
+    ]);
+
+    if (!parentThemeData) {
+      return { message: 'Parent theme not found.', success: false, themeId };
+    }
+
+    if (existingLayers.length >= 5) {
+      return { message: 'Maximum of 5 layers per theme reached.', success: false, themeId };
+    }
+
+    const layerNumber = existingLayers.length + 1;
+    const instrumentForTitle = formData.get('instrument') as string || 'Instrument';
+    // Construct the new layer title using the parent theme's title
+    const newLayerTitle = `${parentThemeData.title} - Layer ${layerNumber} (${instrumentForTitle})`;
+
     const validatedFields = CreateLayer.safeParse({
-      title: formData.get('title'),
+      title: newLayerTitle, // Use the new constructed title
       description: formData.get('description'),
       genre: formData.get('genre'),
       keySignature: formData.get('keySignature') ?? "",
       tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
       audioFile: formData.get('audioFile'),
-      instrument: formData.get('instrument'),
+      instrument: formData.get('instrument'), // This is the instrument for the current layer
       scale: formData.get('scale') ?? "",
       mode: formData.get('mode') ?? "",
       chords: formData.get('chords'),
-      themeId: formData.get('themeId'),
+      themeId: themeId,
     });
     
     if (!validatedFields.success) {
@@ -342,10 +374,11 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       return {
         errors: validatedFields.error.flatten().fieldErrors,
         message: 'Missing or Invalid Fields. Failed to Create Layer.',
+        themeId,
       };
     }    const { 
       title, description, genre, keySignature, tempo, 
-      audioFile, instrument, scale, mode, chords, themeId 
+      audioFile, instrument, scale, mode, chords // themeId is already defined
     } = validatedFields.data;
       let recording_url = null;
     const status = 'complete'; // Layers are considered complete
@@ -476,31 +509,32 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     }
 
     // After uploading both layer recording and retrieving parent theme, mix the two audio files
-    const { fetchThemeById } = await import('./data');
-    const parentTheme = await fetchThemeById(themeId);
-    if (recording_url && parentTheme.sample) {
+    if (recording_url && parentThemeData.sample) {
       // Use a server-side ffmpeg utility to mix original theme and new layer audio
       const { mixAudioFiles } = await import('./audio-mix-server');
-      const mixedUrl = await mixAudioFiles(parentTheme.sample, recording_url);
+      const mixedUrl = await mixAudioFiles(parentThemeData.sample, recording_url);
       recording_url = mixedUrl;
       console.log('Mixed audio URL:', recording_url);
     }
 
     const date = new Date().toISOString().split('T')[0];
 
-    // Insert the layer as a collaboration theme linked to the original theme
+    // Insert the layer into the new collabs table
     await sql`
-      INSERT INTO themes (
+      INSERT INTO collabs (
         member_id, seconds, key, mode, chords, tempo, date, status,
         description, title, genre, recording_url, instrument, parent_theme_id
       ) VALUES (
         ${memberId}, ${seconds}, ${keySignature}, ${mode}, ${chords}, 
         ${tempo}, ${date}, ${status}, ${description}, ${title}, 
         ${genre}, ${recording_url}, ${instrument}, ${themeId}
-      )    `;    console.log('Layer created successfully');
+      )
+    `;
+    console.log('Layer created successfully in collabs table with title:', title);
     // Make sure themeId is a string before using it with revalidatePath
     const pathToRevalidate = `/dashboard/themes/${String(themeId)}`;
     revalidatePath(pathToRevalidate);
+    revalidatePath('/dashboard/collab'); // Add revalidation for the main collab page
     
     // Return success instead of redirecting so client can handle navigation
     return {
@@ -514,7 +548,23 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     return {
       message: 'Database Error: Failed to Create Layer.',
       success: false,
+      themeId,
     };
+  }
+}
+
+// Server action to fetch layers for a specific theme
+export async function getLayersForThemeAction(themeId: string) {
+  'use server';
+  // Import the data fetching function here to ensure it runs in the server context
+  const { fetchLayersByThemeId } = await import('./data');
+  try {
+    const layers = await fetchLayersByThemeId(themeId);
+    return layers; // Successfully return layers
+  } catch (error) {
+    console.error('[Server Action Error] Failed to fetch layers:', error);
+    // Return a more structured error or an empty array to indicate failure
+    return []; // Or throw error to be caught by client if preferred
   }
 }
 

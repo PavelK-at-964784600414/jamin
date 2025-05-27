@@ -26,6 +26,8 @@ export default async function Page({
     fetchFilteredThemes(query, currentPage) as Promise<ThemesTableType[]>
   ]);
 
+  console.log('Themes being passed to Table:', JSON.stringify(themes.map(t => t.id))); // Log theme IDs
+
   return (
     <div className="w-full">
       <div className="flex w-full items-center justify-between">
