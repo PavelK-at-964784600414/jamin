@@ -28,6 +28,24 @@ export const formatDateToLocal = (
   return formatter.format(date);
 };
 
+// New function to format timestamp to local date and time
+export const formatTimestampToLocal = (
+  timestampStr: string,
+  locale: string = 'en-US',
+) => {
+  const date = new Date(timestampStr);
+  const options: Intl.DateTimeFormatOptions = {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  };
+  const formatter = new Intl.DateTimeFormat(locale, options);
+  return formatter.format(date);
+};
+
 export const generateYAxis = (revenue: ChartData[]) => {
   // Calculate what labels we need to display on the y-axis
   // based on highest record and in 1000s

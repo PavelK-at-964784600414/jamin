@@ -3,22 +3,22 @@
 import Image from 'next/image';
 import { UpdateTheme, DeleteTheme } from '@/app/ui/themes/buttons';
 import { formatDateToLocal } from '@/app/lib/utils';
-import { ThemesTable as ThemesTableType, ThemesTable as Layer } from '@/app/lib/definitions'; // Add Layer type alias for clarity
+import { ThemesTable as ThemesTableType, CollabRecord, CollabRecord as Layer } from '@/app/lib/definitions'; 
 import MediaPlayerModal from '@/app/ui/themes/MediaPlayer';
 import React, { useState } from 'react';
 import { PlayIcon } from '@heroicons/react/24/outline';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/app/ui/themes/accordion'; // Import accordion components
-import { getLayersForThemeAction } from '@/app/lib/actions'; // Import the new server action
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/app/ui/themes/accordion';
+import { getLayersForThemeAction } from '@/app/lib/actions'; 
 
 export default function ThemesTable({
   themes,
 }: {
   themes: ThemesTableType[];
 }) {
-  console.log('[Client] ThemesTable received themes:', JSON.stringify(themes?.map(t => t.id) || 'No themes')); // Log theme IDs on client
+  console.log('[Client] ThemesTable received themes:', JSON.stringify(themes?.map(t => t.id) || 'No themes'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null);
-  const [layersByTheme, setLayersByTheme] = useState<{ [key: string]: Layer[] }>({});
+  const [layersByTheme, setLayersByTheme] = useState<{ [key: string]: CollabRecord[] }>({});
 
   const handlePlayClick = (mediaUrl: string) => {
     setSelectedMediaUrl(mediaUrl);
@@ -31,9 +31,8 @@ export default function ThemesTable({
   };
 
   const handleAccordionChange = async (themeId: string | null) => {
-    if (themeId && !layersByTheme[themeId]) { // Check if themeId is not null
+    if (themeId && !layersByTheme[themeId]) { 
       try {
-        // Call the server action instead of the direct data fetching function
         const fetchedLayers = await getLayersForThemeAction(themeId);
         setLayersByTheme(prev => ({ ...prev, [themeId]: Array.isArray(fetchedLayers) ? fetchedLayers : [] }));
       } catch (error) {
@@ -138,12 +137,12 @@ export default function ThemesTable({
                           <li key={layer.id} className="p-2 bg-gray-750 rounded-md">
                             <p className="text-sm font-medium text-yellow-500">{layer.title}</p>
                             <p className="text-xs text-gray-400">Instrument: {layer.instrument}</p>
-                            <p className="text-xs text-gray-400">Added by: {layer.user_name} on {formatDateToLocal(layer.date)}</p>
-                            {layer.recording_url && (
+                            <p className="text-xs text-gray-400">Added on: {formatDateToLocal(layer.date)}</p>
+                            {layer.file_path && ( 
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePlayClick(layer.recording_url!);
+                                  handlePlayClick(layer.file_path!);
                                 }}
                                 className="mt-1 p-1 text-gray-400 hover:text-yellow-500 transition-colors text-xs flex items-center"
                                 aria-label={`Play layer ${layer.title}`}

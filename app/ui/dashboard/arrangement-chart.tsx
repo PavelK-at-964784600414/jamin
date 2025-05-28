@@ -1,10 +1,10 @@
 import { generateYAxis } from '@/app/lib/utils';
 import { CalendarIcon } from '@heroicons/react/24/outline';
 import { lusitana } from '@/app/ui/fonts';
-import { fetchArrangements } from '@/app/lib/data';
+import { fetchCollabs } from '@/app/lib/data'; // Changed from fetchArrangements to fetchCollabs
 
 export default async function ArrangementChart() { // Make component async, remove the props
-  const arrangements = await fetchArrangements(); // Fetch data inside the component
+  const arrangements = await fetchCollabs(); // Changed from fetchArrangements to fetchCollabs
   const chartHeight = 350;
 
   const { yAxisLabels, topLabel } = generateYAxis(arrangements);

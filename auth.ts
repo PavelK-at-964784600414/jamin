@@ -1,93 +1,173 @@
 console.log("AUTH.TS IS BEING PROCESSED - TOP OF FILE");
 // throw new Error("AUTH.TS EXECUTION CONFIRMED - DELIBERATE CRASH"); // Uncomment to test if it crashes
 
-import NextAuth, { type NextAuthConfig } from 'next-auth';
+import NextAuth, { type NextAuthConfig, type Account, type Profile, type User, type Session as NextAuthSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import GoogleProvider from 'next-auth/providers/google'; // Uncommented GoogleProvider
+import GoogleProvider from 'next-auth/providers/google'; 
 import { sql } from '@vercel/postgres';
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid'; // Import uuid
+import { v4 as uuidv4 } from 'uuid'; 
 import type { JWT } from 'next-auth/jwt';
-import type { Session } from 'next-auth';
-import type { NextRequest } from 'next/server'; // Re-enabled NextRequest
+import type { NextRequest } from 'next/server'; 
+import { NextResponse } from 'next/server'; // Import NextResponse
 
 // Define our own type structure for Auth to avoid import issues
-type AuthSession = { // Re-enabled AuthSession type
+// This AuthSession might be redundant if NextAuthSession from 'next-auth' is used consistently.
+// Consider replacing AuthSession with NextAuthSession where appropriate.
+type AuthSession = { 
   user?: {
     id?: string;
     name?: string;
     email?: string;
     image?: string;
   };
+  expires?: string; // Added to match NextAuthSession more closely if needed
 };
 
-type AuthorizedCallbackParams = { // Re-enabled AuthorizedCallbackParams type
-  auth: AuthSession | null;
-  request: NextRequest; // Use NextRequest directly
-};
+export async function signUp(
+  userName: string,
+  email: string,
+  password: string,
+  firstName?: string | null,
+  lastName?: string | null,
+  country?: string | null,
+  instrument?: string | null,
+) {
+  console.log(`[AUTH_SIGNUP] Attempting to register new user: ${email}, username: ${userName}`);
+  try {
+    // Check if user already exists (by email or username)
+    const existingUserResult = await sql`
+      SELECT id FROM members WHERE email = ${email} OR user_name = ${userName}
+    `;
+    if (existingUserResult.rows.length > 0) {
+      console.error(`[AUTH_SIGNUP] User already exists with email ${email} or username ${userName}.`);
+      throw new Error('User with this email or username already exists.');
+    }
 
-export const nextAuthConfig: NextAuthConfig = { // Export nextAuthConfig
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newMemberId = uuidv4();
+
+    // Insert new user
+    // Ensure column names match your database schema.    // Assuming: first_name, last_name, country, instrument
+    await sql`
+      INSERT INTO members (
+        id, 
+        user_name, 
+        email, 
+        password, 
+        first_name, 
+        last_name, 
+        country, 
+        instrument, 
+        created_at
+      )
+      VALUES (
+        ${newMemberId}, 
+        ${userName}, 
+        ${email}, 
+        ${hashedPassword}, 
+        ${firstName}, 
+        ${lastName}, 
+        ${country}, 
+        ${instrument}, 
+        NOW()
+      )
+    `;
+    console.log(`[AUTH_SIGNUP] User ${email} registered successfully with ID: ${newMemberId}.`);
+    // Optionally, return the new user object or ID, though actions.ts doesn't currently use it.
+    return { id: newMemberId, email, userName };
+  } catch (error) {
+    console.error(`[AUTH_SIGNUP] Error during user registration for ${email}:`, error);
+    // Re-throw the error to be caught by the calling server action
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred during sign up.');
+  }
+}
+
+// For the authorized callback, NextAuth expects specific parameter types.
+// The `auth` parameter is typically `Session | null` (imported from `next-auth` as `NextAuthSession`).
+export const nextAuthConfig: NextAuthConfig = { 
   pages: { signIn: '/login', error: '/login' },
   session: { strategy: 'jwt' },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile }: { user: User | any; account?: Account | null; profile?: Profile }) {
       if (account?.provider === "google") {
-        // For Google sign-in, profile should be available and contain user details
-        if (!profile?.email) {
-          console.error("[AUTH_SIGNIN_GOOGLE] Email not found in Google profile");
-          return false; // Or redirect to an error page
+        if (!profile || !profile.email) {
+          console.error("[AUTH_SIGNIN_GOOGLE] Profile or email not found in Google profile.");
+          return false; 
+        }
+        const googleUserEmail = profile.email;
+        const googleUserName = profile.name ?? ''; 
+        const googleUserImage = (profile as any).picture ?? '';
+        const googleProviderId = profile.sub ?? (user as any).id; 
+
+        if (!googleProviderId) {
+          console.error("[AUTH_SIGNIN_GOOGLE] Google Provider ID (profile.sub or user.id) not found.");
+          return false;
         }
         try {
-          const googleUserEmail = profile.email;
-          const googleUserName = profile.name;
-          const googleUserImage = (profile as any).picture; // Google often uses 'picture' for image URL
-          const googleUserId = user.id; // This is the ID from Google, to be used as our member_id
-
-          if (!googleUserId) {
-            console.error("[AUTH_SIGNIN_GOOGLE] User ID not found from Google account");
-            return false;
-          }
-
-          // Check if user already exists in our members table by their Google ID
-          const existingMember = await sql`SELECT * FROM members WHERE id = ${googleUserId}`;
-
-          if (existingMember.rows.length === 0) {
-            // User does not exist, create them
-            console.log(`[AUTH_SIGNIN_GOOGLE] New Google user: ${googleUserEmail}. Creating member record.`);
-            // Add a placeholder for the password field for Google users
-            const placeholderPassword = 'OAUTH_USER_NO_PASSWORD'; 
-            await sql`
-              INSERT INTO members (id, email, user_name, image_url, created_at, password)
-              VALUES (${googleUserId}, ${googleUserEmail}, ${googleUserName}, ${googleUserImage}, NOW(), ${placeholderPassword})
-            `;
-            console.log(`[AUTH_SIGNIN_GOOGLE] Member record created for ${googleUserEmail} with ID ${googleUserId}`);
-          } else {
-            // User exists, optionally update their details if they changed
-            console.log(`[AUTH_SIGNIN_GOOGLE] Existing Google user: ${googleUserEmail}. Verifying details.`);
-            const member = existingMember.rows[0];
-            if (member.user_name !== googleUserName || member.image_url !== googleUserImage) {
+          let memberResult = await sql`SELECT * FROM members WHERE google_provider_id = ${googleProviderId}`;
+          let memberRecord = memberResult.rows[0];
+          if (memberRecord) {
+            console.log(`[AUTH_SIGNIN_GOOGLE] Member ${memberRecord.id} found by google_provider_id ${googleProviderId}.`);
+            if (memberRecord.email !== googleUserEmail || memberRecord.user_name !== googleUserName || memberRecord.image_url !== googleUserImage) {
               await sql`
                 UPDATE members 
-                SET user_name = ${googleUserName}, image_url = ${googleUserImage} 
-                WHERE id = ${googleUserId}
-              `;
-              console.log(`[AUTH_SIGNIN_GOOGLE] Updated details for ${googleUserEmail}`);
+                SET email = ${googleUserEmail}, user_name = ${googleUserName}, image_url = ${googleUserImage} 
+                WHERE id = ${memberRecord.id}`;
+              console.log(`[AUTH_SIGNIN_GOOGLE] Updated details for member ${memberRecord.id}.`);
             }
+            (user as any).id = memberRecord.id; 
+            (user as any).name = googleUserName; 
+            (user as any).email = googleUserEmail; 
+            (user as any).image = googleUserImage; 
+            return true;
           }
-          return true; // Allow sign-in
-        } catch (error) {
+          memberResult = await sql`SELECT * FROM members WHERE email = ${googleUserEmail}`;
+          memberRecord = memberResult.rows[0];
+          if (memberRecord) {
+            console.log(`[AUTH_SIGNIN_GOOGLE] Email ${googleUserEmail} exists for member ID ${memberRecord.id}. Linking Google ID ${googleProviderId}.`);
+            await sql`
+              UPDATE members 
+              SET user_name = ${googleUserName}, image_url = ${googleUserImage}, google_provider_id = ${googleProviderId}
+              WHERE id = ${memberRecord.id}`;
+            console.log(`[AUTH_SIGNIN_GOOGLE] Linked Google account to existing member ${memberRecord.id}.`);
+            (user as any).id = memberRecord.id;
+            (user as any).name = googleUserName;
+            (user as any).email = googleUserEmail;
+            (user as any).image = googleUserImage;
+            return true;
+          }
+          console.log(`[AUTH_SIGNIN_GOOGLE] New user. Email: ${googleUserEmail}. Creating new member with Google ID ${googleProviderId}.`);
+          const newMemberId = uuidv4();
+          const placeholderPassword = 'OAUTH_USER_NO_PASSWORD'; 
+          await sql`
+            INSERT INTO members (id, email, user_name, image_url, created_at, password, google_provider_id)
+            VALUES (${newMemberId}, ${googleUserEmail}, ${googleUserName}, ${googleUserImage}, NOW(), ${placeholderPassword}, ${googleProviderId})`;
+          console.log(`[AUTH_SIGNIN_GOOGLE] New member ${newMemberId} created for email ${googleUserEmail}.`);
+          (user as any).id = newMemberId; 
+          (user as any).name = googleUserName;
+          (user as any).email = googleUserEmail;
+          (user as any).image = googleUserImage;
+          return true;
+        } catch (error: any) {
           console.error("[AUTH_SIGNIN_GOOGLE] Error processing Google sign-in:", error);
-          return false; // Prevent sign-in on error
+          if (error.message && error.message.includes("column") && error.message.includes("google_provider_id") && error.message.includes("does not exist")) {
+             console.error("[AUTH_SIGNIN_GOOGLE] DATABASE SCHEMA ERROR: The column 'google_provider_id' does not exist in the 'members' table. Please add it. SQL: ALTER TABLE members ADD COLUMN google_provider_id TEXT;");
+          }
+          return false; 
         }
       }
       return true; // Default to allow other sign-ins (e.g., credentials)
     },
-    async authorized({ auth, request }: AuthorizedCallbackParams) { // Re-enabled authorized callback
+    async authorized({ auth, request }: { auth: NextAuthSession | null; request: NextRequest }): Promise<boolean | NextResponse> { 
       const { pathname } = request.nextUrl;
       const isLoggedIn = !!auth?.user;
-      // Simplified initial log to avoid potential JSON.stringify issues
       console.log('[AUTH_CALLBACK] Path:', pathname, '| IsLoggedIn:', isLoggedIn, '| Auth object present:', !!auth);
-      if (auth) {
+      if (auth?.user) { // Check if auth.user exists before stringifying
         console.log('[AUTH_CALLBACK] Auth user object present:', !!auth.user, '| User details:', JSON.stringify(auth.user));
       }
 
@@ -98,119 +178,142 @@ export const nextAuthConfig: NextAuthConfig = { // Export nextAuthConfig
           return true;
         }
         console.log('[AUTH_CALLBACK] User is NOT logged in. Redirecting to /login from dashboard attempt.');
-        return false; // Redirect unauthenticated users to login page
+        return false; 
       } else if (isLoggedIn && pathname === '/login') {
         console.log('[AUTH_CALLBACK] User is logged in and on /login page. Redirecting to /dashboard.');
-        return Response.redirect(new URL('/dashboard', request.nextUrl));
+        return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
       }
       console.log('[AUTH_CALLBACK] Path not /dashboard or /login (or user not logged in on /login). Allowing.');
       return true;
     },
-    async jwt({ token, user }: { token: JWT; user?: any }) {
+    async jwt({ token, user }: { token: JWT; user?: User | any }) { // user can be User or AdapterUser, using any for broader compatibility initially
       if (user) {
-        token.id = user.id;
-        token.name = user.name;
-        token.email = user.email;
-        token.image = user.image;
+        token.id = (user as any).id;
+        token.name = (user as any).name;
+        token.email = (user as any).email;
+        token.image = (user as any).image;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
-      (session.user as any).id = token.id as string;
-      (session.user as any).name = token.name as string;
-      (session.user as any).email = token.email as string;
-      (session.user as any).image = token.image as string | undefined;
+    async session({ session, token }: { session: NextAuthSession; token: JWT }): Promise<NextAuthSession> { // Ensure session return type is correct
+      if (token && session.user) {
+        (session.user as any).id = token.id as string;
+        (session.user as any).name = token.name as string;
+        (session.user as any).email = token.email as string;
+        (session.user as any).image = token.image as string | undefined;
+      }
       return session;
     }
   },
   providers: [
     CredentialsProvider({
-      credentials: { email: {}, password: {} },
-      async authorize(credentials) {
-        const email = credentials?.email;
-        const password = credentials?.password;
-        if (typeof email !== 'string' || typeof password !== 'string') return null;
-        const res = await sql`SELECT * FROM members WHERE email=${email}`;
-        const user = res.rows[0];
-        if (!user) return null;
-        const valid = await bcrypt.compare(password, user.password);
-        if (!valid) return null;
-        return { id: user.id, name: user.user_name, email: user.email, image: user.image_url };
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials, req) { // req parameter is available but not used in this logic
+        if (typeof credentials?.email !== 'string' || typeof credentials?.password !== 'string') {
+          console.log("[AUTH_CREDENTIALS] Invalid credentials format");
+          return null;
+        }
+        const email = credentials.email;
+        const password = credentials.password;
+
+        try {
+          console.log(`[AUTH_CREDENTIALS] Attempting to authorize user: ${email}`);
+          const result = await sql`SELECT * FROM members WHERE email = ${email}`;
+          const member = result.rows[0];
+
+          if (!member) {
+            console.log(`[AUTH_CREDENTIALS] No member found with email: ${email}`);
+            return null;
+          }
+
+          // Ensure member.password is a string before comparing
+          if (typeof member.password !== 'string') {
+            console.error(`[AUTH_CREDENTIALS] Password for member ${email} is not a string.`);
+            return null;
+          }
+
+          const isPasswordValid = await bcrypt.compare(password, member.password);
+          if (!isPasswordValid) {
+            console.log(`[AUTH_CREDENTIALS] Invalid password for email: ${email}`);
+            return null;
+          }
+
+          console.log(`[AUTH_CREDENTIALS] User ${email} authorized successfully.`);
+          // Ensure the returned object matches the expected User type from next-auth
+          return {
+            id: member.id as string,
+            name: member.user_name as string | null, // Allow null if user_name can be null
+            email: member.email as string,
+            image: member.image_url as string | null, // Allow null if image_url can be null
+          } as User; // Cast to User type
+
+        } catch (error) {
+          console.error(`[AUTH_CREDENTIALS] Error during authorization for ${email}:`, error);
+          return null;
+        }
       }
     }),
-    GoogleProvider({ // Uncommented GoogleProvider configuration
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    })
+    (() => { // IIFE to check env vars before initializing GoogleProvider
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        console.error("CRITICAL_AUTH_ERROR: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set in environment variables. Google Sign-In will be disabled or may fail.");
+        // Return a placeholder or skip GoogleProvider if critical env vars are missing
+        // For now, we'll let it proceed and potentially fail if NextAuth handles it, 
+        // or rely on the '!' assertions to throw if they are truly undefined.
+        // A more robust solution might be to conditionally exclude GoogleProvider from the array.
+      }
+      return GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        allowDangerousEmailAccountLinking: true, // Recommended for email-based account linking
+      });
+    })(),
   ]
 };
 
-let authExports;
+let authExports: any; 
 try {
-  console.log("Attempting to initialize NextAuth with Credentials, Google & authorized callback..."); // Updated log message
-  authExports = NextAuth(nextAuthConfig);
-  console.log("NextAuth initialized. authExports:", authExports);
-  if (authExports && authExports.handlers) {
-    console.log("Handlers object IS defined:", authExports.handlers);
-  } else {
-    console.error("Handlers object is UNDEFINED after NextAuth initialization.");
+  console.log("AUTH.TS: Attempting to initialize NextAuth...");
+  const initializedAuth = NextAuth(nextAuthConfig);
+  
+  if (!initializedAuth || typeof initializedAuth.handlers !== 'object' || typeof initializedAuth.auth !== 'function' || typeof initializedAuth.signIn !== 'function' || typeof initializedAuth.signOut !== 'function') {
+    console.error("CRITICAL_AUTH_ERROR: NextAuth initialization failed to return a valid object with expected exports (handlers, auth, signIn, signOut). Fallback will be used.");
+    console.error("CRITICAL_AUTH_ERROR: initializedAuth object was:", initializedAuth);
+    throw new Error("NextAuth initialization did not produce the expected exports. Check logs for details, especially regarding provider configurations and environment variables.");
   }
+  authExports = initializedAuth;
+  console.log("AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.");
 } catch (error) {
-  console.error("Error initializing NextAuth (with Credentials & authorized callback):", error);
+  console.error("CRITICAL_AUTH_ERROR: An error occurred during NextAuth initialization process:", error);
   authExports = {
     handlers: {
-      GET: () => new Response("NextAuth (with CredentialsProvider) initialization failed. Check server logs.", { status: 500 }),
-      POST: () => new Response("NextAuth (with CredentialsProvider) initialization failed. Check server logs.", { status: 500 }),
+      GET: () => { 
+        console.error("Fallback GET handler invoked due to NextAuth initialization failure."); 
+        return new Response("Auth GET initialization failed. Check server logs.", { status: 500 }); 
+      },
+      POST: () => { 
+        console.error("Fallback POST handler invoked due to NextAuth initialization failure."); 
+        return new Response("Auth POST initialization failed. Check server logs.", { status: 500 }); 
+      },
     },
-    auth: async () => {
-      console.error("CRITICAL: auth() (with CredentialsProvider) called but NextAuth failed to initialize.");
-      return null;
+    auth: async () => { 
+      console.error("Fallback auth() invoked due to NextAuth initialization failure."); 
+      return null; 
     },
-    signIn: async () => {
-      console.error("CRITICAL: signIn() (with CredentialsProvider) called but NextAuth failed to initialize.");
-      return { ok: false, error: "NextAuthInitError" };
+    signIn: async () => { 
+      console.error("Fallback signIn() invoked due to NextAuth initialization failure."); 
+      return { ok: false, error: "NextAuthInitError" } as any; 
     },
-    signOut: async () => {
-      console.error("CRITICAL: signOut() (with CredentialsProvider) called but NextAuth failed to initialize.");
-      throw new Error("NextAuth (with CredentialsProvider) failed to initialize. Cannot sign out.");
+    signOut: async () => { 
+      console.error("Fallback signOut() invoked due to NextAuth initialization failure."); 
+      throw new Error("NextAuth failed to initialize. Cannot sign out."); 
     },
   };
+  // Re-throw the error to ensure the build process catches this as a critical failure.
+  // This should provide a clearer point of failure in the build logs.
+  throw new Error(`NextAuth initialization failed. Original error: ${error}. Check CRITICAL_AUTH_ERROR messages above.`);
 }
 
 export const { handlers, auth, signIn, signOut } = authExports;
-
-export async function signUp(
-  userName: string,
-  email: string,
-  password: string,
-  firstName: string | null,
-  lastName: string | null,
-  country: string | null,
-  instrument: string | null
-) {
-  console.log(`[AUTH_SIGNUP] Attempting to sign up user: ${email}`);
-  try {
-    // Check if user already exists
-    const existingUser = await sql`SELECT * FROM members WHERE email = ${email}`;
-    if (existingUser.rows.length > 0) {
-      console.warn(`[AUTH_SIGNUP] User already exists with email: ${email}`);
-      return { error: "User already exists with this email." };
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const userId = uuidv4(); // Generate a new UUID for the user
-
-    // Insert new user into the database
-    await sql`
-      INSERT INTO members (id, user_name, email, password, first_name, last_name, country, instrument, created_at, image_url)
-      VALUES (${userId}, ${userName}, ${email}, ${hashedPassword}, ${firstName}, ${lastName}, ${country}, ${instrument}, NOW(), NULL)
-    `;
-
-    console.log(`[AUTH_SIGNUP] User ${email} signed up successfully with ID: ${userId}`);
-    return { success: "User signed up successfully. Please log in." };
-  } catch (error) {
-    console.error(`[AUTH_SIGNUP] Error during sign up for ${email}:`, error);
-    return { error: "An error occurred during sign up. Please try again." };
-  }
-}

@@ -35,6 +35,7 @@ export type Theme = {
   date: string;
   status: 'in progress' | 'complete';
   parent_theme_id?: string; // Reference to parent theme for layers
+  image_url?: string; // Added field for theme's image URL
 };
 
 // New type for signup data
@@ -72,8 +73,7 @@ export type ThemesTable = {
   seconds: number; 
   date: string;
   status: 'in progress' | 'complete';
-  title: string; // Primary field - the database uses this column now
-  // Remove name field entirely as it's no longer needed after migration
+  title: string; 
   chords: string;
   key: string; 
   mode: string;
@@ -82,8 +82,8 @@ export type ThemesTable = {
   recording_url: string;
   user_name: string; // From members.user_name
   instrument: string;
-  image_url: string; // From members.image_url
-  parent_theme_id?: string; // For layered themes
+  image_url: string; // From themes.image_url (Corrected comment)
+  parent_theme_id?: string; 
 };
 
 // Member table related types
@@ -127,8 +127,9 @@ export type ThemeForm = {
   tempo: number;
   instrument: string;
   sample: string;
-  date: Date;
+  date: string; 
   status: 'in progress' | 'complete';
+  image_url?: string; // Added field for theme's image URL
 };
 
 export type FormState =
@@ -196,8 +197,79 @@ export type LayerWithParentTheme = {
   layer_instrument: string;
   layer_date: string;
   layer_creator_name: string;
+  layer_creator_image_url?: string; // Added for layer creator's image
   parent_theme_id: string;
   parent_theme_title: string;
   parent_theme_creator_name: string;
+  parent_theme_creator_image_url?: string; // Added for parent theme creator's image
+};
+
+export type Participant = {
+  id: string; // member_id
+  name: string;
+  image_url?: string;
+};
+
+export type EnrichedLayerWithParentTheme = {
+  layer_id: string;
+  layer_title: string;
+  layer_instrument: string;
+  layer_date: string; // Keep as string from DB, convert to Date object in JS if needed
+  layer_recording_url?: string; // Add recording URL for play functionality
+  layer_creator_id: string;
+  layer_creator_name: string;
+  layer_creator_image_url?: string;
+  parent_theme_id: string;
+  parent_theme_title: string;
+  parent_theme_date: string; // Keep as string from DB
+  parent_theme_creator_id: string;
+  parent_theme_creator_name: string;
+  parent_theme_creator_image_url?: string;
+};
+
+// Individual layer data within a collaboration
+export type CollaborationLayer = {
+  layer_id: string;
+  layer_title: string;
+  layer_instrument: string;
+  layer_date: string;
+  layer_creator_id: string;
+  layer_creator_name: string;
+  layer_creator_image_url?: string;
+  layer_recording_url?: string;
+};
+
+export type CollaborationDisplayData = {
+  collab_id: string; // The latest layer/collab ID (represents this collaboration state)
+  collab_title: string; // The latest layer title
+  collab_instrument: string; // The latest layer instrument
+  collab_date: string; // When the latest layer was created
+  collab_creator_id: string; // Who created the latest layer
+  collab_creator_name: string; // Latest layer creator's name
+  collab_creator_image_url?: string; // Latest layer creator's image
+  collab_recording_url?: string; // The latest layer's recording URL
+  parent_theme_id: string; // The original theme this collaboration is built on
+  parent_theme_title: string; // The original theme title
+  parent_theme_date: string; // When the original theme was created
+  parent_theme_creator_id: string; // Who created the original theme
+  parent_theme_creator_name: string; // Original theme creator's name
+  parent_theme_creator_image_url?: string; // Original theme creator's image
+  parent_theme_recording_url?: string; // Original theme's recording URL
+  total_layers_count: number; // Total number of layers up to this point (including this collaboration)
+  cumulative_layers: CollaborationLayer[]; // All layers that make up this collaboration (chronologically ordered)
+  participants: Participant[]; // All participants in this cumulative collaboration
+};
+
+// For the table row itself, if we decide to make it a specific type
+export type CollabTableRow = CollaborationDisplayData; // Alias for now
+
+export type CollabRecord = {
+  id: string; // layer's ID
+  title: string;
+  instrument: string;
+  file_path: string; 
+  parent_theme_id: string;
+  member_id: string; // Layer creator's ID
+  date: string; // Layer creation date (changed from created_at)
 };
 

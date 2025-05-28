@@ -16,7 +16,7 @@ export function themeFormToThemesTable(themeForm: ThemeForm): ThemesTable {
     tempo: themeForm.tempo,
     instrument: themeForm.instrument,
     recording_url: themeForm.sample,
-    date: themeForm.date.toISOString(),
+    date: themeForm.date, // Corrected: themeForm.date is already a string
     status: themeForm.status,
     image_url: '', // This needs to be provided from somewhere else
   };
@@ -38,7 +38,7 @@ export function themesTableToThemeForm(theme: ThemesTable): ThemeForm {
     tempo: theme.tempo,
     instrument: theme.instrument,
     sample: theme.recording_url,
-    date: new Date(theme.date),
+    date: theme.date, // Corrected: theme.date is already a string, no need for new Date()
     status: theme.status,
   };
 }
