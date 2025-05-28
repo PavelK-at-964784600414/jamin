@@ -1,21 +1,79 @@
 import { sql } from '@vercel/postgres';
+import { unstable_noStore as noStore } from 'next/cache';
 import {
-  MemberField,
-  MembersTableType,
-  ThemeForm,
+  Member, 
+  Theme, 
+  CollabRecord,
+  EnrichedLayerWithParentTheme,
+  CollaborationDisplayData,
+  Participant,
   ThemesTable,
-  LatestThemesRaw,
   LatestThemes,
-  ThemePages,
-  LayerWithParentTheme, // This was missing before
+  ThemeForm, 
+  FormattedMembersTable, // Imported FormattedMembersTable
 } from './definitions';
-import { formatCurrency } from './utils';
+
 const ITEMS_PER_PAGE = 6;
 
-export async function fetchLatestThemes() {
+export async function fetchUser(email: string): Promise<Member | undefined> {
+  noStore();
+  try {
+    const user = await sql<Member>`SELECT * FROM members WHERE email=${email}`;
+    return user.rows[0];
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    throw new Error('Failed to fetch user.');
+  }
+}
+
+export async function fetchThemeById(id: string): Promise<ThemeForm | null> {
+  noStore();
+  try {
+    const data = await sql<ThemeForm>`
+      SELECT
+        themes.id,
+        members.user_name, 
+        themes.title,
+        themes.description,
+        themes.key AS keySignature, 
+        themes.mode,
+        themes.chords,
+        themes.tempo,
+        themes.status,
+        themes.recording_url AS sample,
+        members.image_url AS image_url,
+        themes.seconds,
+        themes.date AS date
+      FROM themes
+      JOIN members ON themes.member_id = members.id
+      WHERE themes.id = ${id};
+    `;
+
+    const theme = data.rows[0];
+    if (theme) {
+      // Convert tempo to number if it's stored as string and ThemeForm expects number
+      theme.tempo = Number(theme.tempo); 
+      // No sections property in ThemeForm based on provided definitions.ts
+      // If sections were part of themes table and needed in ThemeForm, 
+      // ThemeForm definition would need to be updated.
+    }
+    return theme || null;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch theme.');
+  }
+}
+
+export async function fetchLatestThemes(): Promise<LatestThemes[]> {
+  noStore();
   try {
     const data = await sql<LatestThemes>`
-      SELECT themes.seconds, members.user_name AS member, members.image_url, themes.title, themes.date, themes.id
+      SELECT
+        themes.id,
+        themes.title,
+        themes.date,
+        members.user_name AS user_name,
+        members.image_url AS image_url
       FROM themes
       JOIN members ON themes.member_id = members.id
       ORDER BY themes.date DESC
@@ -23,154 +81,94 @@ export async function fetchLatestThemes() {
     `;
     return data.rows;
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error('Database Error fetchLatestThemes:', error);
     throw new Error('Failed to fetch the latest themes.');
   }
 }
 
-export async function fetchCardData() {
-  try {
-    const themeCountPromise = sql<{ count: number }>`SELECT COUNT(*) as count FROM themes`;
-    const memberCountPromise = sql<{ count: number }>`SELECT COUNT(*) as count FROM members`;
-    const themeStatusPromise = sql<{ complete: number; in_progress: number }>`
-      SELECT
-        SUM(CASE WHEN status = 'complete' THEN 1 ELSE 0 END) AS "complete",
-        SUM(CASE WHEN status = 'in progress' THEN 1 ELSE 0 END) AS "in_progress"
-      FROM themes`;
-
-    const [themeCountResult, memberCountResult, themeStatusResult] = await Promise.all([
-      themeCountPromise,
-      memberCountPromise,
-      themeStatusPromise,
-    ]);
-
-    const numberOfThemes = themeCountResult.rows[0]?.count ?? 0;
-    const numberOfMembers = memberCountResult.rows[0]?.count ?? 0;
-    const totalArangements = themeStatusResult.rows[0]?.complete ?? 0;
-    const totalThemes = themeStatusResult.rows[0]?.in_progress ?? 0;
-
-    return {
-      numberOfMembers,
-      numberOfThemes,
-      totalArangements,
-      totalThemes,
-    };
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch card data.');
-  }
-}
-
-export async function fetchFilteredThemes(query: string, currentPage: number) {
+export async function fetchFilteredThemes(
+  query: string,
+  currentPage: number,
+): Promise<ThemesTable[]> {
+  noStore();
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
     const themes = await sql<ThemesTable>`
       SELECT
         themes.id,
-        themes.seconds,
+        themes.title,
         themes.date,
         themes.status,
-        themes.title,
+        members.image_url AS image_url,
+        members.user_name AS user_name,
+        themes.seconds,
         themes.chords,
         themes.key,
         themes.mode,
         themes.tempo,
         themes.description,
         themes.recording_url,
-        members.user_name,
-        themes.instrument,
-        members.image_url
+        themes.instrument
       FROM themes
       JOIN members ON themes.member_id = members.id
       WHERE
         members.user_name ILIKE ${`%${query}%`} OR
         themes.title ILIKE ${`%${query}%`} OR
-        themes.instrument ILIKE ${`%${query}%`} OR
-        themes.seconds::text ILIKE ${`%${query}%`} OR
-        themes.date::text ILIKE ${`%${query}%`} OR
         themes.status ILIKE ${`%${query}%`}
       ORDER BY themes.date DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
     return themes.rows;
   } catch (error) {
-    console.error('Database Error fetching filtered themes:', error);
+    console.error('Database Error:', error);
     throw new Error('Failed to fetch themes.');
   }
 }
 
-export async function fetchThemesPages(query: string) {
+export async function fetchThemesPages(query: string): Promise<number> {
+  noStore();
   try {
     const count = await sql`
-    SELECT COUNT(*) as count
-    FROM themes
-    JOIN members ON themes.member_id = members.id
-    WHERE
-      members.user_name ILIKE ${`%${query}%`} OR
-      themes.title ILIKE ${`%${query}%`} OR
-      themes.seconds::text ILIKE ${`%${query}%`} OR
-      themes.status ILIKE ${`%${query}%`}
+      SELECT COUNT(*)
+      FROM themes
+      JOIN members ON themes.member_id = members.id
+      WHERE
+        members.user_name ILIKE ${`%${query}%`} OR
+        themes.title ILIKE ${`%${query}%`} OR
+        themes.status ILIKE ${`%${query}%`}
     `;
-
-    const totalPages = Math.ceil(Number(count.rows[0]?.count ?? 0) / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of themes.');
+    throw new Error('Failed to fetch total number of theme pages.');
   }
 }
 
-// add data.rows and totalPages to return statement, and what other things related on this return statement that needs to be updated
-export async function fetchMembersPages(query: string) {
-  try {
-    const data = await sql`
-      SELECT 
-        COUNT(*) OVER() AS count,
-        members.id,
-        members.user_name,
-        members.instrument,
-        themes.title AS theme_name,
-        COUNT(DISTINCT themes.id) AS themes_count,
-        MAX(themes.date) AS latest_theme_date
-      FROM members
-      LEFT JOIN themes ON members.id = themes.member_id
-      WHERE themes.title ILIKE ${'%' + query + '%'}
-      GROUP BY members.id, themes.title
-      ORDER BY members.user_name ASC
-    `;
-    if (data.rows.length === 0) {
-      return 0;
-    }
-    const totalPages = Math.ceil(Number(data.rows[0].count) / ITEMS_PER_PAGE);
-    return totalPages; //, data.rows;
-  } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch all members.');
-  }
-}
-
-export async function fetchMembers(query: string) {
+export async function fetchMembers(query?: string, currentPage?: number): Promise<FormattedMembersTable[]> {
+  noStore();
+  const offset = ((currentPage || 1) - 1) * ITEMS_PER_PAGE;
+  
   try {
     const data = await sql`
       SELECT
-        members.id,
-        members.user_name,
-        members.image_url,
-        members.instrument,
-        themes.title AS theme_name,
-        COUNT(DISTINCT themes.id) AS themes_count,
-        MAX(themes.date) AS latest_theme_date,
-        (SELECT COUNT(*) FROM themes WHERE themes.member_id != members.id AND themes.parent_theme_id IN 
-          (SELECT id FROM themes WHERE themes.member_id = members.id)
-        ) AS collabs_count
-      FROM members
-      LEFT JOIN themes ON members.id = themes.member_id
+        m.id,
+        m.user_name,
+        m.email,
+        m.image_url,
+        COALESCE(m.instrument, 'Not specified') AS instrument,
+        (SELECT COUNT(*) FROM themes t WHERE t.member_id = m.id) AS themes_count,
+        (SELECT COUNT(*) FROM collabs c WHERE c.member_id = m.id) AS collabs_count,
+        (SELECT t.title FROM themes t WHERE t.member_id = m.id ORDER BY t.date DESC LIMIT 1) AS theme_name,
+        (SELECT t.date FROM themes t WHERE t.member_id = m.id ORDER BY t.date DESC LIMIT 1) AS latest_theme_date
+      FROM members m
       WHERE
-        members.first_name ILIKE ${`%${query}%`} OR
-        themes.title ILIKE ${'%' + query + '%'}
-      GROUP BY members.id, themes.title
-      ORDER BY members.user_name ASC
+        (${query || ''} = '' OR 
+         m.user_name ILIKE ${`%${query || ''}%`} OR 
+         m.email ILIKE ${`%${query || ''}%`})
+      ORDER BY m.user_name ASC
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
 
     // Format the data to match FormattedMembersTable
@@ -189,162 +187,240 @@ export async function fetchMembers(query: string) {
 
     return formattedMembers;
   } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch all members.');
+    console.error('Database Error (fetchMembers):', err);
+    throw new Error('Failed to fetch members.');
   }
 }
 
-export async function fetchThemeById(id: string) {
-  console.log('fetchThemeById Fetching theme by ID:', id);
+export async function fetchMembersPages(query: string): Promise<number> {
+  noStore();
   try {
-    // Now only select title as we've completed the schema transition
-    const data = await sql<ThemesTable>`
-      SELECT
-        themes.*,
-        themes.title,
-        members.user_name,
-        members.image_url
-      FROM themes
-      JOIN members ON themes.member_id = members.id
-      WHERE themes.id = ${id};
-    `;
-    console.log('Fetched theme data:', data);
-    const theme = data.rows[0];
-    console.log('Theme:', theme);
-    
-    // Convert to ThemeForm format
-    const themeForm = {
-      id: theme.id,
-      user_name: theme.user_name,
-      title: theme.title,
-      description: theme.description || '',
-      seconds: theme.seconds,
-      keySignature: theme.key, // Map key to keySignature
-      mode: theme.mode,
-      chords: theme.chords,
-      tempo: theme.tempo,
-      instrument: theme.instrument,
-      sample: theme.recording_url, // Map recording_url to sample
-      date: new Date(theme.date),
-      status: theme.status as 'in progress' | 'complete'
-    };
-    
-    return themeForm;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch theme.');
-  }
-}
-
-export async function fetchLayersByThemeId(id: string) {
-  try {
-    const data = await sql<ThemesTable>`SELECT collabs.*, members.user_name, members.image_url FROM collabs JOIN members ON collabs.member_id = members.id WHERE collabs.parent_theme_id = ${id} ORDER BY collabs.date DESC;`;
-    return data.rows;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch theme layers.');
-  }
-}
-
-export async function fetchAllLayersWithParentThemes() {
-  try {
-    const data = await sql<LayerWithParentTheme>`
-      SELECT
-        layers.id AS layer_id,
-        layers.title AS layer_title,
-        layers.instrument AS layer_instrument,
-        layers.date AS layer_date,
-        layer_creator.user_name AS layer_creator_name,
-        parent_theme.id AS parent_theme_id,
-        parent_theme.title AS parent_theme_title,
-        parent_creator.user_name AS parent_theme_creator_name
-      FROM collabs AS layers
-      JOIN members AS layer_creator ON layers.member_id = layer_creator.id
-      JOIN themes AS parent_theme ON layers.parent_theme_id = parent_theme.id
-      JOIN members AS parent_creator ON parent_theme.member_id = parent_creator.id
-      WHERE layers.parent_theme_id IS NOT NULL
-      ORDER BY parent_theme.date DESC, layers.date ASC;
-    `;
-    return data.rows;
-  } catch (error) {
-    console.error('Database Error fetching all layers with parent themes:', error);
-    throw new Error('Failed to fetch all layers with parent themes.');
-  }
-}
-
-export async function fetchFilteredMembers(query: string) {
-  try {
-    const data = await sql<MembersTableType>`
-      SELECT
-        members.id,
-        members.user_name,
-        members.email,
-        members.image_url,
-        COUNT(themes.id) AS total_themes,
-        SUM(CASE WHEN themes.status = 'in progress' THEN themes.seconds ELSE 0 END) AS total_in_progress,
-        SUM(CASE WHEN themes.status = 'complete' THEN themes.seconds ELSE 0 END) AS total_complete
+    const count = await sql`
+      SELECT COUNT(*)
       FROM members
-      LEFT JOIN themes ON members.id = themes.member_id
       WHERE
-        members.name ILIKE ${`%${query}%`} OR
+        members.user_name ILIKE ${`%${query}%`} OR
         members.email ILIKE ${`%${query}%`}
-      GROUP BY members.id, members.name, members.email, members.image_url
-      ORDER BY members.name ASC
     `;
-
-    const members = data.rows.map((member) => ({
-      ...member,
-      total_in_progress: member.total_in_progress,
-      total_complete: member.total_complete,
-    }));
-
-    return members;
-  } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch member table.');
+    const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of member pages.');
   }
 }
-export async function fetchCollabs() {
+
+// Changed return type to CollabRecord[]
+export async function fetchLayersByThemeId(themeId: string): Promise<CollabRecord[]> {
+  noStore();
+  try {
+    const id = String(themeId);
+    const data = await sql<CollabRecord>`
+      SELECT
+        c.id, 
+        c.title,
+        c.instrument,
+        c.recording_url as file_path, 
+        c.parent_theme_id, 
+        c.member_id, 
+        c.date
+      FROM collabs c
+      WHERE c.parent_theme_id = ${id}
+      ORDER BY c.date ASC;
+    `;
+    return data.rows;
+  } catch (error) {
+    console.error(`Database Error: Failed to fetch layers for theme ID ${themeId}:`, error);
+    throw error;
+  }
+}
+
+export async function fetchAllLayersWithParentThemes(): Promise<EnrichedLayerWithParentTheme[]> {
+  noStore();
+  try {
+    const data = await sql<EnrichedLayerWithParentTheme>`
+      SELECT
+        c.id AS layer_id,
+        c.title AS layer_title, -- Removed stray character here
+        c.instrument AS layer_instrument,
+        c.date AS layer_date,
+        c.recording_url AS layer_recording_url,
+        c.member_id AS layer_creator_id,
+        m_layer.user_name AS layer_creator_name,
+        m_layer.image_url AS layer_creator_image_url,
+        t.id AS parent_theme_id,
+        t.title AS parent_theme_title,
+        t.date AS parent_theme_date,
+        t.member_id AS parent_theme_creator_id,
+        m_theme.user_name AS parent_theme_creator_name,
+        m_theme.image_url AS parent_theme_creator_image_url
+      FROM collabs c
+      JOIN themes t ON c.parent_theme_id = t.id
+      JOIN members m_layer ON c.member_id = m_layer.id
+      JOIN members m_theme ON t.member_id = m_theme.id
+      ORDER BY t.date DESC, c.date ASC;
+    `;
+    return data.rows;
+  } catch (error) {
+    console.error('Database Error: Failed to fetch all layers with parent themes:', error);
+    throw error;
+  }
+}
+
+export async function fetchCollaborationData(): Promise<CollaborationDisplayData[]> {
+  noStore();
+  try {
+    const enrichedLayers = await fetchAllLayersWithParentThemes();
+    const collaborations: CollaborationDisplayData[] = [];
+
+    // Group layers by theme
+    const layersByTheme = new Map<string, EnrichedLayerWithParentTheme[]>();
+    
+    enrichedLayers.forEach(layer => {
+      if (!layersByTheme.has(layer.parent_theme_id)) {
+        layersByTheme.set(layer.parent_theme_id, []);
+      }
+      layersByTheme.get(layer.parent_theme_id)!.push(layer);
+    });
+
+    // For each theme, create cumulative collaborations
+    for (const [themeId, layers] of layersByTheme) {
+      // Sort layers chronologically
+      layers.sort((a, b) => new Date(a.layer_date).getTime() - new Date(b.layer_date).getTime());
+
+      // Create a collaboration for each layer, including all previous layers
+      for (let i = 0; i < layers.length; i++) {
+        const currentLayer = layers[i];
+        const cumulativeLayers = layers.slice(0, i + 1); // All layers up to and including current
+        
+        // Get all unique participants up to this point (original creator + all layer creators so far)
+        const participantMap = new Map<string, Participant>();
+        
+        // Add the original theme creator
+        participantMap.set(currentLayer.parent_theme_creator_id, {
+          id: currentLayer.parent_theme_creator_id,
+          name: currentLayer.parent_theme_creator_name,
+          image_url: currentLayer.parent_theme_creator_image_url,
+        });
+
+        // Add all layer creators up to this point
+        cumulativeLayers.forEach(layer => {
+          if (!participantMap.has(layer.layer_creator_id)) {
+            participantMap.set(layer.layer_creator_id, {
+              id: layer.layer_creator_id,
+              name: layer.layer_creator_name,
+              image_url: layer.layer_creator_image_url,
+            });
+          }
+        });
+
+        // Create cumulative layers array
+        const cumulativeLayersData: any[] = cumulativeLayers.map(layer => ({
+          layer_id: layer.layer_id,
+          layer_title: layer.layer_title,
+          layer_instrument: layer.layer_instrument,
+          layer_date: layer.layer_date,
+          layer_creator_id: layer.layer_creator_id,
+          layer_creator_name: layer.layer_creator_name,
+          layer_creator_image_url: layer.layer_creator_image_url,
+          layer_recording_url: layer.layer_recording_url,
+        }));
+
+        // Create a collaboration record for this cumulative state
+        collaborations.push({
+          collab_id: currentLayer.layer_id, // Use the latest layer ID as the collaboration ID
+          collab_title: currentLayer.layer_title,
+          collab_instrument: currentLayer.layer_instrument,
+          collab_date: currentLayer.layer_date,
+          collab_creator_id: currentLayer.layer_creator_id,
+          collab_creator_name: currentLayer.layer_creator_name,
+          collab_creator_image_url: currentLayer.layer_creator_image_url,
+          collab_recording_url: currentLayer.layer_recording_url,
+          parent_theme_id: currentLayer.parent_theme_id,
+          parent_theme_title: currentLayer.parent_theme_title,
+          parent_theme_date: currentLayer.parent_theme_date,
+          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
+          parent_theme_recording_url: undefined, // We'll need to fetch this separately if needed
+          total_layers_count: cumulativeLayers.length, // Number of layers up to this point
+          cumulative_layers: cumulativeLayersData,
+          participants: Array.from(participantMap.values()),
+        });
+      }
+    }
+    
+    // Sort by collaboration date (most recent first)
+    collaborations.sort((a, b) => new Date(b.collab_date).getTime() - new Date(a.collab_date).getTime());
+
+    return collaborations;
+
+  } catch (error) {
+    console.error('Database Error: Failed to fetch collaboration data:', error);
+    throw error;
+  }
+}
+
+// Renamed from fetchCollabsForChart to fetchCollabs and simplified typing
+export async function fetchCollabs(): Promise<any[]> { // Using any[] for now
+  noStore();
   try {
     const data = await sql`
       SELECT
-        date AS month,
-        SUM(seconds) AS collab
-      FROM (
-        SELECT date, seconds FROM themes WHERE title = 'Theme1'
-        UNION ALL
-        SELECT date, seconds FROM themes WHERE title = 'Theme2'
-      ) AS combined_themes
-      GROUP BY date
-      ORDER BY date;
+        TO_CHAR(date::timestamp, 'YYYY-MM') AS month,
+        COUNT(id)::text AS count
+      FROM collabs
+      GROUP BY month
+      ORDER BY month ASC;
     `;
-    return data.rows;
+    // Map to the expected structure, converting count to number
+    return data.rows.map((row: any) => ({
+      month: row.month,
+      count: parseInt(row.count, 10),
+    }));
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch collaborations.');
+    console.error('Database Error (fetchCollabs):', error);
+    throw new Error('Failed to fetch collaboration data for chart.');
   }
 }
 
-export async function fetchArrangements() {
+// Updated fetchCardData to provide necessary data without relying on theme.image_url
+export async function fetchCardData() {
+  noStore();
   try {
-    // For simplicity, we'll return a static array of dummy data 
-    // since the actual function appears to be missing from the codebase
-    return [
-      { month: 'Jan', revenue: 2000 },
-      { month: 'Feb', revenue: 1800 },
-      { month: 'Mar', revenue: 2200 },
-      { month: 'Apr', revenue: 2500 },
-      { month: 'May', revenue: 2300 },
-      { month: 'Jun', revenue: 3200 },
-      { month: 'Jul', revenue: 2800 },
-      { month: 'Aug', revenue: 2400 },
-      { month: 'Sep', revenue: 2900 },
-      { month: 'Oct', revenue: 3100 },
-      { month: 'Nov', revenue: 3500 },
-      { month: 'Dec', revenue: 3800 },
-    ];
+    const memberCountPromise = sql`SELECT COUNT(*) FROM members`;
+    const themeCountPromise = sql`SELECT COUNT(*) FROM themes`;
+    const collabCountPromise = sql`SELECT COUNT(*) FROM collabs`; // Assuming 'collabs' is the table for layers/arrangements
+
+    const data = await Promise.all([
+      memberCountPromise,
+      themeCountPromise,
+      collabCountPromise,
+    ]);
+
+    const numberOfMembers = Number(data[0].rows[0].count ?? '0');
+    const numberOfThemes = Number(data[1].rows[0].count ?? '0'); // This is total themes
+    const totalArangements = Number(data[2].rows[0].count ?? '0'); // This is total layers/collabs
+
+    // The original call in cards.tsx was:
+    // const { numberOfMembers, numberOfThemes, totalArangements, totalThemes } = await fetchCardData();
+    // We are returning numberOfThemes as totalThemes as well, adjust if distinct logic is needed.
+    return {
+      numberOfMembers,
+      numberOfThemes, // Represents total unique parent themes
+      totalArangements, // Represents total layers or collaborative tracks
+      totalThemes: numberOfThemes, // Assuming this means total parent themes for now
+    };
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch arrangements data.');
+    throw new Error('Failed to fetch card data.');
   }
 }
+
+// Utility function, if needed elsewhere, or ensure it\'s imported if defined elsewhere
+// export const formatCurrency = (amount: number | string) => {
+//   return (Number(amount) / 100).toLocaleString('en-US', {
+//     style: 'currency',
+//     currency: 'USD',
+//   });
+// };

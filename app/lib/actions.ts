@@ -232,13 +232,31 @@ export async function authenticate(
   formData: FormData,
 ) {
   'use server';
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
-  const res = await signIn('credentials', { redirect: false, email, password });
-  if (!res || !res.ok) {
-    return 'Invalid credentials.';
+  try {
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    
+    // Use signIn with redirect to handle the authentication properly
+    await signIn('credentials', { 
+      email, 
+      password, 
+      redirectTo: '/dashboard'
+    });
+    
+    // If we reach here, authentication was successful
+    return undefined;
+  } catch (error) {
+    // Handle authentication errors
+    if (isAuthError(error)) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.';
+        default:
+          return 'Something went wrong.';
+      }
+    }
+    throw error;
   }
-  return undefined;
 }
 
 export async function register(

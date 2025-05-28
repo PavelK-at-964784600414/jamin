@@ -20,7 +20,7 @@ export default async function Page({
   const query = resolvedSearchParams.query || '';
   const currentPage = Number(resolvedSearchParams.page) || 1;
   const totalPages = await fetchMembersPages(query);
-  const members = await fetchMembers(query);
+  const members = await fetchMembers(query, currentPage);
   return( 
     <div className="w-full bg-gray-900 p-6 rounded-lg shadow-lg">
       <div className="flex w-full items-center justify-between">
