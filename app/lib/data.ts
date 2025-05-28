@@ -241,7 +241,7 @@ export async function fetchAllLayersWithParentThemes(): Promise<EnrichedLayerWit
     const data = await sql<EnrichedLayerWithParentTheme>`
       SELECT
         c.id AS layer_id,
-        c.title AS layer_title, -- Removed stray character here
+        c.title AS layer_title,
         c.instrument AS layer_instrument,
         c.date AS layer_date,
         c.recording_url AS layer_recording_url,
@@ -251,6 +251,7 @@ export async function fetchAllLayersWithParentThemes(): Promise<EnrichedLayerWit
         t.id AS parent_theme_id,
         t.title AS parent_theme_title,
         t.date AS parent_theme_date,
+        t.recording_url AS parent_theme_recording_url,
         t.member_id AS parent_theme_creator_id,
         m_theme.user_name AS parent_theme_creator_name,
         m_theme.image_url AS parent_theme_creator_image_url
@@ -327,7 +328,7 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
         }));
 
         // Create a collaboration record for this cumulative state
-        collaborations.push({
+        const newCollab = {
           collab_id: currentLayer.layer_id, // Use the latest layer ID as the collaboration ID
           collab_title: currentLayer.layer_title,
           collab_instrument: currentLayer.layer_instrument,
@@ -342,11 +343,14 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
           parent_theme_creator_id: currentLayer.parent_theme_creator_id,
           parent_theme_creator_name: currentLayer.parent_theme_creator_name,
           parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
-          parent_theme_recording_url: undefined, // We'll need to fetch this separately if needed
+          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
           total_layers_count: cumulativeLayers.length, // Number of layers up to this point
           cumulative_layers: cumulativeLayersData,
           participants: Array.from(participantMap.values()),
-        });
+        };
+        
+        console.log('Creating collaboration with ID:', newCollab.collab_id);
+        collaborations.push(newCollab);
       }
     }
     
@@ -424,3 +428,25 @@ export async function fetchCardData() {
 //     currency: 'USD',
 //   });
 // };
+
+export async function fetchCollaborationById(collabId: string): Promise<CollaborationDisplayData | null> {
+  noStore();
+  try {
+    console.log('fetchCollaborationById: Looking for collaboration with ID:', collabId, '(type:', typeof collabId, ')');
+    
+    // First, fetch all collaborations
+    const collaborations = await fetchCollaborationData();
+    
+    console.log('fetchCollaborationById: Available collaboration IDs:', collaborations.map(c => ({ id: c.collab_id, type: typeof c.collab_id })));
+    
+    // Find the specific collaboration by ID (ensure both are strings for comparison)
+    const collaboration = collaborations.find(collab => String(collab.collab_id) === String(collabId));
+    
+    console.log('fetchCollaborationById: Found collaboration:', collaboration ? 'Yes' : 'No');
+    
+    return collaboration || null;
+  } catch (error) {
+    console.error('Database Error: Failed to fetch collaboration by ID:', error);
+    throw error;
+  }
+}

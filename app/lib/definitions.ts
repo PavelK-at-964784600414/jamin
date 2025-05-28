@@ -222,6 +222,7 @@ export type EnrichedLayerWithParentTheme = {
   parent_theme_id: string;
   parent_theme_title: string;
   parent_theme_date: string; // Keep as string from DB
+  parent_theme_recording_url?: string; // Add recording URL for the original theme
   parent_theme_creator_id: string;
   parent_theme_creator_name: string;
   parent_theme_creator_image_url?: string;

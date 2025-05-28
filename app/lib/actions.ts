@@ -303,10 +303,11 @@ export type LayerState = {
     instrument?: string[];
     audioFile?: string[];
     themeId?: string[];
+    collaborationId?: string[];
   };
   message?: string | null;
   success?: boolean;
-  themeId?: string; // Add themeId for client-side navigation
+  themeId?: string | null; // Allow null values for client-side navigation
 };
 
 const CreateLayer = z.object({
@@ -317,11 +318,14 @@ const CreateLayer = z.object({
   tempo: z.number().optional(),
   seconds: z.number().optional(),
   audioFile: z.any().optional(),
-  instrument: z.string().nonempty(),
+  instrument: z.string().min(1, "Instrument is required"), // More specific error message
   scale: z.string().optional(),
   mode: z.string().optional(),
   chords: z.string().optional(),
-  themeId: z.string().nonempty(),
+  themeId: z.string().optional().nullable(), // Allow null values
+  collaborationId: z.string().optional().nullable(), // Allow null values
+}).refine(data => data.themeId || data.collaborationId, {
+  message: "Either themeId or collaborationId must be provided",
 });
 
 export async function createLayer(prevState: LayerState | null, formData: FormData) {  // Get the current session from NextAuth using dynamic import
@@ -339,52 +343,92 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     console.warn('User not authenticated. Using default member id for testing.');
     memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
   }
+  const themeId = formData.get('themeId') as string | null;
+  const collaborationId = formData.get('collaborationId') as string | null;
 
-  const themeId = formData.get('themeId') as string;
-
-  if (!themeId) {
+  if (!themeId && !collaborationId) {
     return {
-      message: 'Parent theme ID is missing.',
+      message: 'Either theme ID or collaboration ID is required.',
       success: false,
-      errors: { themeId: ['Parent theme ID is required.'] },
+      errors: { themeId: ['Theme ID or collaboration ID is required.'] },
     };
   }
 
-  // Import data fetching functions once at the top of the try block
-  const { fetchThemeById, fetchLayersByThemeId } = await import('./data');
+  // Import data fetching functions
+  const { fetchThemeById, fetchLayersByThemeId, fetchCollaborationById } = await import('./data');
 
-  try {
-    // Fetch parent theme and existing layers concurrently
-    const [parentThemeData, existingLayers] = await Promise.all([
-      fetchThemeById(themeId), // Fetches ThemeForm
-      fetchLayersByThemeId(themeId) // Fetches ThemesTable[]
-    ]);
+  try {    let parentData: any;
+    let existingLayers: any[];
+    let layerNumber: number;
+    let newLayerTitle: string;
+    let parentThemeId: string;
+    let mixingAudioUrl: string | undefined = undefined;    if (collaborationId) {
+      // We're adding a layer to an existing collaboration
+      console.log('Adding layer to collaboration:', collaborationId);
+      
+      const collaboration = await fetchCollaborationById(collaborationId);
+      if (!collaboration) {
+        return { message: 'Collaboration not found.', success: false, themeId: collaborationId };
+      }
 
-    if (!parentThemeData) {
-      return { message: 'Parent theme not found.', success: false, themeId };
-    }
+      parentData = collaboration;
+      parentThemeId = collaboration.parent_theme_id;
+      
+      // Get existing layers for this theme to calculate layer number
+      existingLayers = await fetchLayersByThemeId(parentThemeId);
+      layerNumber = existingLayers.length + 1;
+      
+      // Use the collaboration's complete recording for mixing
+      mixingAudioUrl = collaboration.collab_recording_url;
+      
+      const instrumentForTitle = formData.get('instrument') as string || 'Instrument';
+      newLayerTitle = `${collaboration.parent_theme_title} - Layer ${layerNumber} (${instrumentForTitle})`;
+    } else if (themeId) {
+      // We're adding the first layer to a theme (original behavior)
+      console.log('Adding first layer to theme:', themeId);
+      
+      const [parentThemeData, themeLayers] = await Promise.all([
+        fetchThemeById(themeId),
+        fetchLayersByThemeId(themeId)
+      ]);
 
-    if (existingLayers.length >= 5) {
-      return { message: 'Maximum of 5 layers per theme reached.', success: false, themeId };
-    }
+      if (!parentThemeData) {
+        return { message: 'Parent theme not found.', success: false, themeId };
+      }
 
-    const layerNumber = existingLayers.length + 1;
-    const instrumentForTitle = formData.get('instrument') as string || 'Instrument';
-    // Construct the new layer title using the parent theme's title
-    const newLayerTitle = `${parentThemeData.title} - Layer ${layerNumber} (${instrumentForTitle})`;
+      if (themeLayers.length >= 5) {
+        return { message: 'Maximum of 5 layers per theme reached.', success: false, themeId };
+      }
 
-    const validatedFields = CreateLayer.safeParse({
-      title: newLayerTitle, // Use the new constructed title
+      parentData = parentThemeData;
+      existingLayers = themeLayers;
+      parentThemeId = themeId;
+      layerNumber = existingLayers.length + 1;
+      
+      // Use the theme's sample for mixing
+      mixingAudioUrl = parentThemeData.sample;
+      
+      const instrumentForTitle = formData.get('instrument') as string || 'Instrument';
+      newLayerTitle = `${parentThemeData.title} - Layer ${layerNumber} (${instrumentForTitle})`;
+    } else {
+      return {
+        message: 'Either theme ID or collaboration ID is required.',
+        success: false,
+        errors: { themeId: ['Theme ID or collaboration ID is required.'] },
+      };
+    }    const validatedFields = CreateLayer.safeParse({
+      title: newLayerTitle,
       description: formData.get('description'),
       genre: formData.get('genre'),
       keySignature: formData.get('keySignature') ?? "",
       tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
       audioFile: formData.get('audioFile'),
-      instrument: formData.get('instrument'), // This is the instrument for the current layer
+      instrument: formData.get('instrument'),
       scale: formData.get('scale') ?? "",
       mode: formData.get('mode') ?? "",
       chords: formData.get('chords'),
       themeId: themeId,
+      collaborationId: collaborationId,
     });
     
     if (!validatedFields.success) {
@@ -398,7 +442,18 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       title, description, genre, keySignature, tempo, 
       audioFile, instrument, scale, mode, chords // themeId is already defined
     } = validatedFields.data;
-      let recording_url = null;
+    
+    // Debug: Log audioFile details
+    console.log('audioFile received:', {
+      audioFile,
+      type: typeof audioFile,
+      constructor: audioFile?.constructor?.name,
+      size: audioFile?.size,
+      name: audioFile?.name,
+      type_property: audioFile?.type
+    });
+    
+    let recording_url = null;
     const status = 'complete'; // Layers are considered complete
     const seconds = 0; // We'll extract this from the recording      
     if (audioFile) {
@@ -524,20 +579,16 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       return {
         message: 'No audio file provided. Failed to Create Layer.',
       };
-    }
-
-    // After uploading both layer recording and retrieving parent theme, mix the two audio files
-    if (recording_url && parentThemeData.sample) {
-      // Use a server-side ffmpeg utility to mix original theme and new layer audio
+    }    // After uploading both layer recording and retrieving parent/collaboration data, mix the two audio files
+    if (recording_url && mixingAudioUrl) {
+      // Use a server-side ffmpeg utility to mix the base audio (theme or collaboration) with new layer audio
       const { mixAudioFiles } = await import('./audio-mix-server');
-      const mixedUrl = await mixAudioFiles(parentThemeData.sample, recording_url);
+      const mixedUrl = await mixAudioFiles(mixingAudioUrl, recording_url);
       recording_url = mixedUrl;
       console.log('Mixed audio URL:', recording_url);
     }
 
-    const date = new Date().toISOString().split('T')[0];
-
-    // Insert the layer into the new collabs table
+    const date = new Date().toISOString().split('T')[0];    // Insert the layer into the new collabs table
     await sql`
       INSERT INTO collabs (
         member_id, seconds, key, mode, chords, tempo, date, status,
@@ -545,14 +596,14 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       ) VALUES (
         ${memberId}, ${seconds}, ${keySignature}, ${mode}, ${chords}, 
         ${tempo}, ${date}, ${status}, ${description}, ${title}, 
-        ${genre}, ${recording_url}, ${instrument}, ${themeId}
+        ${genre}, ${recording_url}, ${instrument}, ${parentThemeId}
       )
     `;
     console.log('Layer created successfully in collabs table with title:', title);
-    // Make sure themeId is a string before using it with revalidatePath
-    const pathToRevalidate = `/dashboard/themes/${String(themeId)}`;
+    // Make sure parentThemeId is a string before using it with revalidatePath
+    const pathToRevalidate = `/dashboard/themes/${String(parentThemeId)}`;
     revalidatePath(pathToRevalidate);
-    revalidatePath('/dashboard/collab'); // Add revalidation for the main collab page
+    revalidatePath('/dashboard/collabs'); // Add revalidation for the main collabs page
     
     // Return success instead of redirecting so client can handle navigation
     return {

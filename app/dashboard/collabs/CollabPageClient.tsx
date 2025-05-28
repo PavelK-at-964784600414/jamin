@@ -179,7 +179,7 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                                 </button>
                               )}
                               <Link
-                                href={`/dashboard/collab/${collab.collab_id}/add-layer`}
+                                href={`/dashboard/collabs/${collab.collab_id}/add-layer`}
                                 className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
                                 title="Add a new layer to this collaboration"
                               >
