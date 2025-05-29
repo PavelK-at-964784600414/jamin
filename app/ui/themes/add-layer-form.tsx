@@ -52,7 +52,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   const [tempo, setTempo] = useState(theme.tempo);
   const [scale, setScale] = useState('');
   const [chords, setChords] = useState(theme.chords || '');
-  const [instrument, setInstrument] = useState('');
+  const [instrument, setInstrument] = useState('Piano'); // Set a default instrument
   const [mode, setMode] = useState(theme.mode);
 
   // Form submission state - isSubmitting can potentially be replaced by isPending from useActionState

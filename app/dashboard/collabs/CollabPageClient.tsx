@@ -2,20 +2,22 @@
 
 import { useState } from 'react';
 import { lusitana } from '@/app/ui/fonts';
-import { CollaborationDisplayData } from '@/app/lib/definitions';
+import { CollaborationDisplayDataWithLikes } from '@/app/lib/definitions';
 import Image from 'next/image';
-import { formatDateToLocal, formatTimestampToLocal } from '@/app/lib/utils';
+import { formatDateToLocal } from '@/app/lib/utils';
 import Link from 'next/link';
+import LikeDislikeButton from '@/app/ui/like-dislike-button';
 import {
   MusicalNoteIcon,
   ClockIcon,
   DocumentDuplicateIcon,
   PlayIcon,
+  MicrophoneIcon,
 } from '@heroicons/react/24/outline';
 import MediaPlayerModal from '@/app/ui/themes/MediaPlayer';
 
 interface CollabPageClientProps {
-  collaborations: CollaborationDisplayData[];
+  collaborations: CollaborationDisplayDataWithLikes[];
 }
 
 export default function CollabPageClient({ collaborations }: CollabPageClientProps) {
@@ -39,7 +41,7 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
           Collaborations
         </h1>
         <p className="mb-8 text-gray-400">
-          Each collaboration represents a musical journey - starting with an original theme and growing with each layer added by the community.
+          Each collaboration represents a musical journey - starting with an original theme and growing with each layer added by the community. Click &quot;Add Layer&quot; to continue any collaboration.
         </p>
 
         <div className="mt-6 flow-root">
@@ -83,7 +85,7 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-750 bg-gray-800">
-                      {collaborations.map((collab: CollaborationDisplayData) => (
+                      {collaborations.map((collab: CollaborationDisplayDataWithLikes) => (
                         <tr
                           key={collab.collab_id}
                           className="hover:bg-gray-750 transition-colors"
@@ -158,7 +160,7 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                           <td className="whitespace-nowrap px-3 py-4 text-sm">
                             <div className="flex items-center">
                               <ClockIcon className="h-4 w-4 mr-1.5 text-gray-400" />
-                              {formatTimestampToLocal(collab.collab_date)}
+                              {formatDateToLocal(collab.collab_date)}
                             </div>
                           </td>
                           <td className="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
@@ -177,6 +179,20 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                                   <PlayIcon className="w-4 h-4" />
                                 </button>
                               )}
+                              <LikeDislikeButton
+                                itemId={collab.collab_id}
+                                itemType="collaboration"
+                                likeStats={collab.like_stats}
+                                size="sm"
+                              />
+                              <Link
+                                href={`/dashboard/collabs/${collab.collab_id}/add-layer`}
+                                className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+                                title="Add a new layer to this collaboration"
+                              >
+                                <MicrophoneIcon className="w-3 h-3" />
+                                Add Layer
+                              </Link>
                               <Link
                                 href={`/dashboard/themes/${collab.parent_theme_id}`}
                                 className="text-indigo-400 hover:text-indigo-300"

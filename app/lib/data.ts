@@ -6,14 +6,93 @@ import {
   CollabRecord,
   EnrichedLayerWithParentTheme,
   CollaborationDisplayData,
+  CollaborationDisplayDataWithLikes,
   Participant,
   ThemesTable,
+  ThemesTableWithLikes,
   LatestThemes,
   ThemeForm, 
-  FormattedMembersTable, // Imported FormattedMembersTable
+  FormattedMembersTable,
+  LikeStats,
 } from './definitions';
+import { auth } from '../../auth';
 
 const ITEMS_PER_PAGE = 6;
+
+// Helper function to get current user ID
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const session = await auth();
+    return session?.user?.id || null;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
+  }
+}
+
+// Helper function to fetch like stats for themes
+async function getThemeLikeStats(themeId: string, userId?: string | null): Promise<LikeStats> {
+  try {
+    const [likesResult, userLikeResult] = await Promise.all([
+      sql`
+        SELECT
+          COUNT(CASE WHEN like_type = 'like' THEN 1 END)::integer AS likes,
+          COUNT(CASE WHEN like_type = 'dislike' THEN 1 END)::integer AS dislikes
+        FROM theme_likes 
+        WHERE theme_id = ${themeId}
+      `,
+      userId ? sql`
+        SELECT like_type 
+        FROM theme_likes 
+        WHERE theme_id = ${themeId} AND member_id = ${userId}
+      ` : { rows: [] }
+    ]);
+
+    const stats = likesResult.rows[0] || { likes: 0, dislikes: 0 };
+    const userLike = userLikeResult.rows[0]?.like_type || null;
+
+    return {
+      likes: stats.likes,
+      dislikes: stats.dislikes,
+      userLike: userLike,
+    };
+  } catch (error) {
+    console.error('Error fetching theme like stats:', error);
+    return { likes: 0, dislikes: 0, userLike: null };
+  }
+}
+
+// Helper function to fetch like stats for collaborations
+async function getCollabLikeStats(collabId: string, userId?: string | null): Promise<LikeStats> {
+  try {
+    const [likesResult, userLikeResult] = await Promise.all([
+      sql`
+        SELECT
+          COUNT(CASE WHEN like_type = 'like' THEN 1 END)::integer AS likes,
+          COUNT(CASE WHEN like_type = 'dislike' THEN 1 END)::integer AS dislikes
+        FROM collab_likes 
+        WHERE collab_id = ${collabId}
+      `,
+      userId ? sql`
+        SELECT like_type 
+        FROM collab_likes 
+        WHERE collab_id = ${collabId} AND member_id = ${userId}
+      ` : { rows: [] }
+    ]);
+
+    const stats = likesResult.rows[0] || { likes: 0, dislikes: 0 };
+    const userLike = userLikeResult.rows[0]?.like_type || null;
+
+    return {
+      likes: stats.likes,
+      dislikes: stats.dislikes,
+      userLike: userLike,
+    };
+  } catch (error) {
+    console.error('Error fetching collab like stats:', error);
+    return { likes: 0, dislikes: 0, userLike: null };
+  }
+}
 
 export async function fetchUser(email: string): Promise<Member | undefined> {
   noStore();
@@ -89,11 +168,13 @@ export async function fetchLatestThemes(): Promise<LatestThemes[]> {
 export async function fetchFilteredThemes(
   query: string,
   currentPage: number,
-): Promise<ThemesTable[]> {
+): Promise<ThemesTableWithLikes[]> {
   noStore();
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
+    const userId = await getCurrentUserId();
+    
     const themes = await sql<ThemesTable>`
       SELECT
         themes.id,
@@ -119,7 +200,19 @@ export async function fetchFilteredThemes(
       ORDER BY themes.date DESC
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
-    return themes.rows;
+
+    // Add like stats for each theme
+    const themesWithLikes = await Promise.all(
+      themes.rows.map(async (theme) => {
+        const like_stats = await getThemeLikeStats(theme.id, userId);
+        return {
+          ...theme,
+          like_stats,
+        };
+      })
+    );
+
+    return themesWithLikes;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch themes.');
@@ -241,7 +334,7 @@ export async function fetchAllLayersWithParentThemes(): Promise<EnrichedLayerWit
     const data = await sql<EnrichedLayerWithParentTheme>`
       SELECT
         c.id AS layer_id,
-        c.title AS layer_title, -- Removed stray character here
+        c.title AS layer_title,
         c.instrument AS layer_instrument,
         c.date AS layer_date,
         c.recording_url AS layer_recording_url,
@@ -251,6 +344,7 @@ export async function fetchAllLayersWithParentThemes(): Promise<EnrichedLayerWit
         t.id AS parent_theme_id,
         t.title AS parent_theme_title,
         t.date AS parent_theme_date,
+        t.recording_url AS parent_theme_recording_url,
         t.member_id AS parent_theme_creator_id,
         m_theme.user_name AS parent_theme_creator_name,
         m_theme.image_url AS parent_theme_creator_image_url
@@ -267,9 +361,10 @@ export async function fetchAllLayersWithParentThemes(): Promise<EnrichedLayerWit
   }
 }
 
-export async function fetchCollaborationData(): Promise<CollaborationDisplayData[]> {
+export async function fetchCollaborationData(): Promise<CollaborationDisplayDataWithLikes[]> {
   noStore();
   try {
+    const userId = await getCurrentUserId();
     const enrichedLayers = await fetchAllLayersWithParentThemes();
     const collaborations: CollaborationDisplayData[] = [];
 
@@ -327,7 +422,7 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
         }));
 
         // Create a collaboration record for this cumulative state
-        collaborations.push({
+        const newCollab = {
           collab_id: currentLayer.layer_id, // Use the latest layer ID as the collaboration ID
           collab_title: currentLayer.layer_title,
           collab_instrument: currentLayer.layer_instrument,
@@ -342,18 +437,32 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
           parent_theme_creator_id: currentLayer.parent_theme_creator_id,
           parent_theme_creator_name: currentLayer.parent_theme_creator_name,
           parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
-          parent_theme_recording_url: undefined, // We'll need to fetch this separately if needed
+          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
           total_layers_count: cumulativeLayers.length, // Number of layers up to this point
           cumulative_layers: cumulativeLayersData,
           participants: Array.from(participantMap.values()),
-        });
+        };
+        
+        console.log('Creating collaboration with ID:', newCollab.collab_id);
+        collaborations.push(newCollab);
       }
     }
     
     // Sort by collaboration date (most recent first)
     collaborations.sort((a, b) => new Date(b.collab_date).getTime() - new Date(a.collab_date).getTime());
 
-    return collaborations;
+    // Add like stats for each collaboration
+    const collaborationsWithLikes = await Promise.all(
+      collaborations.map(async (collab) => {
+        const like_stats = await getCollabLikeStats(collab.collab_id, userId);
+        return {
+          ...collab,
+          like_stats,
+        };
+      })
+    );
+
+    return collaborationsWithLikes;
 
   } catch (error) {
     console.error('Database Error: Failed to fetch collaboration data:', error);
@@ -424,3 +533,105 @@ export async function fetchCardData() {
 //     currency: 'USD',
 //   });
 // };
+
+export async function fetchCollaborationById(collabId: string): Promise<CollaborationDisplayDataWithLikes | null> {
+  noStore();
+  try {
+    console.log('fetchCollaborationById: Looking for collaboration with ID:', collabId, '(type:', typeof collabId, ')');
+    
+    // First, fetch all collaborations
+    const collaborations = await fetchCollaborationData();
+    
+    console.log('fetchCollaborationById: Available collaboration IDs:', collaborations.map(c => ({ id: c.collab_id, type: typeof c.collab_id })));
+    
+    // Find the specific collaboration by ID (ensure both are strings for comparison)
+    const collaboration = collaborations.find(collab => String(collab.collab_id) === String(collabId));
+    
+    console.log('fetchCollaborationById: Found collaboration:', collaboration ? 'Yes' : 'No');
+    
+    return collaboration || null;
+  } catch (error) {
+    console.error('Database Error: Failed to fetch collaboration by ID:', error);
+    throw error;
+  }
+}
+
+// Fetch themes created by a specific member
+export async function fetchThemesByMemberId(memberId: string): Promise<ThemesTableWithLikes[]> {
+  noStore();
+  try {
+    const userId = await getCurrentUserId();
+    
+    const themes = await sql<ThemesTable>`
+      SELECT
+        themes.id,
+        themes.title,
+        themes.date,
+        themes.status,
+        members.image_url AS image_url,
+        members.user_name AS user_name,
+        themes.seconds,
+        themes.chords,
+        themes.key,
+        themes.mode,
+        themes.tempo,
+        themes.description,
+        themes.recording_url,
+        themes.instrument
+      FROM themes
+      JOIN members ON themes.member_id = members.id
+      WHERE themes.member_id = ${memberId}
+      ORDER BY themes.date DESC
+    `;
+
+    // Add like stats for each theme
+    const themesWithLikes = await Promise.all(
+      themes.rows.map(async (theme) => {
+        const like_stats = await getThemeLikeStats(theme.id, userId);
+        return {
+          ...theme,
+          like_stats,
+        };
+      })
+    );
+
+    return themesWithLikes;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch themes by member ID.');
+  }
+}
+
+// Fetch collaborations where the member participated (created layers)
+export async function fetchCollaborationsByMemberId(memberId: string): Promise<CollaborationDisplayDataWithLikes[]> {
+  noStore();
+  try {
+    // First get all collaborations where this member participated
+    const memberCollaborations = await sql`
+      SELECT DISTINCT c.parent_theme_id
+      FROM collabs c
+      WHERE c.member_id = ${memberId}
+      ORDER BY c.parent_theme_id
+    `;
+
+    if (memberCollaborations.rows.length === 0) {
+      return [];
+    }
+
+    // Get all collaboration data and filter for ones where this member participated
+    const allCollaborations = await fetchCollaborationData();
+    
+    // Get theme IDs where this member participated
+    const memberThemeIds = new Set(memberCollaborations.rows.map(row => row.parent_theme_id));
+    
+    // Filter collaborations to only include those where the member participated
+    const memberFilteredCollaborations = allCollaborations.filter(collab => {
+      return collab.participants.some(participant => participant.id === memberId);
+    });
+
+    return memberFilteredCollaborations;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch collaborations by member ID.');
+  }
+}

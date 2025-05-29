@@ -6,6 +6,9 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth, signIn, signUp, signOut } from '@/auth';
 import { uploadToS3 } from './s3';
+import { LikeActionResponse, LikeType, LikeStats } from './definitions';
+import { fetchThemeById, fetchLayersByThemeId, fetchCollaborationById } from './data';
+import { uploadFileToS3WithRetry } from '@/app/lib/upload-utils';
 
 // Helper function to check if an error is an auth error
 function isAuthError(error: unknown): error is { type: string } {
@@ -303,10 +306,11 @@ export type LayerState = {
     instrument?: string[];
     audioFile?: string[];
     themeId?: string[];
+    collaborationId?: string[];
   };
   message?: string | null;
   success?: boolean;
-  themeId?: string; // Add themeId for client-side navigation
+  themeId?: string | null; // Allow null values for client-side navigation
 };
 
 const CreateLayer = z.object({
@@ -317,11 +321,14 @@ const CreateLayer = z.object({
   tempo: z.number().optional(),
   seconds: z.number().optional(),
   audioFile: z.any().optional(),
-  instrument: z.string().nonempty(),
+  instrument: z.string().min(1, "Instrument is required"), // More specific error message
   scale: z.string().optional(),
   mode: z.string().optional(),
   chords: z.string().optional(),
-  themeId: z.string().nonempty(),
+  themeId: z.string().optional().nullable(), // Allow null values
+  collaborationId: z.string().optional().nullable(), // Allow null values
+}).refine(data => data.themeId || data.collaborationId, {
+  message: "Either themeId or collaborationId must be provided",
 });
 
 export async function createLayer(prevState: LayerState | null, formData: FormData) {  // Get the current session from NextAuth using dynamic import
@@ -339,52 +346,88 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     console.warn('User not authenticated. Using default member id for testing.');
     memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
   }
+  const themeId = formData.get('themeId') as string | null;
+  const collaborationId = formData.get('collaborationId') as string | null;
 
-  const themeId = formData.get('themeId') as string;
-
-  if (!themeId) {
+  if (!themeId && !collaborationId) {
     return {
-      message: 'Parent theme ID is missing.',
+      message: 'Either theme ID or collaboration ID is required.',
       success: false,
-      errors: { themeId: ['Parent theme ID is required.'] },
-    };
-  }
+      errors: { themeId: ['Theme ID or collaboration ID is required.'] },
+    };  }
 
-  // Import data fetching functions once at the top of the try block
-  const { fetchThemeById, fetchLayersByThemeId } = await import('./data');
+  try {    let parentData: any;
+    let existingLayers: any[];
+    let layerNumber: number;
+    let newLayerTitle: string;
+    let parentThemeId: string;
+    let mixingAudioUrl: string | undefined = undefined;    if (collaborationId) {
+      // We're adding a layer to an existing collaboration
+      console.log('Adding layer to collaboration:', collaborationId);
+      
+      const collaboration = await fetchCollaborationById(collaborationId);
+      if (!collaboration) {
+        return { message: 'Collaboration not found.', success: false, themeId: collaborationId };
+      }
 
-  try {
-    // Fetch parent theme and existing layers concurrently
-    const [parentThemeData, existingLayers] = await Promise.all([
-      fetchThemeById(themeId), // Fetches ThemeForm
-      fetchLayersByThemeId(themeId) // Fetches ThemesTable[]
-    ]);
+      parentData = collaboration;
+      parentThemeId = collaboration.parent_theme_id;
+      
+      // Get existing layers for this theme to calculate layer number
+      existingLayers = await fetchLayersByThemeId(parentThemeId);
+      layerNumber = existingLayers.length + 1;
+      
+      // Use the collaboration's complete recording for mixing
+      mixingAudioUrl = collaboration.collab_recording_url;
+      
+      const instrumentForTitle = formData.get('instrument') as string || 'Instrument';
+      newLayerTitle = `${collaboration.parent_theme_title} - Layer ${layerNumber} (${instrumentForTitle})`;
+    } else if (themeId) {
+      // We're adding the first layer to a theme (original behavior)
+      console.log('Adding first layer to theme:', themeId);
+      
+      const [parentThemeData, themeLayers] = await Promise.all([
+        fetchThemeById(themeId),
+        fetchLayersByThemeId(themeId)
+      ]);
 
-    if (!parentThemeData) {
-      return { message: 'Parent theme not found.', success: false, themeId };
-    }
+      if (!parentThemeData) {
+        return { message: 'Parent theme not found.', success: false, themeId };
+      }
 
-    if (existingLayers.length >= 5) {
-      return { message: 'Maximum of 5 layers per theme reached.', success: false, themeId };
-    }
+      if (themeLayers.length >= 5) {
+        return { message: 'Maximum of 5 layers per theme reached.', success: false, themeId };
+      }
 
-    const layerNumber = existingLayers.length + 1;
-    const instrumentForTitle = formData.get('instrument') as string || 'Instrument';
-    // Construct the new layer title using the parent theme's title
-    const newLayerTitle = `${parentThemeData.title} - Layer ${layerNumber} (${instrumentForTitle})`;
-
-    const validatedFields = CreateLayer.safeParse({
-      title: newLayerTitle, // Use the new constructed title
+      parentData = parentThemeData;
+      existingLayers = themeLayers;
+      parentThemeId = themeId;
+      layerNumber = existingLayers.length + 1;
+      
+      // Use the theme's sample for mixing
+      mixingAudioUrl = parentThemeData.sample;
+      
+      const instrumentForTitle = formData.get('instrument') as string || 'Instrument';
+      newLayerTitle = `${parentThemeData.title} - Layer ${layerNumber} (${instrumentForTitle})`;
+    } else {
+      return {
+        message: 'Either theme ID or collaboration ID is required.',
+        success: false,
+        errors: { themeId: ['Theme ID or collaboration ID is required.'] },
+      };
+    }    const validatedFields = CreateLayer.safeParse({
+      title: newLayerTitle,
       description: formData.get('description'),
       genre: formData.get('genre'),
       keySignature: formData.get('keySignature') ?? "",
       tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
       audioFile: formData.get('audioFile'),
-      instrument: formData.get('instrument'), // This is the instrument for the current layer
+      instrument: formData.get('instrument'),
       scale: formData.get('scale') ?? "",
       mode: formData.get('mode') ?? "",
       chords: formData.get('chords'),
       themeId: themeId,
+      collaborationId: collaborationId,
     });
     
     if (!validatedFields.success) {
@@ -398,7 +441,18 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       title, description, genre, keySignature, tempo, 
       audioFile, instrument, scale, mode, chords // themeId is already defined
     } = validatedFields.data;
-      let recording_url = null;
+    
+    // Debug: Log audioFile details
+    console.log('audioFile received:', {
+      audioFile,
+      type: typeof audioFile,
+      constructor: audioFile?.constructor?.name,
+      size: audioFile?.size,
+      name: audioFile?.name,
+      type_property: audioFile?.type
+    });
+    
+    let recording_url = null;
     const status = 'complete'; // Layers are considered complete
     const seconds = 0; // We'll extract this from the recording      
     if (audioFile) {
@@ -412,10 +466,8 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
             
             // Generate a unique key for S3
             const fileKey = `layers/${themeId}/${Date.now()}-${fileName}`;
-            
-            // Use the uploadFileToS3WithRetry utility which handles environment differences
+              // Use the uploadFileToS3WithRetry utility which handles environment differences
             // This avoids direct FileReader usage on the server
-            const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
             recording_url = await uploadFileToS3WithRetry(audioFile, 'layers/' + themeId);
             console.log('Layer file uploaded successfully to S3:', recording_url);
           } catch (error) {
@@ -431,9 +483,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
             const blobAsFile = new File([audioFile], 'recording.webm', { 
               type: audioFile.type || 'audio/webm',
               lastModified: Date.now() 
-            });
-            // Use the uploadFileToS3WithRetry utility which handles environment differences
-            const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
+            });            // Use the uploadFileToS3WithRetry utility which handles environment differences
             recording_url = await uploadFileToS3WithRetry(blobAsFile, 'layers/' + themeId);
             console.log('Layer file uploaded from Blob, URL:', recording_url);
           } catch (error) {
@@ -504,7 +554,6 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
               }
             }            
             // Upload the converted file using the utility function that's safe for server-side
-            const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
             recording_url = await uploadFileToS3WithRetry(uploadableFile, 'layers/' + themeId);
             console.log('Layer file uploaded from converted format, URL:', recording_url);
           } catch (conversionError) {
@@ -524,20 +573,21 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       return {
         message: 'No audio file provided. Failed to Create Layer.',
       };
+    }    // After uploading both layer recording and retrieving parent/collaboration data, mix the two audio files
+    if (recording_url && mixingAudioUrl) {
+      try {
+        // Use a server-side ffmpeg utility to mix the base audio (theme or collaboration) with new layer audio
+        const { mixAudioFiles } = await import('./audio-mix-server');
+        const mixedUrl = await mixAudioFiles(mixingAudioUrl, recording_url);
+        recording_url = mixedUrl;
+        console.log('Mixed audio URL:', recording_url);
+      } catch (mixingError) {
+        console.warn('Audio mixing failed, using layer recording as-is:', mixingError);
+        // Continue with the original recording_url - this allows the layer to be created without mixing
+      }
     }
 
-    // After uploading both layer recording and retrieving parent theme, mix the two audio files
-    if (recording_url && parentThemeData.sample) {
-      // Use a server-side ffmpeg utility to mix original theme and new layer audio
-      const { mixAudioFiles } = await import('./audio-mix-server');
-      const mixedUrl = await mixAudioFiles(parentThemeData.sample, recording_url);
-      recording_url = mixedUrl;
-      console.log('Mixed audio URL:', recording_url);
-    }
-
-    const date = new Date().toISOString().split('T')[0];
-
-    // Insert the layer into the new collabs table
+    const date = new Date().toISOString().split('T')[0];    // Insert the layer into the new collabs table
     await sql`
       INSERT INTO collabs (
         member_id, seconds, key, mode, chords, tempo, date, status,
@@ -545,14 +595,14 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       ) VALUES (
         ${memberId}, ${seconds}, ${keySignature}, ${mode}, ${chords}, 
         ${tempo}, ${date}, ${status}, ${description}, ${title}, 
-        ${genre}, ${recording_url}, ${instrument}, ${themeId}
+        ${genre}, ${recording_url}, ${instrument}, ${parentThemeId}
       )
     `;
     console.log('Layer created successfully in collabs table with title:', title);
-    // Make sure themeId is a string before using it with revalidatePath
-    const pathToRevalidate = `/dashboard/themes/${String(themeId)}`;
+    // Make sure parentThemeId is a string before using it with revalidatePath
+    const pathToRevalidate = `/dashboard/themes/${String(parentThemeId)}`;
     revalidatePath(pathToRevalidate);
-    revalidatePath('/dashboard/collab'); // Add revalidation for the main collab page
+    revalidatePath('/dashboard/collabs'); // Add revalidation for the main collabs page
     
     // Return success instead of redirecting so client can handle navigation
     return {
@@ -574,8 +624,6 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
 // Server action to fetch layers for a specific theme
 export async function getLayersForThemeAction(themeId: string) {
   'use server';
-  // Import the data fetching function here to ensure it runs in the server context
-  const { fetchLayersByThemeId } = await import('./data');
   try {
     const layers = await fetchLayersByThemeId(themeId);
     return layers; // Successfully return layers
@@ -583,6 +631,227 @@ export async function getLayersForThemeAction(themeId: string) {
     console.error('[Server Action Error] Failed to fetch layers:', error);
     // Return a more structured error or an empty array to indicate failure
     return []; // Or throw error to be caught by client if preferred
+  }
+}
+
+// Like/Dislike Actions
+export async function toggleThemeLike(themeId: string, likeType: LikeType): Promise<LikeActionResponse> {
+  try {
+    // Get the current session
+    const session = await auth();
+    const memberId = session?.user?.id;
+    
+    if (!memberId) {
+      console.warn('User not authenticated. Using default member id for testing.');
+      // For testing purposes, use default member id
+      // In production, you would return an error here
+      return {
+        success: false,
+        message: 'User not authenticated.'
+      };
+    }
+
+    // Check if user already has a like/dislike for this theme
+    const existingLike = await sql`
+      SELECT like_type FROM theme_likes 
+      WHERE theme_id = ${themeId} AND member_id = ${memberId}
+    `;
+
+    if (existingLike.rows.length > 0) {
+      const currentLikeType = existingLike.rows[0].like_type;
+      
+      if (currentLikeType === likeType) {
+        // User is clicking the same type - remove the like/dislike
+        await sql`
+          DELETE FROM theme_likes 
+          WHERE theme_id = ${themeId} AND member_id = ${memberId}
+        `;
+      } else {
+        // User is switching from like to dislike or vice versa
+        await sql`
+          UPDATE theme_likes 
+          SET like_type = ${likeType}, updated_at = NOW()
+          WHERE theme_id = ${themeId} AND member_id = ${memberId}
+        `;
+      }
+    } else {
+      // User hasn't liked/disliked this theme yet - create new entry
+      await sql`
+        INSERT INTO theme_likes (theme_id, member_id, like_type)
+        VALUES (${themeId}, ${memberId}, ${likeType})
+      `;
+    }
+
+    // Fetch updated like stats
+    const likeStats = await getThemeLikeStats(themeId, memberId);
+    
+    // Revalidate relevant pages
+    revalidatePath('/dashboard/themes');
+    revalidatePath('/dashboard/profile');
+    
+    return {
+      success: true,
+      like_stats: likeStats
+    };
+  } catch (error) {
+    console.error('Error toggling theme like:', error);
+    return {
+      success: false,
+      message: 'Failed to update like status.'
+    };
+  }
+}
+
+export async function toggleCollabLike(collabId: string, likeType: LikeType): Promise<LikeActionResponse> {
+  try {
+    // Get the current session
+    const session = await auth();
+    const memberId = session?.user?.id;
+    
+    if (!memberId) {
+      console.warn('User not authenticated. Using default member id for testing.');
+      // For testing purposes, use default member id
+      // In production, you would return an error here
+      return {
+        success: false,
+        message: 'User not authenticated.'
+      };
+    }
+
+    // Check if user already has a like/dislike for this collaboration
+    const existingLike = await sql`
+      SELECT like_type FROM collab_likes 
+      WHERE collab_id = ${collabId} AND member_id = ${memberId}
+    `;
+
+    if (existingLike.rows.length > 0) {
+      const currentLikeType = existingLike.rows[0].like_type;
+      
+      if (currentLikeType === likeType) {
+        // User is clicking the same type - remove the like/dislike
+        await sql`
+          DELETE FROM collab_likes 
+          WHERE collab_id = ${collabId} AND member_id = ${memberId}
+        `;
+      } else {
+        // User is switching from like to dislike or vice versa
+        await sql`
+          UPDATE collab_likes 
+          SET like_type = ${likeType}, updated_at = NOW()
+          WHERE collab_id = ${collabId} AND member_id = ${memberId}
+        `;
+      }
+    } else {
+      // User hasn't liked/disliked this collaboration yet - create new entry
+      await sql`
+        INSERT INTO collab_likes (collab_id, member_id, like_type)
+        VALUES (${collabId}, ${memberId}, ${likeType})
+      `;
+    }    // Fetch updated like stats
+    const likeStats = await getCollabLikeStats(collabId, memberId);
+    
+    // Revalidate relevant pages
+    revalidatePath('/dashboard/collabs');
+    revalidatePath('/dashboard/profile');
+    
+    return {
+      success: true,
+      like_stats: likeStats
+    };
+  } catch (error) {
+    console.error('Error toggling collaboration like:', error);
+    return {
+      success: false,
+      message: 'Failed to update like status.'
+    };
+  }
+}
+
+// Helper function to get theme like stats
+export async function getThemeLikeStats(themeId: string, userId?: string): Promise<LikeStats> {
+  try {
+    // Get like and dislike counts
+    const stats = await sql`
+      SELECT 
+        COUNT(CASE WHEN like_type = 'like' THEN 1 END) as likes,
+        COUNT(CASE WHEN like_type = 'dislike' THEN 1 END) as dislikes
+      FROM theme_likes 
+      WHERE theme_id = ${themeId}
+    `;
+
+    const likes = Number(stats.rows[0]?.likes || 0);
+    const dislikes = Number(stats.rows[0]?.dislikes || 0);
+
+    let userLike: LikeType | null = null;
+    
+    // Get user's current like status if userId provided
+    if (userId) {
+      const userLikeResult = await sql`
+        SELECT like_type FROM theme_likes 
+        WHERE theme_id = ${themeId} AND member_id = ${userId}
+      `;
+      
+      if (userLikeResult.rows.length > 0) {
+        userLike = userLikeResult.rows[0].like_type as LikeType;
+      }
+    }
+
+    return {
+      likes,
+      dislikes,
+      userLike
+    };
+  } catch (error) {
+    console.error('Error fetching theme like stats:', error);
+    return {
+      likes: 0,
+      dislikes: 0,
+      userLike: null
+    };
+  }
+}
+
+// Helper function to get collaboration like stats
+export async function getCollabLikeStats(collabId: string, userId?: string): Promise<LikeStats> {
+  try {
+    // Get like and dislike counts
+    const stats = await sql`
+      SELECT 
+        COUNT(CASE WHEN like_type = 'like' THEN 1 END) as likes,
+        COUNT(CASE WHEN like_type = 'dislike' THEN 1 END) as dislikes
+      FROM collab_likes 
+      WHERE collab_id = ${collabId}
+    `;
+
+    const likes = Number(stats.rows[0]?.likes || 0);
+    const dislikes = Number(stats.rows[0]?.dislikes || 0);
+
+    let userLike: LikeType | null = null;
+    
+    // Get user's current like status if userId provided
+    if (userId) {
+      const userLikeResult = await sql`
+        SELECT like_type FROM collab_likes 
+        WHERE collab_id = ${collabId} AND member_id = ${userId}
+      `;
+      
+      if (userLikeResult.rows.length > 0) {
+        userLike = userLikeResult.rows[0].like_type as LikeType;
+      }
+    }
+
+    return {
+      likes,
+      dislikes,
+      userLike
+    };
+  } catch (error) {
+    console.error('Error fetching collaboration like stats:', error);
+    return {
+      likes: 0,
+      dislikes: 0,
+      userLike: null
+    };
   }
 }
 

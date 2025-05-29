@@ -1,6 +1,7 @@
 import SideNav from '@/app/ui/dashboard/sidenav';
 import { auth } from '@/auth'; // Import auth
 import Image from 'next/image'; // Import Image
+import Link from 'next/link'; // Import Link
 import { lusitana } from '@/app/ui/fonts'; // Import lusitana font
 
 //add the experimental_ppr segment config option to your dashboard layout
@@ -24,7 +25,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
           {/* For now, let's remove the static "Dashboard" title from here */}
           {/* <h1 className={`${lusitana.className} text-xl md:text-2xl`}>Dashboard</h1> */}
           <div></div> {/* Empty div to push welcome message to the right if no title is present */}
-          <div className="flex items-center">
+          <Link href="/dashboard/profile" className="flex items-center hover:opacity-80 transition-opacity">
             <Image
               src={userImage}
               alt={`${userName}'s profile picture`}
@@ -32,10 +33,10 @@ export default async function Layout({ children }: { children: React.ReactNode }
               height={32}
               className="rounded-full mr-2"
             />
-            <h2 className={`${lusitana.className} text-lg md:text-xl font-normal`}>
+            <h2 className={`${lusitana.className} text-lg md:text-xl font-normal text-gray-200 hover:text-white transition-colors`}>
               Welcome, {userName}!
             </h2>
-          </div>
+          </Link>
         </div>
         {children}
       </div>

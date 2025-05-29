@@ -222,6 +222,7 @@ export type EnrichedLayerWithParentTheme = {
   parent_theme_id: string;
   parent_theme_title: string;
   parent_theme_date: string; // Keep as string from DB
+  parent_theme_recording_url?: string; // Add recording URL for the original theme
   parent_theme_creator_id: string;
   parent_theme_creator_name: string;
   parent_theme_creator_image_url?: string;
@@ -271,5 +272,48 @@ export type CollabRecord = {
   parent_theme_id: string;
   member_id: string; // Layer creator's ID
   date: string; // Layer creation date (changed from created_at)
+};
+
+// Like/Dislike related types
+export type LikeType = 'like' | 'dislike';
+
+export type ThemeLike = {
+  id: string;
+  theme_id: string;
+  member_id: string;
+  like_type: LikeType;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CollabLike = {
+  id: string;
+  collab_id: string;
+  member_id: string;
+  like_type: LikeType;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LikeStats = {
+  likes: number;
+  dislikes: number;
+  userLike?: LikeType | null; // The current user's like status
+};
+
+// Extended types with like data
+export type ThemesTableWithLikes = ThemesTable & {
+  like_stats: LikeStats;
+};
+
+export type CollaborationDisplayDataWithLikes = CollaborationDisplayData & {
+  like_stats: LikeStats;
+};
+
+// Like action response type
+export type LikeActionResponse = {
+  success: boolean;
+  message?: string;
+  like_stats?: LikeStats;
 };
 

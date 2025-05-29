@@ -1,6 +1,7 @@
 import '@/app/ui/global.css'
 import { inter } from '@/app/ui/fonts';
 import { Metadata } from 'next';
+import { Providers } from './providers';
 
 // Define security headers with CSP
 export const metadata: Metadata = {
@@ -39,7 +40,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>{children}</body>
+      <body className={`${inter.className} antialiased`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
