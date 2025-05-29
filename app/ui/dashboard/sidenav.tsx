@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import NavLinks from '@/app/ui/dashboard/nav-links';
 import JamInLogo from '@/app/ui/jamin-logo';

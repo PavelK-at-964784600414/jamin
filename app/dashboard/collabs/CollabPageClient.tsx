@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { lusitana } from '@/app/ui/fonts';
-import { CollaborationDisplayData } from '@/app/lib/definitions';
+import { CollaborationDisplayDataWithLikes } from '@/app/lib/definitions';
 import Image from 'next/image';
 import { formatDateToLocal } from '@/app/lib/utils';
 import Link from 'next/link';
+import LikeDislikeButton from '@/app/ui/like-dislike-button';
 import {
   MusicalNoteIcon,
   ClockIcon,
@@ -16,7 +17,7 @@ import {
 import MediaPlayerModal from '@/app/ui/themes/MediaPlayer';
 
 interface CollabPageClientProps {
-  collaborations: CollaborationDisplayData[];
+  collaborations: CollaborationDisplayDataWithLikes[];
 }
 
 export default function CollabPageClient({ collaborations }: CollabPageClientProps) {
@@ -84,7 +85,7 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-750 bg-gray-800">
-                      {collaborations.map((collab: CollaborationDisplayData) => (
+                      {collaborations.map((collab: CollaborationDisplayDataWithLikes) => (
                         <tr
                           key={collab.collab_id}
                           className="hover:bg-gray-750 transition-colors"
@@ -178,6 +179,12 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                                   <PlayIcon className="w-4 h-4" />
                                 </button>
                               )}
+                              <LikeDislikeButton
+                                itemId={collab.collab_id}
+                                itemType="collaboration"
+                                likeStats={collab.like_stats}
+                                size="sm"
+                              />
                               <Link
                                 href={`/dashboard/collabs/${collab.collab_id}/add-layer`}
                                 className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"

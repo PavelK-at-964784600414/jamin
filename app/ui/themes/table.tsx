@@ -3,8 +3,9 @@
 import Image from 'next/image';
 import { UpdateTheme, DeleteTheme } from '@/app/ui/themes/buttons';
 import { formatDateToLocal } from '@/app/lib/utils';
-import { ThemesTable as ThemesTableType, CollabRecord, CollabRecord as Layer } from '@/app/lib/definitions'; 
+import { ThemesTableWithLikes, CollabRecord, CollabRecord as Layer } from '@/app/lib/definitions'; 
 import MediaPlayerModal from '@/app/ui/themes/MediaPlayer';
+import LikeDislikeButton from '@/app/ui/like-dislike-button';
 import React, { useState } from 'react';
 import { PlayIcon } from '@heroicons/react/24/outline';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/app/ui/themes/accordion';
@@ -13,7 +14,7 @@ import { getLayersForThemeAction } from '@/app/lib/actions';
 export default function ThemesTable({
   themes,
 }: {
-  themes: ThemesTableType[];
+  themes: ThemesTableWithLikes[];
 }) {
   console.log('[Client] ThemesTable received themes:', JSON.stringify(themes?.map(t => t.id) || 'No themes'));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -116,15 +117,23 @@ export default function ThemesTable({
                       </div>
                     )}
                     <div className="mt-3 border-t border-gray-700 pt-3 flex items-center justify-between gap-3">
-                      <a 
-                        href={`/dashboard/themes/${theme.id}/add-layer`} 
-                        className="inline-flex items-center gap-2 px-3 py-1 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                        Add Layer
-                      </a>
+                      <div className="flex items-center gap-3">
+                        <a 
+                          href={`/dashboard/themes/${theme.id}/add-layer`} 
+                          className="inline-flex items-center gap-2 px-3 py-1 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                          Add Layer
+                        </a>
+                      </div>
+                      <LikeDislikeButton
+                        itemId={theme.id}
+                        itemType="theme"
+                        likeStats={theme.like_stats}
+                        size="sm"
+                      />
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-700">

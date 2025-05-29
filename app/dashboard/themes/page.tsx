@@ -6,7 +6,7 @@ import { lusitana } from '@/app/ui/fonts';
 import { ThemesTableSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
 import { fetchThemesPages, fetchFilteredThemes } from '@/app/lib/data';
-import { ThemesTable as ThemesTableType } from '@/app/lib/definitions';
+import { ThemesTableWithLikes } from '@/app/lib/definitions';
 
 export default async function Page({
   searchParams,
@@ -23,7 +23,7 @@ export default async function Page({
 
   const [totalPages, themes] = await Promise.all([
     fetchThemesPages(query),
-    fetchFilteredThemes(query, currentPage) as Promise<ThemesTableType[]>
+    fetchFilteredThemes(query, currentPage) as Promise<ThemesTableWithLikes[]>
   ]);
 
   console.log('Themes being passed to Table:', JSON.stringify(themes.map(t => t.id))); // Log theme IDs
