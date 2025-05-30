@@ -16,6 +16,7 @@ import {
   MicrophoneIcon,
 } from '@heroicons/react/24/outline';
 import MediaPlayerModal from '@/app/ui/themes/MediaPlayer';
+import { UpdateTheme, DeleteTheme } from '@/app/ui/themes/buttons';
 
 interface UserProfileClientProps {
   themes: ThemesTableWithLikes[];
@@ -200,6 +201,8 @@ export default function UserProfileClient({
                                 likeStats={theme.like_stats}
                                 size="sm"
                               />
+                              <UpdateTheme id={theme.id} />
+                              <DeleteTheme id={theme.id} />
                               <Link
                                 href={`/dashboard/themes/${theme.id}`}
                                 className="text-indigo-400 hover:text-indigo-300"

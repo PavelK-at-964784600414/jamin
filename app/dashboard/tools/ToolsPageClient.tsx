@@ -6,15 +6,17 @@ import ChordGenerator from '@/app/ui/tools/ChordGenerator';
 import Metronome from '@/app/ui/tools/Metronome';
 import InstrumentAssistant from '@/app/ui/tools/InstrumentAssistant';
 import FretboardDetector from '@/app/ui/tools/FretboardDetector';
+import FretboardVisualizer from '@/app/ui/tools/FretboardVisualizer';
 import {
   MusicalNoteIcon,
   ClockIcon,
   SpeakerWaveIcon,
   WrenchScrewdriverIcon,
   CameraIcon,
+  ViewColumnsIcon,
 } from '@heroicons/react/24/outline';
 
-type ToolType = 'chord-generator' | 'metronome' | 'instrument-assistant' | 'fretboard-detector' | null;
+type ToolType = 'chord-generator' | 'metronome' | 'instrument-assistant' | 'fretboard-detector' | 'fretboard-visualizer' | null;
 
 interface Tool {
   id: ToolType;
@@ -53,6 +55,13 @@ const tools: Tool[] = [
     icon: CameraIcon,
     color: 'from-purple-500 to-pink-600',
   },
+  {
+    id: 'fretboard-visualizer',
+    name: 'Fretboard Visualizer',
+    description: 'Interactive fretboard showing scales and chords across the neck',
+    icon: ViewColumnsIcon,
+    color: 'from-indigo-500 to-purple-600',
+  },
 ];
 
 export default function ToolsPageClient() {
@@ -68,6 +77,8 @@ export default function ToolsPageClient() {
         return <InstrumentAssistant />;
       case 'fretboard-detector':
         return <FretboardDetector />;
+      case 'fretboard-visualizer':
+        return <FretboardVisualizer />;
       default:
         return null;
     }

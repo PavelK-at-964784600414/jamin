@@ -25,15 +25,15 @@ export default async function Layout({ children }: { children: React.ReactNode }
           {/* For now, let's remove the static "Dashboard" title from here */}
           {/* <h1 className={`${lusitana.className} text-xl md:text-2xl`}>Dashboard</h1> */}
           <div></div> {/* Empty div to push welcome message to the right if no title is present */}
-          <Link href="/dashboard/profile" className="flex items-center hover:opacity-80 transition-opacity">
+          <Link href="/dashboard/profile" className="group flex items-center rounded-lg px-3 py-2 transition-all duration-300 hover:bg-gray-800/50 hover:scale-105">
             <Image
               src={userImage}
               alt={`${userName}'s profile picture`}
               width={32}
               height={32}
-              className="rounded-full mr-2"
+              className="rounded-full mr-2 transition-transform duration-300 group-hover:scale-110"
             />
-            <h2 className={`${lusitana.className} text-lg md:text-xl font-normal text-gray-200 hover:text-white transition-colors`}>
+            <h2 className={`${lusitana.className} text-lg md:text-xl font-normal text-gray-200 transition-all duration-300 group-hover:text-blue-300 group-hover:scale-110 group-hover:font-medium group-hover:drop-shadow-lg`}>
               Welcome, {userName}!
             </h2>
           </Link>

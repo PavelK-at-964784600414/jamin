@@ -83,7 +83,8 @@ export type ThemesTable = {
   user_name: string; // From members.user_name
   instrument: string;
   image_url: string; // From themes.image_url (Corrected comment)
-  parent_theme_id?: string; 
+  parent_theme_id?: string;
+  member_id: string; // User ID who created the theme
 };
 
 // Member table related types
@@ -117,6 +118,7 @@ export type MemberField = {
 // Theme form related types – updated to use keySignature and chords as string
 export type ThemeForm = {
   id: string;
+  member_id: string;
   user_name: string;
   title: string;
   description?: string;

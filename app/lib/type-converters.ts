@@ -19,6 +19,7 @@ export function themeFormToThemesTable(themeForm: ThemeForm): ThemesTable {
     date: themeForm.date, // Corrected: themeForm.date is already a string
     status: themeForm.status,
     image_url: '', // This needs to be provided from somewhere else
+    member_id: themeForm.member_id,
   };
 }
 
@@ -28,6 +29,7 @@ export function themeFormToThemesTable(themeForm: ThemeForm): ThemesTable {
 export function themesTableToThemeForm(theme: ThemesTable): ThemeForm {
   return {
     id: theme.id,
+    member_id: theme.member_id,
     user_name: theme.user_name,
     title: theme.title,
     description: theme.description || '',

@@ -13,8 +13,10 @@ import { getLayersForThemeAction } from '@/app/lib/actions';
 
 export default function ThemesTable({
   themes,
+  currentUserId,
 }: {
   themes: ThemesTableWithLikes[];
+  currentUserId?: string;
 }) {
   console.log('[Client] ThemesTable received themes:', JSON.stringify(themes?.map(t => t.id) || 'No themes'));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -105,8 +107,13 @@ export default function ThemesTable({
                         <PlayIcon className="w-6 h-6" />
                       </button>
                     )}
-                    <UpdateTheme id={theme.id} />
-                    <DeleteTheme id={theme.id} />
+                    {/* Only show edit/delete buttons if current user owns the theme */}
+                    {currentUserId === theme.member_id && (
+                      <>
+                        <UpdateTheme id={theme.id} />
+                        <DeleteTheme id={theme.id} />
+                      </>
+                    )}
                   </div>
                   <div className="space-y-3 text-sm text-gray-300">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
