@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { lusitana } from '@/app/ui/fonts';
 import { CollaborationDisplayDataWithLikes } from '@/app/lib/definitions';
 import Image from 'next/image';
 import { formatDateToLocal } from '@/app/lib/utils';
@@ -37,9 +36,6 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
   return (
     <>
       <main>
-        <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
-          Collaborations
-        </h1>
         <p className="mb-8 text-gray-400">
           Each collaboration represents a musical journey - starting with an original theme and growing with each layer added by the community. Click &quot;Add Layer&quot; to continue any collaboration.
         </p>

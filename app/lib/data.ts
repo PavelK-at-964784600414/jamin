@@ -111,6 +111,7 @@ export async function fetchThemeById(id: string): Promise<ThemeForm | null> {
     const data = await sql<ThemeForm>`
       SELECT
         themes.id,
+        themes.member_id,
         members.user_name, 
         themes.title,
         themes.description,
@@ -118,6 +119,7 @@ export async function fetchThemeById(id: string): Promise<ThemeForm | null> {
         themes.mode,
         themes.chords,
         themes.tempo,
+        themes.instrument,
         themes.status,
         themes.recording_url AS sample,
         members.image_url AS image_url,
@@ -168,9 +170,10 @@ export async function fetchLatestThemes(): Promise<LatestThemes[]> {
 export async function fetchFilteredThemes(
   query: string,
   currentPage: number,
+  itemsPerPage: number = ITEMS_PER_PAGE,
 ): Promise<ThemesTableWithLikes[]> {
   noStore();
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+  const offset = (currentPage - 1) * itemsPerPage;
 
   try {
     const userId = await getCurrentUserId();
@@ -198,7 +201,7 @@ export async function fetchFilteredThemes(
         themes.title ILIKE ${`%${query}%`} OR
         themes.status ILIKE ${`%${query}%`}
       ORDER BY themes.date DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+      LIMIT ${itemsPerPage} OFFSET ${offset}
     `;
 
     // Add like stats for each theme
@@ -219,7 +222,7 @@ export async function fetchFilteredThemes(
   }
 }
 
-export async function fetchThemesPages(query: string): Promise<number> {
+export async function fetchThemesPages(query: string, itemsPerPage: number = ITEMS_PER_PAGE): Promise<number> {
   noStore();
   try {
     const count = await sql`
@@ -231,7 +234,7 @@ export async function fetchThemesPages(query: string): Promise<number> {
         themes.title ILIKE ${`%${query}%`} OR
         themes.status ILIKE ${`%${query}%`}
     `;
-    const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(Number(count.rows[0].count) / itemsPerPage);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
@@ -568,6 +571,7 @@ export async function fetchThemesByMemberId(memberId: string): Promise<ThemesTab
         themes.title,
         themes.date,
         themes.status,
+        themes.member_id,
         members.image_url AS image_url,
         members.user_name AS user_name,
         themes.seconds,
@@ -633,5 +637,342 @@ export async function fetchCollaborationsByMemberId(memberId: string): Promise<C
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch collaborations by member ID.');
+  }
+}
+
+// New function to fetch the total count of filtered themes
+export async function fetchThemesCount(query: string): Promise<number> {
+  noStore();
+  try {
+    const count = await sql`
+      SELECT COUNT(*)
+      FROM themes
+      JOIN members ON themes.member_id = members.id
+      WHERE
+        members.user_name ILIKE ${`%${query}%`} OR
+        themes.title ILIKE ${`%${query}%`} OR
+        themes.status ILIKE ${`%${query}%`}
+    `;
+    return Number(count.rows[0].count);
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of themes.');
+  }
+}
+
+export async function fetchFilteredCollaborations(
+  query: string = '',
+  currentPage: number = 1,
+  itemsPerPage: number = 6,
+): Promise<CollaborationDisplayDataWithLikes[]> {
+  noStore();
+  try {
+    const userId = await getCurrentUserId();
+    const enrichedLayers = await fetchAllLayersWithParentThemes();
+    const collaborations: CollaborationDisplayData[] = [];
+
+    // Group layers by theme
+    const layersByTheme = new Map<string, EnrichedLayerWithParentTheme[]>();
+    
+    enrichedLayers.forEach(layer => {
+      if (!layersByTheme.has(layer.parent_theme_id)) {
+        layersByTheme.set(layer.parent_theme_id, []);
+      }
+      layersByTheme.get(layer.parent_theme_id)!.push(layer);
+    });
+
+    // For each theme, create cumulative collaborations
+    for (const [themeId, layers] of layersByTheme) {
+      // Sort layers chronologically
+      layers.sort((a, b) => new Date(a.layer_date).getTime() - new Date(b.layer_date).getTime());
+
+      // Create a collaboration for each layer, including all previous layers
+      for (let i = 0; i < layers.length; i++) {
+        const currentLayer = layers[i];
+        const cumulativeLayers = layers.slice(0, i + 1); // All layers up to and including current
+        
+        // Get all unique participants up to this point (original creator + all layer creators so far)
+        const participantMap = new Map<string, Participant>();
+        
+        // Add the original theme creator
+        participantMap.set(currentLayer.parent_theme_creator_id, {
+          id: currentLayer.parent_theme_creator_id,
+          name: currentLayer.parent_theme_creator_name,
+          image_url: currentLayer.parent_theme_creator_image_url,
+        });
+
+        // Add all layer creators up to this point
+        cumulativeLayers.forEach(layer => {
+          if (!participantMap.has(layer.layer_creator_id)) {
+            participantMap.set(layer.layer_creator_id, {
+              id: layer.layer_creator_id,
+              name: layer.layer_creator_name,
+              image_url: layer.layer_creator_image_url,
+            });
+          }
+        });
+
+        // Create cumulative layers array
+        const cumulativeLayersData: any[] = cumulativeLayers.map(layer => ({
+          layer_id: layer.layer_id,
+          layer_title: layer.layer_title,
+          layer_instrument: layer.layer_instrument,
+          layer_date: layer.layer_date,
+          layer_creator_id: layer.layer_creator_id,
+          layer_creator_name: layer.layer_creator_name,
+          layer_creator_image_url: layer.layer_creator_image_url,
+          layer_recording_url: layer.layer_recording_url,
+        }));
+
+        // Create a collaboration record for this cumulative state
+        const newCollab = {
+          collab_id: currentLayer.layer_id, // Use the latest layer ID as the collaboration ID
+          collab_title: currentLayer.layer_title,
+          collab_instrument: currentLayer.layer_instrument,
+          collab_date: currentLayer.layer_date,
+          collab_creator_id: currentLayer.layer_creator_id,
+          collab_creator_name: currentLayer.layer_creator_name,
+          collab_creator_image_url: currentLayer.layer_creator_image_url,
+          collab_recording_url: currentLayer.layer_recording_url,
+          parent_theme_id: currentLayer.parent_theme_id,
+          parent_theme_title: currentLayer.parent_theme_title,
+          parent_theme_date: currentLayer.parent_theme_date,
+          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
+          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
+          total_layers_count: cumulativeLayers.length, // Number of layers up to this point
+          cumulative_layers: cumulativeLayersData,
+          participants: Array.from(participantMap.values()),
+        };
+        
+        collaborations.push(newCollab);
+      }
+    }
+    
+    // Filter collaborations based on search query
+    let filteredCollaborations = collaborations;
+    if (query) {
+      const queryLower = query.toLowerCase();
+      filteredCollaborations = collaborations.filter(collab => 
+        collab.collab_title.toLowerCase().includes(queryLower) ||
+        collab.collab_creator_name.toLowerCase().includes(queryLower) ||
+        collab.collab_instrument.toLowerCase().includes(queryLower) ||
+        collab.parent_theme_title.toLowerCase().includes(queryLower) ||
+        collab.parent_theme_creator_name.toLowerCase().includes(queryLower) ||
+        collab.participants.some(participant => 
+          participant.name.toLowerCase().includes(queryLower)
+        )
+      );
+    }
+    
+    // Sort by collaboration date (most recent first)
+    filteredCollaborations.sort((a, b) => new Date(b.collab_date).getTime() - new Date(a.collab_date).getTime());
+
+    // Apply pagination
+    const offset = (currentPage - 1) * itemsPerPage;
+    const paginatedCollaborations = filteredCollaborations.slice(offset, offset + itemsPerPage);
+
+    // Add like stats for each collaboration
+    const collaborationsWithLikes = await Promise.all(
+      paginatedCollaborations.map(async (collab) => {
+        const like_stats = await getCollabLikeStats(collab.collab_id, userId);
+        return {
+          ...collab,
+          like_stats,
+        };
+      })
+    );
+
+    return collaborationsWithLikes;
+
+  } catch (error) {
+    console.error('Database Error: Failed to fetch filtered collaboration data:', error);
+    throw error;
+  }
+}
+
+export async function fetchCollaborationsPages(query: string = '', itemsPerPage: number = 6): Promise<number> {
+  noStore();
+  try {
+    const enrichedLayers = await fetchAllLayersWithParentThemes();
+    const collaborations: CollaborationDisplayData[] = [];
+
+    // Group layers by theme
+    const layersByTheme = new Map<string, EnrichedLayerWithParentTheme[]>();
+    
+    enrichedLayers.forEach(layer => {
+      if (!layersByTheme.has(layer.parent_theme_id)) {
+        layersByTheme.set(layer.parent_theme_id, []);
+      }
+      layersByTheme.get(layer.parent_theme_id)!.push(layer);
+    });
+
+    // For each theme, create cumulative collaborations
+    for (const [themeId, layers] of layersByTheme) {
+      // Sort layers chronologically
+      layers.sort((a, b) => new Date(a.layer_date).getTime() - new Date(b.layer_date).getTime());
+
+      // Create a collaboration for each layer, including all previous layers
+      for (let i = 0; i < layers.length; i++) {
+        const currentLayer = layers[i];
+        const cumulativeLayers = layers.slice(0, i + 1);
+        
+        const participantMap = new Map<string, Participant>();
+        
+        participantMap.set(currentLayer.parent_theme_creator_id, {
+          id: currentLayer.parent_theme_creator_id,
+          name: currentLayer.parent_theme_creator_name,
+          image_url: currentLayer.parent_theme_creator_image_url,
+        });
+
+        cumulativeLayers.forEach(layer => {
+          if (!participantMap.has(layer.layer_creator_id)) {
+            participantMap.set(layer.layer_creator_id, {
+              id: layer.layer_creator_id,
+              name: layer.layer_creator_name,
+              image_url: layer.layer_creator_image_url,
+            });
+          }
+        });
+
+        const newCollab = {
+          collab_id: currentLayer.layer_id,
+          collab_title: currentLayer.layer_title,
+          collab_instrument: currentLayer.layer_instrument,
+          collab_date: currentLayer.layer_date,
+          collab_creator_id: currentLayer.layer_creator_id,
+          collab_creator_name: currentLayer.layer_creator_name,
+          collab_creator_image_url: currentLayer.layer_creator_image_url,
+          collab_recording_url: currentLayer.layer_recording_url,
+          parent_theme_id: currentLayer.parent_theme_id,
+          parent_theme_title: currentLayer.parent_theme_title,
+          parent_theme_date: currentLayer.parent_theme_date,
+          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
+          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
+          total_layers_count: cumulativeLayers.length,
+          cumulative_layers: [],
+          participants: Array.from(participantMap.values()),
+        };
+        
+        collaborations.push(newCollab);
+      }
+    }
+    
+    // Filter collaborations based on search query
+    let filteredCollaborations = collaborations;
+    if (query) {
+      const queryLower = query.toLowerCase();
+      filteredCollaborations = collaborations.filter(collab => 
+        collab.collab_title.toLowerCase().includes(queryLower) ||
+        collab.collab_creator_name.toLowerCase().includes(queryLower) ||
+        collab.collab_instrument.toLowerCase().includes(queryLower) ||
+        collab.parent_theme_title.toLowerCase().includes(queryLower) ||
+        collab.parent_theme_creator_name.toLowerCase().includes(queryLower) ||
+        collab.participants.some(participant => 
+          participant.name.toLowerCase().includes(queryLower)
+        )
+      );
+    }
+
+    const totalPages = Math.ceil(filteredCollaborations.length / itemsPerPage);
+    return totalPages;
+
+  } catch (error) {
+    console.error('Database Error: Failed to fetch collaboration pages count:', error);
+    throw error;
+  }
+}
+
+export async function fetchCollaborationsCount(query: string = ''): Promise<number> {
+  noStore();
+  try {
+    const enrichedLayers = await fetchAllLayersWithParentThemes();
+    const collaborations: CollaborationDisplayData[] = [];
+
+    // Group layers by theme
+    const layersByTheme = new Map<string, EnrichedLayerWithParentTheme[]>();
+    
+    enrichedLayers.forEach(layer => {
+      if (!layersByTheme.has(layer.parent_theme_id)) {
+        layersByTheme.set(layer.parent_theme_id, []);
+      }
+      layersByTheme.get(layer.parent_theme_id)!.push(layer);
+    });
+
+    // For each theme, create cumulative collaborations
+    for (const [themeId, layers] of layersByTheme) {
+      layers.sort((a, b) => new Date(a.layer_date).getTime() - new Date(b.layer_date).getTime());
+
+      for (let i = 0; i < layers.length; i++) {
+        const currentLayer = layers[i];
+        const cumulativeLayers = layers.slice(0, i + 1);
+        
+        const participantMap = new Map<string, Participant>();
+        
+        participantMap.set(currentLayer.parent_theme_creator_id, {
+          id: currentLayer.parent_theme_creator_id,
+          name: currentLayer.parent_theme_creator_name,
+          image_url: currentLayer.parent_theme_creator_image_url,
+        });
+
+        cumulativeLayers.forEach(layer => {
+          if (!participantMap.has(layer.layer_creator_id)) {
+            participantMap.set(layer.layer_creator_id, {
+              id: layer.layer_creator_id,
+              name: layer.layer_creator_name,
+              image_url: layer.layer_creator_image_url,
+            });
+          }
+        });
+
+        const newCollab = {
+          collab_id: currentLayer.layer_id,
+          collab_title: currentLayer.layer_title,
+          collab_instrument: currentLayer.layer_instrument,
+          collab_date: currentLayer.layer_date,
+          collab_creator_id: currentLayer.layer_creator_id,
+          collab_creator_name: currentLayer.layer_creator_name,
+          collab_creator_image_url: currentLayer.layer_creator_image_url,
+          collab_recording_url: currentLayer.layer_recording_url,
+          parent_theme_id: currentLayer.parent_theme_id,
+          parent_theme_title: currentLayer.parent_theme_title,
+          parent_theme_date: currentLayer.parent_theme_date,
+          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
+          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
+          total_layers_count: cumulativeLayers.length,
+          cumulative_layers: [],
+          participants: Array.from(participantMap.values()),
+        };
+        
+        collaborations.push(newCollab);
+      }
+    }
+    
+    // Filter collaborations based on search query
+    let filteredCollaborations = collaborations;
+    if (query) {
+      const queryLower = query.toLowerCase();
+      filteredCollaborations = collaborations.filter(collab => 
+        collab.collab_title.toLowerCase().includes(queryLower) ||
+        collab.collab_creator_name.toLowerCase().includes(queryLower) ||
+        collab.collab_instrument.toLowerCase().includes(queryLower) ||
+        collab.parent_theme_title.toLowerCase().includes(queryLower) ||
+        collab.parent_theme_creator_name.toLowerCase().includes(queryLower) ||
+        collab.participants.some(participant => 
+          participant.name.toLowerCase().includes(queryLower)
+        )
+      );
+    }
+
+    return filteredCollaborations.length;
+
+  } catch (error) {
+    console.error('Database Error: Failed to fetch collaborations count:', error);
+    throw error;
   }
 }
