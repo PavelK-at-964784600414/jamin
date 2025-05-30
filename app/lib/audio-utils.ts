@@ -160,3 +160,46 @@ export async function getAudioDuration(file: File): Promise<number> {
     audio.load();
   });
 }
+
+/**
+ * Get the duration of a media file (audio or video) in seconds
+ * @param file The media file to analyze
+ * @returns Promise resolving to duration in seconds
+ */
+export async function getMediaDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    // Determine if it's a video or audio file
+    const isVideo = file.type.startsWith('video/');
+    const element = isVideo ? document.createElement('video') : new Audio();
+    let timeout: NodeJS.Timeout;
+    
+    // Success handler
+    element.onloadedmetadata = () => {
+      clearTimeout(timeout);
+      const duration = (element as HTMLMediaElement).duration;
+      console.log(`Media duration detected: ${duration} seconds for ${file.name}`);
+      resolve(duration);
+      URL.revokeObjectURL(element.src);
+    };
+    
+    // Error handler
+    element.onerror = (err) => {
+      clearTimeout(timeout);
+      console.error('Media duration detection failed:', err);
+      resolve(0);
+      URL.revokeObjectURL(element.src);
+    };
+    
+    // Set timeout to prevent long waits
+    timeout = setTimeout(() => {
+      console.warn('Media duration detection timed out');
+      resolve(0);
+      URL.revokeObjectURL(element.src);
+    }, 5000);
+    
+    // Create object URL and load media
+    const url = URL.createObjectURL(file);
+    element.src = url;
+    element.load();
+  });
+}

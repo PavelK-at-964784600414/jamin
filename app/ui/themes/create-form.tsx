@@ -229,6 +229,16 @@ export default function CreateForm() {
           console.error('Failed to get audio duration:', error);
           setDuration(0);
         }
+      } else if (selectedFile.type.startsWith('video/')) {
+        try {
+          const { getVideoDuration } = await import('@/app/lib/video-utils');
+          const videoDuration = await getVideoDuration(selectedFile);
+          setDuration(videoDuration);
+          console.log('Video duration set to:', videoDuration, 'seconds');
+        } catch (error) {
+          console.error('Failed to get video duration:', error);
+          setDuration(0);
+        }
       } else {
         setDuration(0);
       }

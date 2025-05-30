@@ -67,8 +67,14 @@ export async function uploadFileToS3WithRetry(
       // Try to determine MIME type from extension
       if (finalFileName.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
       else if (finalFileName.endsWith('.wav')) safeMimeType = 'audio/wav';
-      else if (finalFileName.endsWith('.webm')) safeMimeType = 'audio/webm';
-      else if (finalFileName.endsWith('.mp4')) safeMimeType = 'video/mp4';
+      else if (finalFileName.endsWith('.webm')) {
+        safeMimeType = finalFileName.includes('video') || finalFileName.includes('vid') ? 'video/webm' : 'audio/webm';
+      }
+      else if (finalFileName.endsWith('.mp4')) {
+        safeMimeType = finalFileName.includes('video') || finalFileName.includes('vid') ? 'video/mp4' : 'audio/mp4';
+      }
+      else if (finalFileName.endsWith('.mov')) safeMimeType = 'video/quicktime';
+      else if (finalFileName.endsWith('.avi')) safeMimeType = 'video/x-msvideo';
     }
     console.log(`Server-side upload using MIME type: ${safeMimeType}`);
     
@@ -117,8 +123,14 @@ export async function uploadFileToS3WithRetry(
       
       if (filename.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
       else if (filename.endsWith('.wav')) safeMimeType = 'audio/wav';
-      else if (filename.endsWith('.webm')) safeMimeType = 'audio/webm';
-      else if (filename.endsWith('.mp4')) safeMimeType = 'video/mp4';
+      else if (filename.endsWith('.webm')) {
+        safeMimeType = filename.includes('video') || filename.includes('vid') ? 'video/webm' : 'audio/webm';
+      }
+      else if (filename.endsWith('.mp4')) {
+        safeMimeType = filename.includes('video') || filename.includes('vid') ? 'video/mp4' : 'audio/mp4';
+      }
+      else if (filename.endsWith('.mov')) safeMimeType = 'video/quicktime';
+      else if (filename.endsWith('.avi')) safeMimeType = 'video/x-msvideo';
       
       // Create a new file with the proper MIME type
       try {

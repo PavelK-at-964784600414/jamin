@@ -32,11 +32,20 @@ export async function getCurrentMemberId() {
 /**
  * Constants for file validation
  */
-export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+export const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB (increased for video files)
 export const ALLOWED_AUDIO_TYPES = [
   'audio/webm',
   'audio/mp3',
   'audio/wav',
   'audio/mpeg',
   'video/webm', // For video recordings
+  'video/mp4',  // For video recordings
+  'audio/mp4',  // For audio in MP4 container
+];
+
+export const ALLOWED_VIDEO_TYPES = [
+  'video/webm',
+  'video/mp4',
+  'video/x-msvideo', // .avi
+  'video/quicktime', // .mov
 ];

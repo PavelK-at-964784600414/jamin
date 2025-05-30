@@ -197,7 +197,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
           
           setFile(recordedFile);
           
-          // Get duration for recorded audio
+          // Get duration for recorded audio/video
           if (!isVideoMode && recordedFile.type.startsWith('audio/')) {
             try {
               const recordedDuration = await getAudioDuration(recordedFile);
@@ -205,6 +205,16 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
               console.log('Recorded collaboration layer duration set to:', recordedDuration, 'seconds');
             } catch (error) {
               console.error('Failed to get recorded collaboration layer duration:', error);
+              setDuration(0);
+            }
+          } else if (isVideoMode && recordedFile.type.startsWith('video/')) {
+            try {
+              const { getVideoDuration } = await import('@/app/lib/video-utils');
+              const videoDuration = await getVideoDuration(recordedFile);
+              setDuration(videoDuration);
+              console.log('Recorded collaboration video duration set to:', videoDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get recorded collaboration video duration:', error);
               setDuration(0);
             }
           } else {
@@ -233,12 +243,19 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
       const selectedFile = e.target.files[0];
       
       try {
-        const isValid = await validateAudioFile(selectedFile);
+        // Use appropriate validation for file type
+        let isValid = false;
+        if (selectedFile.type.startsWith('video/')) {
+          const { validateVideoFile } = await import('@/app/lib/video-utils');
+          isValid = await validateVideoFile(selectedFile);
+        } else {
+          isValid = await validateAudioFile(selectedFile);
+        }
         if (isValid) {
           setFile(selectedFile);
           setError(null);
           
-          // Get duration for uploaded audio file
+          // Get duration for uploaded audio/video file
           if (selectedFile.type.startsWith('audio/')) {
             try {
               const fileDuration = await getAudioDuration(selectedFile);
@@ -246,6 +263,16 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
               console.log('Uploaded collaboration layer duration set to:', fileDuration, 'seconds');
             } catch (error) {
               console.error('Failed to get uploaded collaboration layer duration:', error);
+              setDuration(0);
+            }
+          } else if (selectedFile.type.startsWith('video/')) {
+            try {
+              const { getVideoDuration } = await import('@/app/lib/video-utils');
+              const videoDuration = await getVideoDuration(selectedFile);
+              setDuration(videoDuration);
+              console.log('Uploaded collaboration video duration set to:', videoDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get uploaded collaboration video duration:', error);
               setDuration(0);
             }
           } else {
@@ -262,8 +289,8 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
     }
   };
 
-  // Maximum file size: 50MB
-  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+  // Maximum file size: 500MB (increased for video files)
+  const MAX_FILE_SIZE = 500 * 1024 * 1024;
   const ALLOWED_AUDIO_TYPES = [
     'audio/webm', 'audio/mp3', 'audio/mp4', 'video/mp4',
     'audio/wav', 'audio/mpeg', 'video/webm',
