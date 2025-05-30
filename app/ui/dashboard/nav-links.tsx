@@ -4,7 +4,8 @@ import {
   UserGroupIcon,
   HomeIcon,
   DocumentDuplicateIcon,
-  MusicalNoteIcon
+  MusicalNoteIcon,
+  WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
 import { CoolLink } from '@/app/ui/dashboard/cool-link';
 import { usePathname } from 'next/navigation';
@@ -18,7 +19,7 @@ const links = [
   { name: 'Themes', href: '/dashboard/themes', icon: DocumentDuplicateIcon },
   { name: 'Members', href: '/dashboard/members', icon: UserGroupIcon },
   { name: 'Collabs', href: '/dashboard/collabs', icon: MusicalNoteIcon },
-  
+  { name: 'Tools', href: '/dashboard/tools', icon: WrenchScrewdriverIcon },
 ];
 
 export default function NavLinks() {

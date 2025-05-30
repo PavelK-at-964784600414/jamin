@@ -10,6 +10,7 @@ import MetadataForm from './MetadataForm';
 import RecordingControls from './RecordingControls';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
+import { getAudioDuration } from '@/app/lib/audio-utils';
 
 export default function CreateForm() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function CreateForm() {
   const [file, setFile] = useState<File | null>(null);
   const [instrument, setInstrument] = useState('');
   const [mode, setMode] = useState(''); // Add mode state
+  const [duration, setDuration] = useState(0); // Add duration state
   const [trimStartTime, setTrimStartTime] = useState('');
   const [trimEndTime, setTrimEndTime] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -136,7 +138,7 @@ export default function CreateForm() {
         }
       };
   
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.onstop = async () => {
         if (mediaChunksRef.current.length === 0) {
           console.warn('No media data recorded.');
           return;
@@ -153,7 +155,23 @@ export default function CreateForm() {
         if (recorderMimeType) {
           extension = recorderMimeType.split("/")[1].split(";")[0];
         }
-        setFile(new File([blob], `recording.${extension}`, { type: recorderMimeType }));
+        const recordedFile = new File([blob], `recording.${extension}`, { type: recorderMimeType });
+        setFile(recordedFile);
+        
+        // Get duration for recorded audio
+        if (!isVideoMode && recordedFile.type.startsWith('audio/')) {
+          try {
+            const recordedDuration = await getAudioDuration(recordedFile);
+            setDuration(recordedDuration);
+            console.log('Recorded audio duration set to:', recordedDuration, 'seconds');
+          } catch (error) {
+            console.error('Failed to get recorded audio duration:', error);
+            setDuration(0);
+          }
+        } else {
+          setDuration(0);
+        }
+        
         mediaChunksRef.current = [];
       };
   
@@ -193,13 +211,29 @@ export default function CreateForm() {
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
     setFile(selectedFile);
     if (selectedFile) {
       const url = URL.createObjectURL(selectedFile);
       console.log('Selected file URL:', url);
       setMediaURL(url);
+      
+      // Get audio duration if it's an audio file
+      if (selectedFile.type.startsWith('audio/')) {
+        try {
+          const audioDuration = await getAudioDuration(selectedFile);
+          setDuration(audioDuration);
+          console.log('Audio duration set to:', audioDuration, 'seconds');
+        } catch (error) {
+          console.error('Failed to get audio duration:', error);
+          setDuration(0);
+        }
+      } else {
+        setDuration(0);
+      }
+    } else {
+      setDuration(0);
     }
   };
 
@@ -372,6 +406,12 @@ export default function CreateForm() {
           ref={fileInputRef} 
           style={{ display: 'none' }} 
           aria-hidden="true"
+        />
+        {/* Hidden input for duration */}
+        <input 
+          type="hidden" 
+          name="duration" 
+          value={duration} 
         />
         {/* Replace MediaPlayer component with inline audio/video element */}
         {mediaURL && isValidBlobUrl(mediaURL) && (

@@ -118,3 +118,45 @@ export function getSupportedAudioFormats() {
   console.log('Browser supported audio formats:', result);
   return result;
 }
+
+/**
+ * Get the duration of an audio file in seconds
+ * @param file The audio file to analyze
+ * @returns Promise resolving to duration in seconds
+ */
+export async function getAudioDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    let timeout: NodeJS.Timeout;
+    
+    // Success handler
+    audio.onloadedmetadata = () => {
+      clearTimeout(timeout);
+      const duration = audio.duration;
+      console.log('Audio duration:', duration, 'seconds');
+      // Clean up
+      URL.revokeObjectURL(audio.src);
+      resolve(isFinite(duration) ? Math.round(duration) : 0);
+    };
+    
+    // Error handler
+    audio.onerror = (err) => {
+      clearTimeout(timeout);
+      console.error('Failed to get audio duration:', err);
+      URL.revokeObjectURL(audio.src);
+      reject(new Error('Failed to load audio file'));
+    };
+    
+    // Set timeout to prevent long waits
+    timeout = setTimeout(() => {
+      console.warn('Audio duration detection timed out');
+      URL.revokeObjectURL(audio.src);
+      resolve(0); // Default to 0 if we can't determine duration
+    }, 5000);
+    
+    // Create object URL and load audio
+    const url = URL.createObjectURL(file);
+    audio.src = url;
+    audio.load();
+  });
+}

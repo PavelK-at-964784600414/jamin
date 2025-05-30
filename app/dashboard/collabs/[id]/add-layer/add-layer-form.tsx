@@ -6,7 +6,7 @@ import { createLayer, LayerState } from '@/app/lib/actions';
 import { useRouter } from 'next/navigation';
 import RecordingControls from '@/app/ui/themes/RecordingControls';
 import LayerMetadataForm from '@/app/ui/themes/LayerMetadataForm';
-import { getSupportedAudioFormats, validateAudioFile } from '@/app/lib/audio-utils';
+import { getSupportedAudioFormats, validateAudioFile, getAudioDuration } from '@/app/lib/audio-utils';
 
 interface AddLayerToCollabFormProps {
   collaboration: CollaborationDisplayData;
@@ -60,6 +60,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
   const [chords, setChords] = useState('');
   const [instrument, setInstrument] = useState('Piano'); // Set a default instrument
   const [mode, setMode] = useState('');
+  const [duration, setDuration] = useState(0); // Add duration state
 
   // Form submission state
   const [error, setError] = useState<string | null>(null);
@@ -177,7 +178,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
           }
         };
         
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
           const mimeType = mediaRecorder.mimeType || (isVideoMode ? 'video/webm' : 'audio/webm');
           const recordedBlob = new Blob(chunks, { type: mimeType });
           
@@ -195,6 +196,21 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
           });
           
           setFile(recordedFile);
+          
+          // Get duration for recorded audio
+          if (!isVideoMode && recordedFile.type.startsWith('audio/')) {
+            try {
+              const recordedDuration = await getAudioDuration(recordedFile);
+              setDuration(recordedDuration);
+              console.log('Recorded collaboration layer duration set to:', recordedDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get recorded collaboration layer duration:', error);
+              setDuration(0);
+            }
+          } else {
+            setDuration(0);
+          }
+          
           setRecordedChunks(chunks);
         };
         
@@ -221,6 +237,20 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
         if (isValid) {
           setFile(selectedFile);
           setError(null);
+          
+          // Get duration for uploaded audio file
+          if (selectedFile.type.startsWith('audio/')) {
+            try {
+              const fileDuration = await getAudioDuration(selectedFile);
+              setDuration(fileDuration);
+              console.log('Uploaded collaboration layer duration set to:', fileDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get uploaded collaboration layer duration:', error);
+              setDuration(0);
+            }
+          } else {
+            setDuration(0);
+          }
         } else {
           setError('The selected file appears to be invalid or corrupted. Please try another file.');
           e.target.value = '';
@@ -287,6 +317,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
     formData.append('chords', chords);
     formData.append('instrument', instrument);
     formData.append('mode', mode);
+    formData.append('duration', duration.toString());
     formData.append('collaborationId', collaboration.collab_id);
     
     // Add the file
@@ -376,6 +407,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
         <input type="hidden" name="chords" value={chords} />
         <input type="hidden" name="instrument" value={instrument} />
         <input type="hidden" name="mode" value={mode} />
+        <input type="hidden" name="duration" value={duration.toString()} />
         <input type="hidden" name="collaborationId" value={collaboration.collab_id} />
         
         {/* Hidden file input for the recorded/uploaded file */}

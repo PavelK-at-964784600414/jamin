@@ -81,14 +81,17 @@ export async function createTheme(prevState: State, formData: FormData) {
       title: formData.get('title'),
       description: formData.get('description'),
       genre: formData.get('genre'),
-      key: formData.get('keySignature') ?? "",
-      tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
+      key: formData.get('keySignature') ?? "",      tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
       audioFile: formData.get('audioFile'),
       instrument: formData.get('instrument'),
       scale: formData.get('scale') ?? "",
       mode: formData.get('mode') ?? "",
       chords: formData.get('chords'),
     });
+
+    // Get duration from form data
+    const submittedDuration = formData.get('duration');
+    const seconds = submittedDuration ? Number(submittedDuration) : 0;
 
     
     if (!validatedFields.success) {
@@ -98,12 +101,9 @@ export async function createTheme(prevState: State, formData: FormData) {
         message: 'Missing or Invalid Fields. Failed to Create Theme.',
         success: false,
       };
-    }
-
-    const { title, description, genre, key, tempo, audioFile, instrument, scale, mode, chords } = validatedFields.data;
+    }    const { title, description, genre, key, tempo, audioFile, instrument, scale, mode, chords } = validatedFields.data;
     let recording_url = null;
     const status = 'in progress';
-    const seconds = 0;// need to get seconds fromrecording
       // Check if we have a file to upload
     if (audioFile) {      try {
         // Check if it's a File object (client-side) or FormDataEntryValue (server-side)
@@ -451,10 +451,12 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       name: audioFile?.name,
       type_property: audioFile?.type
     });
-    
-    let recording_url = null;
+      let recording_url = null;
     const status = 'complete'; // Layers are considered complete
-    const seconds = 0; // We'll extract this from the recording      
+    
+    // Get duration from form data
+    const submittedDuration = formData.get('duration');
+    const seconds = submittedDuration ? Number(submittedDuration) : 0;
     if (audioFile) {
       try {
         // Handle various types of file objects that could come from different browsers

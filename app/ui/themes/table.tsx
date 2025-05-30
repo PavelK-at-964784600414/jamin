@@ -60,21 +60,32 @@ export default function ThemesTable({
       />
       <div className="mt-6 flow-root">
         <div className="inline-block min-w-full align-middle">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-sm text-gray-400">
+              Showing {themes.length} theme{themes.length !== 1 ? 's' : ''} (sorted by date, newest first)
+            </div>
+          </div>
           <Accordion type="single" onValueChange={handleAccordionChange}>
             {themes.map((theme) => (
               <AccordionItem key={theme.id} value={theme.id}>
                 <AccordionTrigger>
-                  <div className="flex w-full items-center gap-3 text-gray-200">
-                    <Image
-                      src={theme.image_url}
-                      className="rounded-full"
-                      width={32}
-                      height={32}
-                      alt={`${theme.user_name}'s profile picture`}
-                    />
-                    <div className="flex flex-col text-left">
-                      <span className="font-semibold text-base">{theme.title}</span>
-                      <span className="text-sm text-gray-400">{theme.user_name}</span>
+                  <div className="flex w-full items-center justify-between gap-3 text-gray-200">
+                    <div className="flex items-center gap-3">
+                      <Image
+                        src={theme.image_url}
+                        className="rounded-full"
+                        width={32}
+                        height={32}
+                        alt={`${theme.user_name}'s profile picture`}
+                      />
+                      <div className="flex flex-col text-left">
+                        <span className="font-semibold text-base">{theme.title}</span>
+                        <span className="text-sm text-gray-400">{theme.user_name}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col text-right text-sm text-gray-400">
+                      <span className="font-medium">{formatDateToLocal(theme.date)}</span>
+                      <span className="text-xs">{typeof theme.seconds === 'number' ? `${Math.floor(theme.seconds / 60)}:${(theme.seconds % 60).toString().padStart(2, '0')}` : 'N/A'}</span>
                     </div>
                   </div>
                 </AccordionTrigger>

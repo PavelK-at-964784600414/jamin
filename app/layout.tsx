@@ -2,6 +2,7 @@ import '@/app/ui/global.css'
 import { inter } from '@/app/ui/fonts';
 import { Metadata } from 'next';
 import { Providers } from './providers';
+import OpenCVPreloader from '@/app/ui/OpenCVPreloader';
 
 // Define security headers with CSP
 export const metadata: Metadata = {
@@ -16,11 +17,11 @@ export const metadata: Metadata = {
     // Content Security Policy
     'Content-Security-Policy': `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://docs.opencv.org;
       style-src 'self' 'unsafe-inline';
       img-src 'self' blob: data:;
       font-src 'self';
-      connect-src 'self' ${process.env.NEXT_PUBLIC_S3_URL || '*'};
+      connect-src 'self' https://docs.opencv.org ${process.env.NEXT_PUBLIC_S3_URL || '*'};
       media-src 'self' ${process.env.NEXT_PUBLIC_S3_URL || '*'};
       frame-src 'self';
     `.replace(/\s+/g, ' ').trim(),
@@ -41,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
+        {/* <OpenCVPreloader /> */}
         <Providers>{children}</Providers>
       </body>
     </html>
