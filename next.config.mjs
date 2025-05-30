@@ -5,6 +5,9 @@ import ffmpegBinaryPathFromStatic from 'ffmpeg-static'; // Renamed for clarity
 
 const nextConfig = {
   // Remove experimental PPR feature since it requires a canary version
+  experimental: {
+    serverActionsBodySizeLimit: '10mb', // Increase body size limit for video uploads
+  },
   images: {
     remotePatterns: [
       {

@@ -53,9 +53,15 @@ export async function uploadToS3(file: File, key: string) {
               if (!contentType || contentType === '') {
                 if (key.endsWith('.mp3')) contentType = 'audio/mpeg';
                 else if (key.endsWith('.wav')) contentType = 'audio/wav';
-                else if (key.endsWith('.webm')) contentType = 'audio/webm';
-                else if (key.endsWith('.mp4')) contentType = 'video/mp4';
+                else if (key.endsWith('.webm')) {
+                  contentType = key.includes('video') || key.includes('vid') ? 'video/webm' : 'audio/webm';
+                }
+                else if (key.endsWith('.mp4')) {
+                  contentType = key.includes('video') || key.includes('vid') ? 'video/mp4' : 'audio/mp4';
+                }
                 else if (key.endsWith('.m4a')) contentType = 'audio/mp4';
+                else if (key.endsWith('.mov')) contentType = 'video/quicktime';
+                else if (key.endsWith('.avi')) contentType = 'video/x-msvideo';
                 // Default to webm for audio content
                 else contentType = 'audio/webm';
               }
@@ -131,9 +137,15 @@ export async function uploadToS3(file: File, key: string) {
     if (!contentType || contentType === '') {
       if (key.endsWith('.mp3')) contentType = 'audio/mpeg';
       else if (key.endsWith('.wav')) contentType = 'audio/wav';
-      else if (key.endsWith('.webm')) contentType = 'audio/webm';
-      else if (key.endsWith('.mp4')) contentType = 'video/mp4';
+      else if (key.endsWith('.webm')) {
+        contentType = key.includes('video') || key.includes('vid') ? 'video/webm' : 'audio/webm';
+      }
+      else if (key.endsWith('.mp4')) {
+        contentType = key.includes('video') || key.includes('vid') ? 'video/mp4' : 'audio/mp4';
+      }
       else if (key.endsWith('.m4a')) contentType = 'audio/mp4';
+      else if (key.endsWith('.mov')) contentType = 'video/quicktime';
+      else if (key.endsWith('.avi')) contentType = 'video/x-msvideo';
       // Default to webm for audio content
       else contentType = 'audio/webm';
     }

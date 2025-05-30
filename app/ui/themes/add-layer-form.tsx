@@ -154,7 +154,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           
           setFile(recordedFile);
           
-          // Get duration for recorded audio
+          // Get duration for recorded audio/video
           if (!isVideoMode && recordedFile.type.startsWith('audio/')) {
             try {
               const recordedDuration = await getAudioDuration(recordedFile);
@@ -162,6 +162,16 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
               console.log('Recorded layer duration set to:', recordedDuration, 'seconds');
             } catch (error) {
               console.error('Failed to get recorded layer duration:', error);
+              setDuration(0);
+            }
+          } else if (isVideoMode && recordedFile.type.startsWith('video/')) {
+            try {
+              const { getVideoDuration } = await import('@/app/lib/video-utils');
+              const videoDuration = await getVideoDuration(recordedFile);
+              setDuration(videoDuration);
+              console.log('Recorded video duration set to:', videoDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get recorded video duration:', error);
               setDuration(0);
             }
           } else {
@@ -197,17 +207,23 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
-      // Validate the audio file
+      // Validate the media file
       try {
-        // Check if the file is a valid audio file
-        const isValid = await validateAudioFile(selectedFile);
+        // Check if the file is a valid media file (use appropriate validation)
+        let isValid = false;
+        if (selectedFile.type.startsWith('video/')) {
+          const { validateVideoFile } = await import('@/app/lib/video-utils');
+          isValid = await validateVideoFile(selectedFile);
+        } else {
+          isValid = await validateAudioFile(selectedFile);
+        }
         
         if (isValid) {
           console.log('File validated successfully:', selectedFile.name);
           setFile(selectedFile);
           setError(null);
           
-          // Get audio duration if it's an audio file
+          // Get audio/video duration if it's a media file
           if (selectedFile.type.startsWith('audio/')) {
             try {
               const audioDuration = await getAudioDuration(selectedFile);
@@ -215,6 +231,16 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
               console.log('Layer audio duration set to:', audioDuration, 'seconds');
             } catch (error) {
               console.error('Failed to get layer audio duration:', error);
+              setDuration(0);
+            }
+          } else if (selectedFile.type.startsWith('video/')) {
+            try {
+              const { getVideoDuration } = await import('@/app/lib/video-utils');
+              const videoDuration = await getVideoDuration(selectedFile);
+              setDuration(videoDuration);
+              console.log('Layer video duration set to:', videoDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get layer video duration:', error);
               setDuration(0);
             }
           } else {
@@ -237,8 +263,8 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     setIsPlaybackModalOpen(!isPlaybackModalOpen);
   };
 
-  // Maximum file size: 50MB
-  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+  // Maximum file size: 500MB (increased for video files)
+  const MAX_FILE_SIZE = 500 * 1024 * 1024;
   const ALLOWED_AUDIO_TYPES = [
     'audio/webm',
     'audio/mp3',
@@ -278,15 +304,22 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       console.warn(`File type ${file.type} not in allowed list, but appears to be audio/video`);
     }
     
-    // Validate that the audio file is playable
+    // Validate that the media file is playable (use appropriate validation for file type)
     try {
-      const isValid = await validateAudioFile(file);
+      let isValid = false;
+      if (file.type.startsWith('video/')) {
+        const { validateVideoFile } = await import('@/app/lib/video-utils');
+        isValid = await validateVideoFile(file);
+      } else {
+        isValid = await validateAudioFile(file);
+      }
+      
       if (!isValid) {
-        console.warn('Audio validation detected potential issues with the file');
+        console.warn('Media validation detected potential issues with the file');
         // We'll still continue, but log the warning
       }
     } catch (error) {
-      console.error('Error validating audio file:', error);
+      console.error('Error validating media file:', error);
       // Continue despite validation error
     }
     
