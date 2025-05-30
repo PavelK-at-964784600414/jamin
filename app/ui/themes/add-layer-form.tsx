@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import RecordingControls from './RecordingControls';
 import MediaPlayer from './MediaPlayer';
 import LayerMetadataForm from './LayerMetadataForm';
-import { getSupportedAudioFormats, validateAudioFile } from '@/app/lib/audio-utils';
+import { getSupportedAudioFormats, validateAudioFile, getAudioDuration } from '@/app/lib/audio-utils';
 
 interface AddLayerFormProps {
   theme: ThemesTable;
@@ -54,6 +54,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   const [chords, setChords] = useState(theme.chords || '');
   const [instrument, setInstrument] = useState('Piano'); // Set a default instrument
   const [mode, setMode] = useState(theme.mode);
+  const [duration, setDuration] = useState(0); // Add duration state
 
   // Form submission state - isSubmitting can potentially be replaced by isPending from useActionState
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +128,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           }
         };
         
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
           // Get the proper MIME type from the recorder
           const mimeType = mediaRecorder.mimeType || (isVideoMode ? 'video/webm' : 'audio/webm');
           console.log(`Recording completed with MIME type: ${mimeType}`);
@@ -152,6 +153,21 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           console.log(`Created recording file: ${fileName}, size: ${recordedBlob.size} bytes, type: ${mimeType}`);
           
           setFile(recordedFile);
+          
+          // Get duration for recorded audio
+          if (!isVideoMode && recordedFile.type.startsWith('audio/')) {
+            try {
+              const recordedDuration = await getAudioDuration(recordedFile);
+              setDuration(recordedDuration);
+              console.log('Recorded layer duration set to:', recordedDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get recorded layer duration:', error);
+              setDuration(0);
+            }
+          } else {
+            setDuration(0);
+          }
+          
           setRecordedChunks(chunks);
         };
         
@@ -190,6 +206,20 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           console.log('File validated successfully:', selectedFile.name);
           setFile(selectedFile);
           setError(null);
+          
+          // Get audio duration if it's an audio file
+          if (selectedFile.type.startsWith('audio/')) {
+            try {
+              const audioDuration = await getAudioDuration(selectedFile);
+              setDuration(audioDuration);
+              console.log('Layer audio duration set to:', audioDuration, 'seconds');
+            } catch (error) {
+              console.error('Failed to get layer audio duration:', error);
+              setDuration(0);
+            }
+          } else {
+            setDuration(0);
+          }
         } else {
           console.error('Invalid audio file:', selectedFile.name);
           setError('The selected file appears to be invalid or corrupted. Please try another file.');
@@ -527,6 +557,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             <input type="hidden" name="chords" value={chords} />
             <input type="hidden" name="instrument" value={instrument} />
             <input type="hidden" name="mode" value={mode} />
+            <input type="hidden" name="duration" value={duration} />
             
             {/* Submit button */}
             <div className="mt-6 flex justify-end">
