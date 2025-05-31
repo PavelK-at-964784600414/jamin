@@ -95,12 +95,9 @@ export default function FretboardVisualizer() {
       return SCALES[selectedScale];
     } else if (displayMode === 'chord') {
       return CHORDS[selectedChord];
-    } else if (displayMode === 'progression' && currentProgressionChord) {
-      const chordType = CHORD_TYPES.find(type => 
-        currentProgressionChord.type.includes(type.symbol) || 
-        (type.symbol === '' && !currentProgressionChord.type.includes('m'))
-      );
-      return chordType ? chordType.intervals : CHORD_TYPES[0].intervals;
+    } else if (displayMode === 'progression') {
+      // When in progression mode, always show the scale as background
+      return SCALES[selectedScale];
     }
     return SCALES[selectedScale];
   };
@@ -116,6 +113,14 @@ export default function FretboardVisualizer() {
   };
   
   const currentRoot = getCurrentRoot();
+
+  // Helper function to check if a note is part of the currently playing chord
+  const isNoteInCurrentChord = (note: string): boolean => {
+    if (!isProgressionPlaying || !currentProgressionChord) {
+      return false;
+    }
+    return currentProgressionChord.notes.includes(note);
+  };
 
   // Handlers
   const updateTuningAndStrings = (tuning: TuningType) => {
@@ -452,10 +457,16 @@ export default function FretboardVisualizer() {
                 {/* Open string */}
                 <div className="w-12 h-8 border-r border-gray-600 flex items-center justify-center relative">
                   {isNoteInPattern(stringNote, currentRoot, intervals) && (
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isRootNote(stringNote, currentRoot) && highlightRoot
-                        ? 'bg-red-500 text-white'
-                        : 'bg-blue-500 text-white'
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                      isNoteInCurrentChord(stringNote)
+                        ? 'bg-green-500 text-white ring-4 ring-green-300 animate-pulse shadow-lg shadow-green-500/50 scale-110 border-2 border-green-200'
+                        : isRootNote(stringNote, currentRoot) && highlightRoot
+                        ? (displayMode === 'progression' && isProgressionPlaying 
+                           ? 'bg-red-800 text-gray-300' 
+                           : 'bg-red-500 text-white')
+                        : (displayMode === 'progression' && isProgressionPlaying 
+                           ? 'bg-blue-800 text-gray-400' 
+                           : 'bg-blue-500 text-white')
                     }`}>
                       {showNoteNames ? stringNote : getIntervalName(stringNote, currentRoot)}
                     </div>
@@ -488,10 +499,16 @@ export default function FretboardVisualizer() {
 
                       {/* Note circle */}
                       {isInPattern && (
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 ${
-                          isRoot && highlightRoot
-                            ? 'bg-red-500 text-white ring-2 ring-red-300'
-                            : 'bg-blue-500 text-white'
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 transition-all duration-300 ${
+                          isNoteInCurrentChord(note)
+                            ? 'bg-green-500 text-white ring-4 ring-green-300 animate-pulse shadow-lg shadow-green-500/50 scale-110 border-2 border-green-200'
+                            : isRoot && highlightRoot
+                            ? (displayMode === 'progression' && isProgressionPlaying 
+                               ? 'bg-red-800 text-gray-300 ring-2 ring-red-900' 
+                               : 'bg-red-500 text-white ring-2 ring-red-300')
+                            : (displayMode === 'progression' && isProgressionPlaying 
+                               ? 'bg-blue-800 text-gray-400' 
+                               : 'bg-blue-500 text-white')
                         }`}>
                           {showNoteNames ? note : getIntervalName(note, currentRoot)}
                         </div>
@@ -603,7 +620,10 @@ export default function FretboardVisualizer() {
         />
 
         {/* Legend */}
-        <Legend displayMode={displayMode} />
+        <Legend 
+          displayMode={displayMode} 
+          isProgressionPlaying={isProgressionPlaying}
+        />
 
         {/* Fretboard */}
         {renderFretboard()}
