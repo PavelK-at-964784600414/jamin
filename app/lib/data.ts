@@ -477,6 +477,7 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
 export async function fetchCollabs(): Promise<any[]> { // Using any[] for now
   noStore();
   try {
+    console.log('fetchCollabs: Starting query...');
     const data = await sql`
       SELECT
         TO_CHAR(date::timestamp, 'YYYY-MM') AS month,
@@ -485,11 +486,16 @@ export async function fetchCollabs(): Promise<any[]> { // Using any[] for now
       GROUP BY month
       ORDER BY month ASC;
     `;
+    console.log('fetchCollabs: Raw SQL result:', data.rows);
+    
     // Map to the expected structure, converting count to number
-    return data.rows.map((row: any) => ({
+    const result = data.rows.map((row: any) => ({
       month: row.month,
       count: parseInt(row.count, 10),
     }));
+    
+    console.log('fetchCollabs: Processed result:', result);
+    return result;
   } catch (error) {
     console.error('Database Error (fetchCollabs):', error);
     throw new Error('Failed to fetch collaboration data for chart.');

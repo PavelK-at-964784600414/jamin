@@ -88,8 +88,14 @@ export default function ChordGenerator() {
   const [includeDrums, setIncludeDrums] = useState(true);
   const [includeBass, setIncludeBass] = useState(true);
   
+  // New state for fretboard integration
+  const [currentProgressionChord, setCurrentProgressionChord] = useState<Chord | null>(null);
+  const [currentChordIndex, setCurrentChordIndex] = useState(0);
+  
   const audioContextRef = useRef<AudioContext | null>(null);
   const progressionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const chordTimeoutRefs = useRef<NodeJS.Timeout[]>([]);
+  const isPlayingRef = useRef<boolean>(false);
 
   // Initialize audio context
   useEffect(() => {
@@ -104,8 +110,22 @@ export default function ChordGenerator() {
       if (progressionTimeoutRef.current) {
         clearTimeout(progressionTimeoutRef.current);
       }
+      // Clear all chord timeout refs
+      chordTimeoutRefs.current.forEach(timeout => clearTimeout(timeout));
     };
   }, []);
+
+  // Ensure audio context is resumed (required for modern browsers)
+  const ensureAudioContextResumed = async () => {
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+        console.log('Audio context resumed successfully');
+      } catch (error) {
+        console.error('Failed to resume audio context:', error);
+      }
+    }
+  };
 
   const generateChord = (root: string, chordType: typeof CHORD_TYPES[0]) => {
     const rootIndex = NOTES.indexOf(root);
@@ -143,8 +163,11 @@ export default function ChordGenerator() {
     });
   };
 
-  const playChord = () => {
+  const playChord = async () => {
     if (!audioContextRef.current || !currentChord) return;
+    
+    // Ensure audio context is resumed before playing
+    await ensureAudioContextResumed();
     
     setIsPlaying(true);
     const context = audioContextRef.current;
@@ -187,8 +210,11 @@ export default function ChordGenerator() {
   };
 
   // Create drum sounds using Web Audio API
-  const createDrumSound = (frequency: number, duration: number, type: 'kick' | 'snare' | 'hihat', startTime: number) => {
+  const createDrumSound = async (frequency: number, duration: number, type: 'kick' | 'snare' | 'hihat', startTime: number) => {
     if (!audioContextRef.current) return;
+    
+    // Ensure audio context is resumed before playing
+    await ensureAudioContextResumed();
     
     const context = audioContextRef.current;
     
@@ -267,8 +293,11 @@ export default function ChordGenerator() {
   };
 
   // Create bass sound
-  const createBassSound = (frequency: number, startTime: number, duration: number) => {
+  const createBassSound = async (frequency: number, startTime: number, duration: number) => {
     if (!audioContextRef.current) return;
+    
+    // Ensure audio context is resumed before playing
+    await ensureAudioContextResumed();
     
     const context = audioContextRef.current;
     const oscillator = context.createOscillator();
@@ -317,13 +346,13 @@ export default function ChordGenerator() {
     return [rootFreq]; // Just root for other patterns
   };
 
-  // Play chord progression with drums and bass
-  const playProgression = () => {
-    if (!audioContextRef.current) return;
+  // Play one iteration of the chord progression
+  const playProgressionIteration = async (startTime: number) => {
+    if (!audioContextRef.current || !isPlayingRef.current) return;
     
-    setIsProgressionPlaying(true);
+    console.log('Playing progression iteration starting at:', startTime);
+    
     const context = audioContextRef.current;
-    const now = context.currentTime;
     
     // Calculate timing
     const beatDuration = 60 / bpm; // Duration of one quarter note
@@ -335,7 +364,18 @@ export default function ChordGenerator() {
     const bassPattern = BASS_PATTERNS[selectedBassPattern as keyof typeof BASS_PATTERNS];
     
     transposedChords.forEach((chord, chordIndex) => {
-      const chordStartTime = now + (chordIndex * chordDuration);
+      const chordStartTime = startTime + (chordIndex * chordDuration);
+      
+      // Set up timeout to update current chord for visualization
+      const chordTimeout = setTimeout(() => {
+        if (!isPlayingRef.current) return; // Check if still playing
+        const chordObj = generateChord(chord.replace(/[^A-G#]/g, ''), 
+          chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0]);
+        setCurrentProgressionChord(chordObj);
+        setCurrentChordIndex(chordIndex);
+      }, (chordIndex * chordDuration * 1000));
+      
+      chordTimeoutRefs.current.push(chordTimeout);
       
       // Play chord if enabled
       if (includeChords) {
@@ -400,18 +440,57 @@ export default function ChordGenerator() {
       }
     });
     
-    // Reset playing state after progression completes
-    const totalDuration = transposedChords.length * chordDuration * 1000;
+    // Schedule next iteration if still playing
+    const totalDurationSeconds = transposedChords.length * chordDuration;
+    const totalDurationMs = totalDurationSeconds * 1000;
+    const nextIterationStartTime = startTime + totalDurationSeconds;
+    
+    console.log(`Scheduling next loop in ${totalDurationMs}ms (${totalDurationSeconds}s)`);
+    console.log(`Current iteration started at: ${startTime}, next will start at: ${nextIterationStartTime}`);
+    
     progressionTimeoutRef.current = setTimeout(() => {
-      setIsProgressionPlaying(false);
-    }, totalDuration);
+      console.log('Loop timeout fired, isPlayingRef.current:', isPlayingRef.current);
+      if (isPlayingRef.current) {
+        console.log('Looping progression back to start');
+        // Reset chord index to 0 for next loop
+        setCurrentChordIndex(0);
+        // Start next iteration with the calculated start time
+        playProgressionIteration(nextIterationStartTime);
+      }
+    }, totalDurationMs);
+  };
+
+  // Play chord progression with drums and bass (looping)
+  const playProgression = async () => {
+    if (!audioContextRef.current) return;
+    
+    // Ensure audio context is resumed before playing
+    await ensureAudioContextResumed();
+    
+    setIsProgressionPlaying(true);
+    isPlayingRef.current = true;
+    const context = audioContextRef.current;
+    
+    // Clear any existing chord timeouts
+    chordTimeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+    chordTimeoutRefs.current = [];
+    
+    // Start the first iteration
+    const startTime = context.currentTime;
+    playProgressionIteration(startTime);
   };
 
   const stopProgression = () => {
     setIsProgressionPlaying(false);
+    isPlayingRef.current = false;
+    setCurrentProgressionChord(null);
+    setCurrentChordIndex(0);
     if (progressionTimeoutRef.current) {
       clearTimeout(progressionTimeoutRef.current);
     }
+    // Clear all chord timeouts
+    chordTimeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+    chordTimeoutRefs.current = [];
   };
 
   return (
@@ -554,17 +633,60 @@ export default function ChordGenerator() {
               {transposeProgression(selectedProgression, selectedRoot).map((chord, index) => (
                 <div
                   key={index}
-                  className="bg-gray-700 rounded-lg p-3 text-center"
+                  className={`rounded-lg p-3 text-center transition-all duration-300 ${
+                    isProgressionPlaying && currentChordIndex === index
+                      ? 'bg-green-600 text-white scale-105 shadow-lg ring-2 ring-green-400 animate-pulse'
+                      : 'bg-gray-700'
+                  }`}
                 >
-                  <div className="text-lg font-bold text-blue-400">
+                  <div className={`text-lg font-bold ${
+                    isProgressionPlaying && currentChordIndex === index
+                      ? 'text-white'
+                      : 'text-blue-400'
+                  }`}>
                     {chord}
                   </div>
                   <div className="text-xs text-gray-400">
                     Chord {index + 1}
                   </div>
+                  {isProgressionPlaying && currentChordIndex === index && (
+                    <div className="text-xs text-green-200 mt-1">♪ Playing</div>
+                  )}
                 </div>
               ))}
             </div>
+
+            {/* Looping Status */}
+            {isProgressionPlaying && (
+              <div className="bg-green-900 border border-green-600 rounded-lg p-3 mb-4">
+                <div className="text-center">
+                  <div className="text-sm text-green-300 font-medium">
+                    🔄 Playing in Loop Mode
+                  </div>
+                  <div className="text-xs text-green-400 mt-1">
+                    Progression will repeat until stopped
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Current Chord Display */}
+            {isProgressionPlaying && currentProgressionChord && (
+              <div className="bg-blue-600 rounded-lg p-4 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white mb-2">
+                    Now Playing: {currentProgressionChord.root}
+                    {currentProgressionChord.type.includes('Minor') ? 'm' : ''}
+                  </div>
+                  <div className="text-sm text-blue-100">
+                    Notes: {currentProgressionChord.notes.join(' - ')}
+                  </div>
+                  <div className="text-xs text-blue-200 mt-1">
+                    Chord {currentChordIndex + 1} of {transposeProgression(selectedProgression, selectedRoot).length}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Enhanced Controls */}
             <div className="space-y-4 border-t border-gray-600 pt-4">
