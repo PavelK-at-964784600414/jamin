@@ -47,9 +47,24 @@ export default function Metronome() {
     };
   }, []);
 
+  // Ensure audio context is resumed (required for modern browsers)
+  const ensureAudioContextResumed = async () => {
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+        console.log('Audio context resumed successfully');
+      } catch (error) {
+        console.error('Failed to resume audio context:', error);
+      }
+    }
+  };
+
   // Create click sound
-  const playClick = (isAccent: boolean = false) => {
+  const playClick = async (isAccent: boolean = false) => {
     if (!audioContextRef.current || isMuted) return;
+
+    // Ensure audio context is resumed before playing
+    await ensureAudioContextResumed();
 
     const context = audioContextRef.current;
     const oscillator = context.createOscillator();
@@ -71,7 +86,7 @@ export default function Metronome() {
   };
 
   // Start/stop metronome
-  const toggleMetronome = () => {
+  const toggleMetronome = async () => {
     if (isPlaying) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -80,6 +95,9 @@ export default function Metronome() {
       setIsPlaying(false);
       setCurrentBeat(0);
     } else {
+      // Ensure audio context is resumed on first user interaction
+      await ensureAudioContextResumed();
+      
       const interval = 60000 / bpm; // Convert BPM to milliseconds
       
       intervalRef.current = setInterval(() => {
