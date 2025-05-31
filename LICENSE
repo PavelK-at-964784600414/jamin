@@ -19,3 +19,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+JAMIN - Music Collaboration Platform
+Copyright (c) 2025 Pavel Klug
+
+This project includes:
+- Interactive music tools (Metronome, Chord Generator, Fretboard Visualizer)
+- Audio collaboration and layering capabilities
+- Real-time music creation and sharing features
+- Web Audio API integration for synthesized instruments
+
+Third-party libraries and dependencies are subject to their respective licenses.
+Audio samples and media files may be subject to additional licensing terms.
