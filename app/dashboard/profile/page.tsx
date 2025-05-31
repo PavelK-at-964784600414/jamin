@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { lusitana } from '@/app/ui/fonts';
 import { notFound } from 'next/navigation';
 import UserProfileClient from './UserProfileClient';
+import Image from 'next/image';
 
 export default async function UserProfilePage() {
   const session = await auth();
@@ -25,7 +26,7 @@ export default async function UserProfilePage() {
     return (
       <main>
         <div className="flex items-center mb-6">
-          <img
+          <Image
             src={userImage}
             alt={`${userName}'s profile picture`}
             width={64}

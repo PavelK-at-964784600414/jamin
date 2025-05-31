@@ -3,8 +3,6 @@ import fsPromises from 'fs/promises'; // Import fs.promises directly
 // Server-only audio mixing utilities for Next.js (Node.js only)
 
 const nodeEnv = process.env.NODE_ENV;
-// require('ffmpeg-static') is expected to return the path to the ffmpeg binary or throw if not found.
-const rawFfmpegStaticPath: string = require('ffmpeg-static');
 
 function getFfmpegBinaryName(): string {
   const platform = process.platform;
@@ -17,17 +15,47 @@ let ffmpegExecutablePath: string;
 
 console.log(`[audio-mix-server] Initializing: NODE_ENV = "${nodeEnv}"`);
 
-if (nodeEnv === 'production') {
-  ffmpegExecutablePath = mainPath.join(process.cwd(), '.next/server/static/ffmpeg', getFfmpegBinaryName());
-  console.log(`[audio-mix-server] Using production path for ffmpeg: ${ffmpegExecutablePath}`);
-} else {
-  if (!rawFfmpegStaticPath) {
-    console.error("[audio-mix-server] CRITICAL: require('ffmpeg-static') returned null or undefined in dev mode.");
-    throw new Error("ffmpeg-static path is not available in development.");
+try {
+  // require('ffmpeg-static') returns the path to the ffmpeg binary
+  const resolvedPath = require('ffmpeg-static');
+  if (!resolvedPath || typeof resolvedPath !== 'string') {
+    throw new Error("ffmpeg-static returned invalid path");
   }
-  ffmpegExecutablePath = rawFfmpegStaticPath;
-  console.log(`[audio-mix-server] Using dev path for ffmpeg (from require('ffmpeg-static')): ${ffmpegExecutablePath}`);
+  ffmpegExecutablePath = resolvedPath;
+  console.log(`[audio-mix-server] Using ffmpeg-static path: ${ffmpegExecutablePath}`);
+} catch (error) {
+  console.error("[audio-mix-server] CRITICAL: Failed to resolve ffmpeg-static path:", error);
+  
+  // Fallback paths for different environments
+  const possiblePaths = [
+    // PNPM path (most likely for this project)
+    mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
+    // Standard npm path
+    mainPath.join(process.cwd(), 'node_modules/ffmpeg-static/ffmpeg'),
+    // Alternative PNPM path
+    mainPath.join(process.cwd(), 'node_modules/.ignored/ffmpeg-static/ffmpeg'),
+    // System paths
+    '/usr/local/bin/ffmpeg',
+    '/usr/bin/ffmpeg'
+  ];
+  
+  // Try to find an existing path
+  let foundPath = null;
+  for (const testPath of possiblePaths) {
+    try {
+      require('fs').accessSync(testPath, require('fs').constants.F_OK);
+      foundPath = testPath;
+      console.log(`[audio-mix-server] Found working ffmpeg at: ${foundPath}`);
+      break;
+    } catch (accessError) {
+      console.log(`[audio-mix-server] Path not accessible: ${testPath}`);
+    }
+  }
+  
+  ffmpegExecutablePath = foundPath || possiblePaths[0]!;
+  console.log(`[audio-mix-server] Using fallback path: ${ffmpegExecutablePath}`);
 }
+
 console.log(`[audio-mix-server] Final ffmpeg executable path: ${ffmpegExecutablePath}`);
 
 /**
@@ -46,10 +74,35 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
   // Verify ffmpeg path just before use
   try {
     await fsPromises.stat(ffmpegExecutablePath);
-    console.log(`[mixAudioFiles] Verified: ffmpeg executable reported to exist at: ${ffmpegExecutablePath}`);
+    console.log(`[mixAudioFiles] Verified: ffmpeg executable exists at: ${ffmpegExecutablePath}`);
   } catch (statError) {
-    console.error(`[mixAudioFiles] CRITICAL ERROR: fs.stat failed for ffmpeg executable at path: ${ffmpegExecutablePath}`, statError);
-    throw new Error(`ffmpeg not found or inaccessible at ${ffmpegExecutablePath}. Stat error: ${statError instanceof Error ? statError.message : String(statError)}`);
+    console.error(`[mixAudioFiles] CRITICAL ERROR: Initial ffmpeg path failed: ${ffmpegExecutablePath}`, statError);
+    
+    // Try fallback paths if primary path fails
+    const fallbackPaths = [
+      mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
+      mainPath.join(process.cwd(), 'node_modules/.ignored/ffmpeg-static/ffmpeg'),
+      mainPath.join(process.cwd(), 'node_modules/ffmpeg-static/ffmpeg'),
+    ];
+    
+    let foundWorkingPath = null;
+    for (const fallbackPath of fallbackPaths) {
+      try {
+        await fsPromises.stat(fallbackPath);
+        foundWorkingPath = fallbackPath;
+        console.log(`[mixAudioFiles] Found working fallback path: ${fallbackPath}`);
+        break;
+      } catch (fallbackError) {
+        console.log(`[mixAudioFiles] Fallback path failed: ${fallbackPath}`);
+      }
+    }
+    
+    if (foundWorkingPath) {
+      ffmpegExecutablePath = foundWorkingPath;
+      console.log(`[mixAudioFiles] Updated ffmpeg path to: ${ffmpegExecutablePath}`);
+    } else {
+      throw new Error(`ffmpeg not found at ${ffmpegExecutablePath} or any fallback paths. Stat error: ${statError instanceof Error ? statError.message : String(statError)}`);
+    }
   }
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'jamimix-'));

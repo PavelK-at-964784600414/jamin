@@ -4,9 +4,27 @@ import CopyPlugin from 'copy-webpack-plugin';
 import ffmpegBinaryPathFromStatic from 'ffmpeg-static'; // Renamed for clarity
 
 const nextConfig = {
-  // Remove experimental PPR feature since it requires a canary version
+  // Production optimizations
+  reactStrictMode: true,
+  swcMinify: true,
+  compress: true,
+  generateEtags: true,
+  poweredByHeader: false, // Security: Remove X-Powered-By header
+  
+  // Performance optimizations
+  optimizeFonts: true,
+  
   experimental: {
     serverActionsBodySizeLimit: '10mb', // Increase body size limit for video uploads
+    optimizePackageImports: ['@heroicons/react'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   images: {
     remotePatterns: [

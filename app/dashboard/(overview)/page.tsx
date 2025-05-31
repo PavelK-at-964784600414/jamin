@@ -1,4 +1,3 @@
-import { Card } from '@/app/ui/dashboard/cards';
 import CardWrapper from '@/app/ui/dashboard/cards';
 import RecentCollaborations from '@/app/ui/dashboard/collab-chart';
 import LatestThemes from '@/app/ui/dashboard/latest-themes';

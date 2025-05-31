@@ -76,9 +76,9 @@ interface Chord {
 
 export default function ChordGenerator() {
   const [selectedRoot, setSelectedRoot] = useState('C');
-  const [selectedType, setSelectedType] = useState(CHORD_TYPES[0]);
+  const [selectedType, setSelectedType] = useState(CHORD_TYPES[0]!);
   const [currentChord, setCurrentChord] = useState<Chord | null>(null);
-  const [selectedProgression, setSelectedProgression] = useState(COMMON_PROGRESSIONS[0]);
+  const [selectedProgression, setSelectedProgression] = useState(COMMON_PROGRESSIONS[0]!);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isProgressionPlaying, setIsProgressionPlaying] = useState(false);
   const [selectedDrumPattern, setSelectedDrumPattern] = useState('Rock');
@@ -131,8 +131,8 @@ export default function ChordGenerator() {
     const rootIndex = NOTES.indexOf(root);
     const notes = chordType.intervals.map(interval => {
       const noteIndex = (rootIndex + interval) % 12;
-      return NOTES[noteIndex];
-    });
+      return NOTES[noteIndex] ?? 'C'; // Fallback to C if index is invalid
+    }).filter((note): note is string => note !== undefined); // Filter out any undefined values
 
     return {
       root,
@@ -142,7 +142,8 @@ export default function ChordGenerator() {
   };
 
   const handleGenerateChord = () => {
-    const chord = generateChord(selectedRoot, selectedType);
+    const type = selectedType ?? CHORD_TYPES[0]!; // Fallback to first chord type
+    const chord = generateChord(selectedRoot, type);
     setCurrentChord(chord);
   };
 
@@ -159,8 +160,8 @@ export default function ChordGenerator() {
       const newRootIndex = (rootIndex + interval) % 12;
       const newRoot = NOTES[newRootIndex];
       
-      return isMinor ? newRoot + 'm' : newRoot;
-    });
+      return isMinor ? (newRoot ?? 'C') + 'm' : (newRoot ?? 'C');
+    }).filter((chord): chord is string => chord !== undefined);
   };
 
   const playChord = async () => {
@@ -327,7 +328,7 @@ export default function ChordGenerator() {
     };
     
     const rootNote = chordRoot.replace(/[^A-G#]/g, '');
-    const rootFreq = noteFrequencies[rootNote];
+    const rootFreq = noteFrequencies[rootNote] ?? 65.41; // Fallback to C2 frequency
     
     if (pattern === 'walking') {
       // Return root, 3rd, 5th for walking bass
@@ -336,9 +337,9 @@ export default function ChordGenerator() {
       const fifthIndex = (rootIndex + 4) % 12;
       
       return [
-        noteFrequencies[NOTES[rootIndex]],
-        noteFrequencies[NOTES[thirdIndex]],
-        noteFrequencies[NOTES[fifthIndex]],
+        noteFrequencies[NOTES[rootIndex] ?? 'C'] ?? 65.41,
+        noteFrequencies[NOTES[thirdIndex] ?? 'E'] ?? 82.41,
+        noteFrequencies[NOTES[fifthIndex] ?? 'G'] ?? 98.00,
         rootFreq
       ];
     }
@@ -359,41 +360,52 @@ export default function ChordGenerator() {
     const sixteenthDuration = beatDuration / 4; // Duration of one 16th note
     const chordDuration = beatDuration * 4; // Each chord lasts 4 beats
     
-    const transposedChords = transposeProgression(selectedProgression, selectedRoot);
+    const progression = selectedProgression ?? COMMON_PROGRESSIONS[0]!; // Fallback to first progression
+    const transposedChords = transposeProgression(progression, selectedRoot);
     const drumPattern = DRUM_PATTERNS[selectedDrumPattern as keyof typeof DRUM_PATTERNS];
     const bassPattern = BASS_PATTERNS[selectedBassPattern as keyof typeof BASS_PATTERNS];
     
+    if (!drumPattern || !bassPattern) {
+      console.error('Invalid drum or bass pattern selected');
+      return;
+    }
+    
     transposedChords.forEach((chord, chordIndex) => {
+      if (!chord) return; // Skip if chord is undefined
+      
       const chordStartTime = startTime + (chordIndex * chordDuration);
       
       // Set up timeout to update current chord for visualization
       const chordTimeout = setTimeout(() => {
         if (!isPlayingRef.current) return; // Check if still playing
-        const chordObj = generateChord(chord.replace(/[^A-G#]/g, ''), 
-          chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0]);
-        setCurrentProgressionChord(chordObj);
-        setCurrentChordIndex(chordIndex);
+        const chordType = chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0];
+        if (chordType) {
+          const chordObj = generateChord(chord.replace(/[^A-G#]/g, ''), chordType);
+          setCurrentProgressionChord(chordObj);
+          setCurrentChordIndex(chordIndex);
+        }
       }, (chordIndex * chordDuration * 1000));
       
       chordTimeoutRefs.current.push(chordTimeout);
       
       // Play chord if enabled
       if (includeChords) {
-        const chordObj = generateChord(chord.replace(/[^A-G#]/g, ''), 
-          chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0]);
-        
-        const noteFrequencies: Record<string, number> = {
-          'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13,
-          'E': 329.63, 'F': 349.23, 'F#': 369.99, 'G': 392.00,
-          'G#': 415.30, 'A': 440.00, 'A#': 466.16, 'B': 493.88
-        };
-        
-        chordObj.notes.forEach((note) => {
-          const oscillator = context.createOscillator();
-          const gainNode = context.createGain();
+        const chordType = chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0];
+        if (chordType) {
+          const chordObj = generateChord(chord.replace(/[^A-G#]/g, ''), chordType);
           
-          oscillator.connect(gainNode);
-          gainNode.connect(context.destination);
+          const noteFrequencies: Record<string, number> = {
+            'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13,
+            'E': 329.63, 'F': 349.23, 'F#': 369.99, 'G': 392.00,
+            'G#': 415.30, 'A': 440.00, 'A#': 466.16, 'B': 493.88
+          };
+          
+          chordObj.notes.forEach((note) => {
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
           
           const frequency = noteFrequencies[note] || 440;
           oscillator.frequency.value = frequency;
@@ -408,6 +420,7 @@ export default function ChordGenerator() {
           oscillator.stop(chordStartTime + chordDuration);
         });
       }
+    }
       
       // Play drums and bass for each 16th note in the measure
       for (let i = 0; i < 16; i++) {
@@ -429,10 +442,10 @@ export default function ChordGenerator() {
         // Play bass if enabled
         if (includeBass && bassPattern.pattern[i]) {
           const bassNotes = getBassNotes(chord, bassPattern.notes);
-          let bassNote = bassNotes[0];
+          let bassNote = bassNotes[0] ?? 65.41; // Fallback frequency
           
           if (bassPattern.notes === 'walking' && bassNotes.length > 1) {
-            bassNote = bassNotes[Math.floor(i / 4) % bassNotes.length];
+            bassNote = bassNotes[Math.floor(i / 4) % bassNotes.length] ?? 65.41;
           }
           
           createBassSound(bassNote, noteTime, sixteenthDuration * 2);

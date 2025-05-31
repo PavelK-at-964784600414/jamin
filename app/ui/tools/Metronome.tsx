@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/outline';
 
 const TIME_SIGNATURES = [
@@ -24,7 +24,7 @@ const TEMPO_MARKINGS = [
 export default function Metronome() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [bpm, setBpm] = useState(120);
-  const [timeSignature, setTimeSignature] = useState(TIME_SIGNATURES[0]);
+  const [timeSignature, setTimeSignature] = useState(TIME_SIGNATURES[0]!);
   const [currentBeat, setCurrentBeat] = useState(0);
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
@@ -60,7 +60,7 @@ export default function Metronome() {
   };
 
   // Create click sound
-  const playClick = async (isAccent: boolean = false) => {
+  const playClick = useCallback(async (isAccent: boolean = false) => {
     if (!audioContextRef.current || isMuted) return;
 
     // Ensure audio context is resumed before playing
@@ -83,7 +83,7 @@ export default function Metronome() {
 
     oscillator.start(context.currentTime);
     oscillator.stop(context.currentTime + 0.1);
-  };
+  }, [isMuted, volume]);
 
   // Start/stop metronome
   const toggleMetronome = async () => {
@@ -130,7 +130,7 @@ export default function Metronome() {
         });
       }, interval);
     }
-  }, [bpm, timeSignature, accent, volume, isMuted]);
+  }, [bpm, timeSignature, accent, volume, isMuted, isPlaying, playClick]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -158,7 +158,7 @@ export default function Metronome() {
     if (tapTimesRef.current.length >= 2) {
       const intervals = [];
       for (let i = 1; i < tapTimesRef.current.length; i++) {
-        intervals.push(tapTimesRef.current[i] - tapTimesRef.current[i - 1]);
+        intervals.push(tapTimesRef.current[i]! - tapTimesRef.current[i - 1]!);
       }
       
       // Calculate average interval in milliseconds
@@ -174,7 +174,7 @@ export default function Metronome() {
     
     // Reset tap times after 3 seconds of inactivity
     setTimeout(() => {
-      if (tapTimesRef.current.length > 0 && Date.now() - tapTimesRef.current[tapTimesRef.current.length - 1] >= 3000) {
+      if (tapTimesRef.current.length > 0 && Date.now() - tapTimesRef.current[tapTimesRef.current.length - 1]! >= 3000) {
         tapTimesRef.current = [];
       }
     }, 3000);

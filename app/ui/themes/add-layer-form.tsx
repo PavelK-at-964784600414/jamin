@@ -372,6 +372,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       setError(null);
       setSuccess(null);
     }
+    
+    // Return undefined for other code paths
+    return undefined;
   }, [state, router]);
 
   // Handle form submission in a Safari-compatible way

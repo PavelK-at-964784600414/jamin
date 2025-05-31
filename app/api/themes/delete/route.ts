@@ -37,7 +37,7 @@ export async function DELETE(request: NextRequest) {
       SELECT member_id FROM themes WHERE id = ${id}
     `;
     
-    if (themeCheck.rows.length === 0) {
+    if (themeCheck.rows.length === 0 || !themeCheck.rows[0]) {
       return NextResponse.json(
         { message: 'Theme not found' },
         { status: 404 }

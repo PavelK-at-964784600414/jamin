@@ -5,7 +5,8 @@ import { Chord, ProgressionType } from './types';
 
 export const getNoteAtFret = (stringNote: string, fret: number): string => {
   const stringIndex = NOTES.indexOf(stringNote);
-  return NOTES[(stringIndex + fret) % 12];
+  const noteIndex = (stringIndex + fret) % 12;
+  return NOTES[noteIndex] ?? 'C'; // Fallback to C if index is invalid
 };
 
 export const isNoteInPattern = (note: string, currentRoot: string, intervals: number[]): boolean => {
@@ -25,15 +26,15 @@ export const getIntervalName = (note: string, currentRoot: string): string => {
   const interval = (noteIndex - rootIndex + 12) % 12;
   
   const intervalNames = ['R', 'b2', '2', 'b3', '3', '4', 'b5', '5', 'b6', '6', 'b7', '7'];
-  return intervalNames[interval];
+  return intervalNames[interval] ?? 'R'; // Fallback to root if index is invalid
 };
 
 export const generateChord = (root: string, chordType: typeof CHORD_TYPES[0]): Chord => {
   const rootIndex = NOTES.indexOf(root);
   const notes = chordType.intervals.map(interval => {
     const noteIndex = (rootIndex + interval) % 12;
-    return NOTES[noteIndex];
-  });
+    return NOTES[noteIndex] ?? 'C'; // Fallback to C if index is invalid
+  }).filter((note): note is string => note !== undefined); // Filter out any undefined values
 
   return {
     root,
@@ -52,8 +53,8 @@ export const transposeProgression = (progression: ProgressionType, newKey: strin
     const rootNote = chord.replace(/[^A-G#]/g, '');
     const rootIndex = NOTES.indexOf(rootNote);
     const newRootIndex = (rootIndex + interval) % 12;
-    const newRoot = NOTES[newRootIndex];
+    const newRoot = NOTES[newRootIndex] ?? 'C'; // Fallback to C if index is invalid
     
     return isMinor ? newRoot + 'm' : newRoot;
-  });
+  }).filter((chord): chord is string => chord !== undefined); // Filter out any undefined values
 };
