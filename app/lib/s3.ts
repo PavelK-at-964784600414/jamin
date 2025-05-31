@@ -2,13 +2,22 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // Clean up AWS credentials from any comments or extra whitespace
-const cleanAccessKeyId = process.env.AWS_ACCESS_KEY_ID!.split('#')[0].trim();
-const cleanSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY!.split('#')[0].trim();
+// Check that required environment variables exist
+if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_REGION) {
+  throw new Error('Missing required AWS environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION');
+}
+
+// @ts-ignore - TypeScript strictness issue with process.env after null check
+const cleanAccessKeyId = process.env.AWS_ACCESS_KEY_ID.split('#')[0].trim();
+// @ts-ignore - TypeScript strictness issue with process.env after null check  
+const cleanSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY.split('#')[0].trim();
+// @ts-ignore - TypeScript strictness issue with process.env after null check
+const region = process.env.AWS_REGION;
 
 
 // Create S3 client with cleaned credentials
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION!,
+  region: region,
   credentials: {
     accessKeyId: cleanAccessKeyId,
     secretAccessKey: cleanSecretAccessKey,

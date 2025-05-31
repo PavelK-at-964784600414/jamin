@@ -92,6 +92,8 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
       };
     } else {
       setAudioElements([]);
+      // Return undefined explicitly for the else case
+      return undefined;
     }
   }, [collaboration]);
 

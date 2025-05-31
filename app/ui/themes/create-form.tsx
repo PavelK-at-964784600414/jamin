@@ -110,7 +110,7 @@ export default function CreateForm() {
             const sliceWidth = canvas.width / bufferLength;
             let x = 0;
             for (let i = 0; i < bufferLength; i++) {
-              const v = dataArray[i] / 128.0;
+              const v = (dataArray[i] ?? 0) / 128.0;
               const y = (v * canvas.height) / 2;
               if (i === 0) {
                 canvasCtx.moveTo(x, y);
@@ -153,7 +153,11 @@ export default function CreateForm() {
         setMediaURL(blobUrl);
         let extension = "webm";
         if (recorderMimeType) {
-          extension = recorderMimeType.split("/")[1].split(";")[0];
+          const mimeTypeParts = recorderMimeType.split("/");
+          const typePart = mimeTypeParts[1];
+          if (typePart) {
+            extension = typePart.split(";")[0] ?? "webm";
+          }
         }
         const recordedFile = new File([blob], `recording.${extension}`, { type: recorderMimeType });
         setFile(recordedFile);

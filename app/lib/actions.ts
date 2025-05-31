@@ -501,12 +501,15 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
             
             // Handle various data formats - ensure we have a usable object for S3
             let uploadableFile;
-            
-            if (typeof audioFile === 'string') {
+              if (typeof audioFile === 'string') {
               // If it's a data URL or string representation
-              try {                // Try to create a Blob from base64 string if it looks like one
+              try {
+                // Try to create a Blob from base64 string if it looks like one
                 if (audioFile.startsWith('data:')) {
                   const base64Data = audioFile.split(',')[1];
+                  if (!base64Data) {
+                    throw new Error('Invalid data URL format');
+                  }
                   // Use Buffer instead of atob for server compatibility
                   const buffer = Buffer.from(base64Data, 'base64');
                   const byteArray = new Uint8Array(buffer);
@@ -553,8 +556,13 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
                 return {
                   message: 'Unsupported file format. Please try again with a different file.',
                 };
-              }
-            }            
+              }            }
+            
+            // Check if uploadableFile was created
+            if (!uploadableFile) {
+              throw new Error('Failed to create uploadable file from provided data');
+            }
+            
             // Upload the converted file using the utility function that's safe for server-side
             recording_url = await uploadFileToS3WithRetry(uploadableFile, 'layers/' + themeId);
             console.log('Layer file uploaded from converted format, URL:', recording_url);
@@ -657,10 +665,9 @@ export async function toggleThemeLike(themeId: string, likeType: LikeType): Prom
     const existingLike = await sql`
       SELECT like_type FROM theme_likes 
       WHERE theme_id = ${themeId} AND member_id = ${memberId}
-    `;
-
-    if (existingLike.rows.length > 0) {
-      const currentLikeType = existingLike.rows[0].like_type;
+    `;    
+    if (existingLike.rows.length > 0 && existingLike.rows[0]) {
+      const currentLikeType = existingLike.rows[0]?.like_type;
       
       if (currentLikeType === likeType) {
         // User is clicking the same type - remove the like/dislike
@@ -670,6 +677,11 @@ export async function toggleThemeLike(themeId: string, likeType: LikeType): Prom
         `;
       } else {
         // User is switching from like to dislike or vice versa
+        await sql`
+          UPDATE theme_likes 
+          SET like_type = ${likeType}
+          WHERE theme_id = ${themeId} AND member_id = ${memberId}
+        `;
         await sql`
           UPDATE theme_likes 
           SET like_type = ${likeType}, updated_at = NOW()
@@ -724,10 +736,8 @@ export async function toggleCollabLike(collabId: string, likeType: LikeType): Pr
     const existingLike = await sql`
       SELECT like_type FROM collab_likes 
       WHERE collab_id = ${collabId} AND member_id = ${memberId}
-    `;
-
-    if (existingLike.rows.length > 0) {
-      const currentLikeType = existingLike.rows[0].like_type;
+    `;    if (existingLike.rows.length > 0) {
+      const currentLikeType = existingLike.rows[0]?.like_type;
       
       if (currentLikeType === likeType) {
         // User is clicking the same type - remove the like/dislike
@@ -787,14 +797,13 @@ export async function getThemeLikeStats(themeId: string, userId?: string): Promi
     let userLike: LikeType | null = null;
     
     // Get user's current like status if userId provided
-    if (userId) {
-      const userLikeResult = await sql`
+    if (userId) {      const userLikeResult = await sql`
         SELECT like_type FROM theme_likes 
         WHERE theme_id = ${themeId} AND member_id = ${userId}
       `;
       
       if (userLikeResult.rows.length > 0) {
-        userLike = userLikeResult.rows[0].like_type as LikeType;
+        userLike = userLikeResult.rows[0]?.like_type as LikeType;
       }
     }
 
@@ -831,14 +840,13 @@ export async function getCollabLikeStats(collabId: string, userId?: string): Pro
     let userLike: LikeType | null = null;
     
     // Get user's current like status if userId provided
-    if (userId) {
-      const userLikeResult = await sql`
+    if (userId) {      const userLikeResult = await sql`
         SELECT like_type FROM collab_likes 
         WHERE collab_id = ${collabId} AND member_id = ${userId}
       `;
       
       if (userLikeResult.rows.length > 0) {
-        userLike = userLikeResult.rows[0].like_type as LikeType;
+        userLike = userLikeResult.rows[0]?.like_type as LikeType;
       }
     }
 

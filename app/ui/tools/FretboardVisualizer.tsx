@@ -42,7 +42,7 @@ export default function FretboardVisualizer() {
   const [highlightRoot, setHighlightRoot] = useState(true);
 
   // Chord progression state
-  const [selectedProgression, setSelectedProgression] = useState<ProgressionType>(COMMON_PROGRESSIONS[0]);
+  const [selectedProgression, setSelectedProgression] = useState<ProgressionType>(COMMON_PROGRESSIONS[0]!);
   const [currentProgressionChord, setCurrentProgressionChord] = useState<Chord | null>(null);
   const [currentChordIndex, setCurrentChordIndex] = useState(0);
   const [isProgressionPlaying, setIsProgressionPlaying] = useState(false);
@@ -184,7 +184,7 @@ export default function FretboardVisualizer() {
         if (chordIndex === 0) {
           const chordObj = generateChord(
             chord.replace(/[^A-G#]/g, ''), 
-            chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0]
+            chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1]! : CHORD_TYPES[0]!
           );
           setCurrentProgressionChord(chordObj);
           setCurrentChordIndex(chordIndex);
@@ -195,7 +195,7 @@ export default function FretboardVisualizer() {
           const chordTimeout = setTimeout(() => {
             const chordObj = generateChord(
               chord.replace(/[^A-G#]/g, ''), 
-              chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0]
+              chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1]! : CHORD_TYPES[0]!
             );
             setCurrentProgressionChord(chordObj);
             setCurrentChordIndex(chordIndex);
@@ -206,7 +206,7 @@ export default function FretboardVisualizer() {
         
         const chordObj = generateChord(
           chord.replace(/[^A-G#]/g, ''), 
-          chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1] : CHORD_TYPES[0]
+          chord.includes('m') && !chord.includes('maj') ? CHORD_TYPES[1]! : CHORD_TYPES[0]!
         );
         
         if (soundType === 'piano') {

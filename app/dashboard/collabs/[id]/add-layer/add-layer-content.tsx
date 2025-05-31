@@ -2,6 +2,7 @@
 
 import { CollaborationDisplayData } from '@/app/lib/definitions';
 import AddLayerToCollabForm from './add-layer-form';
+import Image from 'next/image';
 
 export default function AddLayerToCollabContent({ collaboration }: { collaboration: CollaborationDisplayData }) {
   return (
@@ -48,9 +49,11 @@ export default function AddLayerToCollabContent({ collaboration }: { collaborati
               <div className="flex items-center justify-between p-3 bg-gray-600 rounded-md">
                 <div className="flex items-center">
                   {collaboration.parent_theme_creator_image_url && (
-                    <img
+                    <Image
                       src={collaboration.parent_theme_creator_image_url}
                       alt={collaboration.parent_theme_creator_name}
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-full mr-3"
                     />
                   )}
@@ -70,9 +73,11 @@ export default function AddLayerToCollabContent({ collaboration }: { collaborati
                 <div key={layer.layer_id} className="flex items-center justify-between p-3 bg-gray-600 rounded-md">
                   <div className="flex items-center">
                     {layer.layer_creator_image_url && (
-                      <img
+                      <Image
                         src={layer.layer_creator_image_url}
                         alt={layer.layer_creator_name}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full mr-3"
                       />
                     )}

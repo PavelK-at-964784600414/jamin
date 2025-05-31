@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /dashboard
+Allow: /login
+
+# Block private areas
+Disallow: /api/
+Disallow: /dashboard/profile
+Disallow: /dashboard/members/*/
+
+# Sitemap
+Sitemap: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sitemap.xml
+
+# Crawl delay
+Crawl-delay: 1

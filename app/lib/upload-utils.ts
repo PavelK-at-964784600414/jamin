@@ -14,6 +14,10 @@ export function processBase64DataUrl(dataUrl: string): Uint8Array {
   // Extract the base64 part
   const base64Data = dataUrl.split(',')[1];
   
+  if (!base64Data) {
+    throw new Error('Invalid data URL format: missing base64 data');
+  }
+  
   // Different handling for browser vs server
   if (typeof window !== 'undefined') {
     // Browser environment

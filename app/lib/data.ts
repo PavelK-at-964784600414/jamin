@@ -234,7 +234,7 @@ export async function fetchThemesPages(query: string, itemsPerPage: number = ITE
         themes.title ILIKE ${`%${query}%`} OR
         themes.status ILIKE ${`%${query}%`}
     `;
-    const totalPages = Math.ceil(Number(count.rows[0].count) / itemsPerPage);
+    const totalPages = Math.ceil(Number(count.rows[0]?.count ?? 0) / itemsPerPage);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
@@ -298,7 +298,7 @@ export async function fetchMembersPages(query: string): Promise<number> {
         members.user_name ILIKE ${`%${query}%`} OR
         members.email ILIKE ${`%${query}%`}
     `;
-    const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(Number(count.rows[0]?.count ?? 0) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
@@ -389,16 +389,18 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
       // Create a collaboration for each layer, including all previous layers
       for (let i = 0; i < layers.length; i++) {
         const currentLayer = layers[i];
-        const cumulativeLayers = layers.slice(0, i + 1); // All layers up to and including current
+        if (!currentLayer) continue;
+        
+        const cumulativeLayers = layers.slice(0, i + 1).filter(Boolean); // All layers up to and including current, filtered for safety
         
         // Get all unique participants up to this point (original creator + all layer creators so far)
         const participantMap = new Map<string, Participant>();
         
-        // Add the original theme creator
-        participantMap.set(currentLayer.parent_theme_creator_id, {
-          id: currentLayer.parent_theme_creator_id,
-          name: currentLayer.parent_theme_creator_name,
-          image_url: currentLayer.parent_theme_creator_image_url,
+        // Add the original theme creator (using non-null assertion since we checked currentLayer above)
+        participantMap.set(currentLayer!.parent_theme_creator_id, {
+          id: currentLayer!.parent_theme_creator_id,
+          name: currentLayer!.parent_theme_creator_name,
+          image_url: currentLayer!.parent_theme_creator_image_url,
         });
 
         // Add all layer creators up to this point
@@ -426,21 +428,21 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
 
         // Create a collaboration record for this cumulative state
         const newCollab = {
-          collab_id: currentLayer.layer_id, // Use the latest layer ID as the collaboration ID
-          collab_title: currentLayer.layer_title,
-          collab_instrument: currentLayer.layer_instrument,
-          collab_date: currentLayer.layer_date,
-          collab_creator_id: currentLayer.layer_creator_id,
-          collab_creator_name: currentLayer.layer_creator_name,
-          collab_creator_image_url: currentLayer.layer_creator_image_url,
-          collab_recording_url: currentLayer.layer_recording_url,
-          parent_theme_id: currentLayer.parent_theme_id,
-          parent_theme_title: currentLayer.parent_theme_title,
-          parent_theme_date: currentLayer.parent_theme_date,
-          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
-          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
-          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
-          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
+          collab_id: currentLayer!.layer_id, // Use the latest layer ID as the collaboration ID
+          collab_title: currentLayer!.layer_title,
+          collab_instrument: currentLayer!.layer_instrument,
+          collab_date: currentLayer!.layer_date,
+          collab_creator_id: currentLayer!.layer_creator_id,
+          collab_creator_name: currentLayer!.layer_creator_name,
+          collab_creator_image_url: currentLayer!.layer_creator_image_url,
+          collab_recording_url: currentLayer!.layer_recording_url,
+          parent_theme_id: currentLayer!.parent_theme_id,
+          parent_theme_title: currentLayer!.parent_theme_title,
+          parent_theme_date: currentLayer!.parent_theme_date,
+          parent_theme_creator_id: currentLayer!.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer!.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer!.parent_theme_creator_image_url,
+          parent_theme_recording_url: currentLayer!.parent_theme_recording_url,
           total_layers_count: cumulativeLayers.length, // Number of layers up to this point
           cumulative_layers: cumulativeLayersData,
           participants: Array.from(participantMap.values()),
@@ -516,9 +518,9 @@ export async function fetchCardData() {
       collabCountPromise,
     ]);
 
-    const numberOfMembers = Number(data[0].rows[0].count ?? '0');
-    const numberOfThemes = Number(data[1].rows[0].count ?? '0'); // This is total themes
-    const totalArangements = Number(data[2].rows[0].count ?? '0'); // This is total layers/collabs
+    const numberOfMembers = Number(data[0].rows[0]?.count ?? '0');
+    const numberOfThemes = Number(data[1].rows[0]?.count ?? '0'); // This is total themes
+    const totalArangements = Number(data[2].rows[0]?.count ?? '0'); // This is total layers/collabs
 
     // The original call in cards.tsx was:
     // const { numberOfMembers, numberOfThemes, totalArangements, totalThemes } = await fetchCardData();
@@ -659,7 +661,7 @@ export async function fetchThemesCount(query: string): Promise<number> {
         themes.title ILIKE ${`%${query}%`} OR
         themes.status ILIKE ${`%${query}%`}
     `;
-    return Number(count.rows[0].count);
+    return Number(count.rows[0]?.count ?? 0);
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch total number of themes.');
@@ -695,16 +697,18 @@ export async function fetchFilteredCollaborations(
       // Create a collaboration for each layer, including all previous layers
       for (let i = 0; i < layers.length; i++) {
         const currentLayer = layers[i];
-        const cumulativeLayers = layers.slice(0, i + 1); // All layers up to and including current
+        if (!currentLayer) continue;
+        
+        const cumulativeLayers = layers.slice(0, i + 1).filter(Boolean); // All layers up to and including current
         
         // Get all unique participants up to this point (original creator + all layer creators so far)
         const participantMap = new Map<string, Participant>();
         
         // Add the original theme creator
-        participantMap.set(currentLayer.parent_theme_creator_id, {
-          id: currentLayer.parent_theme_creator_id,
-          name: currentLayer.parent_theme_creator_name,
-          image_url: currentLayer.parent_theme_creator_image_url,
+        participantMap.set(currentLayer!.parent_theme_creator_id, {
+          id: currentLayer!.parent_theme_creator_id,
+          name: currentLayer!.parent_theme_creator_name,
+          image_url: currentLayer!.parent_theme_creator_image_url,
         });
 
         // Add all layer creators up to this point
@@ -732,21 +736,21 @@ export async function fetchFilteredCollaborations(
 
         // Create a collaboration record for this cumulative state
         const newCollab = {
-          collab_id: currentLayer.layer_id, // Use the latest layer ID as the collaboration ID
-          collab_title: currentLayer.layer_title,
-          collab_instrument: currentLayer.layer_instrument,
-          collab_date: currentLayer.layer_date,
-          collab_creator_id: currentLayer.layer_creator_id,
-          collab_creator_name: currentLayer.layer_creator_name,
-          collab_creator_image_url: currentLayer.layer_creator_image_url,
-          collab_recording_url: currentLayer.layer_recording_url,
-          parent_theme_id: currentLayer.parent_theme_id,
-          parent_theme_title: currentLayer.parent_theme_title,
-          parent_theme_date: currentLayer.parent_theme_date,
-          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
-          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
-          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
-          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
+          collab_id: currentLayer!.layer_id, // Use the latest layer ID as the collaboration ID
+          collab_title: currentLayer!.layer_title,
+          collab_instrument: currentLayer!.layer_instrument,
+          collab_date: currentLayer!.layer_date,
+          collab_creator_id: currentLayer!.layer_creator_id,
+          collab_creator_name: currentLayer!.layer_creator_name,
+          collab_creator_image_url: currentLayer!.layer_creator_image_url,
+          collab_recording_url: currentLayer!.layer_recording_url,
+          parent_theme_id: currentLayer!.parent_theme_id,
+          parent_theme_title: currentLayer!.parent_theme_title,
+          parent_theme_date: currentLayer!.parent_theme_date,
+          parent_theme_creator_id: currentLayer!.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer!.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer!.parent_theme_creator_image_url,
+          parent_theme_recording_url: currentLayer!.parent_theme_recording_url,
           total_layers_count: cumulativeLayers.length, // Number of layers up to this point
           cumulative_layers: cumulativeLayersData,
           participants: Array.from(participantMap.values()),
@@ -822,14 +826,16 @@ export async function fetchCollaborationsPages(query: string = '', itemsPerPage:
       // Create a collaboration for each layer, including all previous layers
       for (let i = 0; i < layers.length; i++) {
         const currentLayer = layers[i];
-        const cumulativeLayers = layers.slice(0, i + 1);
+        if (!currentLayer) continue;
+        
+        const cumulativeLayers = layers.slice(0, i + 1).filter(Boolean);
         
         const participantMap = new Map<string, Participant>();
         
-        participantMap.set(currentLayer.parent_theme_creator_id, {
-          id: currentLayer.parent_theme_creator_id,
-          name: currentLayer.parent_theme_creator_name,
-          image_url: currentLayer.parent_theme_creator_image_url,
+        participantMap.set(currentLayer!.parent_theme_creator_id, {
+          id: currentLayer!.parent_theme_creator_id,
+          name: currentLayer!.parent_theme_creator_name,
+          image_url: currentLayer!.parent_theme_creator_image_url,
         });
 
         cumulativeLayers.forEach(layer => {
@@ -843,21 +849,21 @@ export async function fetchCollaborationsPages(query: string = '', itemsPerPage:
         });
 
         const newCollab = {
-          collab_id: currentLayer.layer_id,
-          collab_title: currentLayer.layer_title,
-          collab_instrument: currentLayer.layer_instrument,
-          collab_date: currentLayer.layer_date,
-          collab_creator_id: currentLayer.layer_creator_id,
-          collab_creator_name: currentLayer.layer_creator_name,
-          collab_creator_image_url: currentLayer.layer_creator_image_url,
-          collab_recording_url: currentLayer.layer_recording_url,
-          parent_theme_id: currentLayer.parent_theme_id,
-          parent_theme_title: currentLayer.parent_theme_title,
-          parent_theme_date: currentLayer.parent_theme_date,
-          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
-          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
-          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
-          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
+          collab_id: currentLayer!.layer_id,
+          collab_title: currentLayer!.layer_title,
+          collab_instrument: currentLayer!.layer_instrument,
+          collab_date: currentLayer!.layer_date,
+          collab_creator_id: currentLayer!.layer_creator_id,
+          collab_creator_name: currentLayer!.layer_creator_name,
+          collab_creator_image_url: currentLayer!.layer_creator_image_url,
+          collab_recording_url: currentLayer!.layer_recording_url,
+          parent_theme_id: currentLayer!.parent_theme_id,
+          parent_theme_title: currentLayer!.parent_theme_title,
+          parent_theme_date: currentLayer!.parent_theme_date,
+          parent_theme_creator_id: currentLayer!.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer!.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer!.parent_theme_creator_image_url,
+          parent_theme_recording_url: currentLayer!.parent_theme_recording_url,
           total_layers_count: cumulativeLayers.length,
           cumulative_layers: [],
           participants: Array.from(participantMap.values()),
@@ -914,14 +920,16 @@ export async function fetchCollaborationsCount(query: string = ''): Promise<numb
 
       for (let i = 0; i < layers.length; i++) {
         const currentLayer = layers[i];
-        const cumulativeLayers = layers.slice(0, i + 1);
+        if (!currentLayer) continue;
+        
+        const cumulativeLayers = layers.slice(0, i + 1).filter(Boolean);
         
         const participantMap = new Map<string, Participant>();
         
-        participantMap.set(currentLayer.parent_theme_creator_id, {
-          id: currentLayer.parent_theme_creator_id,
-          name: currentLayer.parent_theme_creator_name,
-          image_url: currentLayer.parent_theme_creator_image_url,
+        participantMap.set(currentLayer!.parent_theme_creator_id, {
+          id: currentLayer!.parent_theme_creator_id,
+          name: currentLayer!.parent_theme_creator_name,
+          image_url: currentLayer!.parent_theme_creator_image_url,
         });
 
         cumulativeLayers.forEach(layer => {
@@ -935,21 +943,21 @@ export async function fetchCollaborationsCount(query: string = ''): Promise<numb
         });
 
         const newCollab = {
-          collab_id: currentLayer.layer_id,
-          collab_title: currentLayer.layer_title,
-          collab_instrument: currentLayer.layer_instrument,
-          collab_date: currentLayer.layer_date,
-          collab_creator_id: currentLayer.layer_creator_id,
-          collab_creator_name: currentLayer.layer_creator_name,
-          collab_creator_image_url: currentLayer.layer_creator_image_url,
-          collab_recording_url: currentLayer.layer_recording_url,
-          parent_theme_id: currentLayer.parent_theme_id,
-          parent_theme_title: currentLayer.parent_theme_title,
-          parent_theme_date: currentLayer.parent_theme_date,
-          parent_theme_creator_id: currentLayer.parent_theme_creator_id,
-          parent_theme_creator_name: currentLayer.parent_theme_creator_name,
-          parent_theme_creator_image_url: currentLayer.parent_theme_creator_image_url,
-          parent_theme_recording_url: currentLayer.parent_theme_recording_url,
+          collab_id: currentLayer!.layer_id,
+          collab_title: currentLayer!.layer_title,
+          collab_instrument: currentLayer!.layer_instrument,
+          collab_date: currentLayer!.layer_date,
+          collab_creator_id: currentLayer!.layer_creator_id,
+          collab_creator_name: currentLayer!.layer_creator_name,
+          collab_creator_image_url: currentLayer!.layer_creator_image_url,
+          collab_recording_url: currentLayer!.layer_recording_url,
+          parent_theme_id: currentLayer!.parent_theme_id,
+          parent_theme_title: currentLayer!.parent_theme_title,
+          parent_theme_date: currentLayer!.parent_theme_date,
+          parent_theme_creator_id: currentLayer!.parent_theme_creator_id,
+          parent_theme_creator_name: currentLayer!.parent_theme_creator_name,
+          parent_theme_creator_image_url: currentLayer!.parent_theme_creator_image_url,
+          parent_theme_recording_url: currentLayer!.parent_theme_recording_url,
           total_layers_count: cumulativeLayers.length,
           cumulative_layers: [],
           participants: Array.from(participantMap.values()),

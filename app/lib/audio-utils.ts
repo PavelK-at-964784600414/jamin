@@ -89,12 +89,12 @@ export function getSupportedAudioFormats() {
   const supportedAudio = audioFormats.filter(format => MediaRecorder.isTypeSupported(format));
   const supportedVideo = videoFormats.filter(format => MediaRecorder.isTypeSupported(format));
   
-  if (supportedAudio.length > 0) {
+  if (supportedAudio.length > 0 && supportedAudio[0]) {
     result.audio.preferredFormat = supportedAudio[0];
     result.audio.supported = supportedAudio;
   }
   
-  if (supportedVideo.length > 0) {
+  if (supportedVideo.length > 0 && supportedVideo[0]) {
     result.video.preferredFormat = supportedVideo[0];
     result.video.supported = supportedVideo;
   }

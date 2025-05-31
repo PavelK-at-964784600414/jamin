@@ -158,9 +158,9 @@ export default function ThemesTable({
                     <h4 className="text-md font-semibold text-gray-200 mb-2">Layers:</h4>
                     {layersByTheme[theme.id] === undefined ? (
                       <p className="text-sm text-gray-400">Loading layers...</p>
-                    ) : layersByTheme[theme.id].length > 0 ? (
+                    ) : (layersByTheme[theme.id]?.length ?? 0) > 0 ? (
                       <ul className="space-y-2">
-                        {layersByTheme[theme.id].map(layer => (
+                        {layersByTheme[theme.id]?.map(layer => (
                           <li key={layer.id} className="p-2 bg-gray-750 rounded-md">
                             <p className="text-sm font-medium text-yellow-500">{layer.title}</p>
                             <p className="text-xs text-gray-400">Instrument: {layer.instrument}</p>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { CameraIcon, PhotoIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
 
 // Guitar scale patterns (in semitones from root)
@@ -183,10 +183,10 @@ export default function FretboardDetector() {
       
       // Filter lines that are too close to each other
       const filteredHorizontal = uniqueHorizontal.filter((y, i) => 
-        i === 0 || y - uniqueHorizontal[i - 1] > 20
+        i === 0 || y - (uniqueHorizontal[i - 1] ?? 0) > 20
       );
       const filteredVertical = uniqueVertical.filter((x, i) => 
-        i === 0 || x - uniqueVertical[i - 1] > 30
+        i === 0 || x - (uniqueVertical[i - 1] ?? 0) > 30
       );
       
       // Determine fretboard bounds
@@ -223,7 +223,7 @@ export default function FretboardDetector() {
     }
   };
 
-  const drawScale = () => {
+  const drawScale = useCallback(() => {
     if (!detectedFretboard || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
@@ -238,6 +238,8 @@ export default function FretboardDetector() {
       if (stringIndex >= detectedFretboard.stringPositions.length) return;
       
       const stringY = detectedFretboard.stringPositions[stringIndex];
+      if (stringY === undefined) return; // Skip if string position is undefined
+      
       const openStringIndex = NOTES.indexOf(stringNote);
       
       // Draw notes for each fret
@@ -266,17 +268,17 @@ export default function FretboardDetector() {
           ctx.font = isRoot ? 'bold 10px Arial' : '8px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(NOTES[noteIndex], fretX, stringY);
+          ctx.fillText(NOTES[noteIndex] ?? '', fretX, stringY);
         }
       });
     });
-  };
+  }, [detectedFretboard, selectedScale, selectedRoot]);
 
   useEffect(() => {
     if (detectedFretboard) {
       drawScale();
     }
-  }, [selectedScale, selectedRoot, detectedFretboard]);
+  }, [selectedScale, selectedRoot, detectedFretboard, drawScale]);
 
   return (
     <div className="space-y-6">

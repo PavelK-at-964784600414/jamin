@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { lusitana } from '@/app/ui/fonts';
-import ChordGenerator from '@/app/ui/tools/ChordGenerator';
-import Metronome from '@/app/ui/tools/Metronome';
-import InstrumentAssistant from '@/app/ui/tools/InstrumentAssistant';
-import FretboardDetector from '@/app/ui/tools/FretboardDetector';
-import FretboardVisualizer from '@/app/ui/tools/FretboardVisualizer';
+import {
+  ChordGeneratorLazy,
+  MetronomeLazy,
+  InstrumentAssistantLazy,
+  FretboardDetectorLazy,
+  FretboardVisualizerLazy
+} from '@/app/components/LazyTools';
 import {
   MusicalNoteIcon,
   ClockIcon,
@@ -22,7 +24,7 @@ interface Tool {
   id: ToolType;
   name: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   color: string;
 }
 
@@ -70,15 +72,15 @@ export default function ToolsPageClient() {
   const renderActiveTool = () => {
     switch (activeTool) {
       case 'chord-generator':
-        return <ChordGenerator />;
+        return <ChordGeneratorLazy />;
       case 'metronome':
-        return <Metronome />;
+        return <MetronomeLazy />;
       case 'instrument-assistant':
-        return <InstrumentAssistant />;
+        return <InstrumentAssistantLazy />;
       case 'fretboard-detector':
-        return <FretboardDetector />;
+        return <FretboardDetectorLazy />;
       case 'fretboard-visualizer':
-        return <FretboardVisualizer />;
+        return <FretboardVisualizerLazy />;
       default:
         return null;
     }
