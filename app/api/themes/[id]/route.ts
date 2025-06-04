@@ -3,6 +3,7 @@ import { fetchThemeById, fetchLayersByThemeId } from '@/app/lib/data';
 import { checkAuth } from '@/app/lib/api-auth';
 import { checkRateLimit } from '@/app/lib/rate-limiter';
 import { validateApiCsrf } from '@/app/lib/api-security';
+import { logger } from '@/app/lib/logger';
 
 export async function GET(
   request: Request,
@@ -56,7 +57,7 @@ export async function GET(
       layers: layersData 
     });
   } catch (error) {
-    console.error('Error fetching theme data:', error);
+    logger.error('Error fetching theme data', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return NextResponse.json(
       { error: 'Failed to load theme data' },
       { status: 500 }

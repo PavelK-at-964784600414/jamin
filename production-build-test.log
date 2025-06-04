@@ -1,0 +1,87 @@
+
+> build
+> next build
+
+  ▲ Next.js 15.0.0-rc.0
+  - Environments: .env.local, .env
+  - Experiments (use with caution):
+    · optimizeCss
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+AUTH.TS IS BEING PROCESSED - TOP OF FILE
+AUTH.TS: Attempting to initialize NextAuth...
+AUTH.TS: NextAuth initialized successfully. Exported members (e.g., handlers) should be available.
+   Generating static pages (0/21) ...
+   Generating static pages (5/21) 
+On dashboard page
+On dashboard page
+   Generating static pages (10/21) 
+   Generating static pages (15/21) 
+ ✓ Generating static pages (21/21)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                             Size     First Load JS
+┌ ƒ /                                   232 B           259 kB
+├ ƒ /_not-found                         129 B           259 kB
+├ ƒ /api/analytics                      0 B                0 B
+├ ƒ /api/auth/[...nextauth]             0 B                0 B
+├ ƒ /api/collaborations                 0 B                0 B
+├ ƒ /api/errors                         0 B                0 B
+├ ƒ /api/themes/[id]                    0 B                0 B
+├ ƒ /api/themes/[id]/add-layer          0 B                0 B
+├ ƒ /api/themes/delete                  0 B                0 B
+├ ƒ /dashboard                          600 B           252 kB
+├ ƒ /dashboard/collabs                  1.83 kB         261 kB
+├ ƒ /dashboard/collabs/[id]/add-layer   3.71 kB         262 kB
+├ ƒ /dashboard/members                  1.81 kB         261 kB
+├ ƒ /dashboard/members/[id]             2.25 kB         261 kB
+├ ƒ /dashboard/profile                  2.4 kB          261 kB
+├ ƒ /dashboard/themes                   3.1 kB          262 kB
+├ ƒ /dashboard/themes/[id]              1.9 kB          261 kB
+├ ƒ /dashboard/themes/[id]/add-layer    3.85 kB         263 kB
+├ ƒ /dashboard/themes/[id]/edit         1.25 kB         260 kB
+├ ƒ /dashboard/themes/create            4.4 kB          263 kB
+├ ƒ /dashboard/tools                    1.85 kB         261 kB
+├ ƒ /login                              1.51 kB         260 kB
+├ ƒ /offline                            833 B           252 kB
+├ ○ /opengraph-image.png                0 B                0 B
+├ ƒ /signup                             1.61 kB         260 kB
+└ ○ /sitemap                            0 B                0 B
++ First Load JS shared by all           252 kB
+  └ chunks/vendors-b282d29cc048d616.js  250 kB
+  └ other shared chunks (total)         2.04 kB
+
+
+ƒ Middleware                            136 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

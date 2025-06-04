@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit } from '@/app/lib/rate-limiter'
+import { logger } from '@/app/lib/logger'
 
 interface AnalyticsEvent {
   name: string
@@ -61,15 +62,12 @@ export async function POST(request: NextRequest) {
     }))
 
     // Log events (in production, you'd send to analytics service)
-    console.log('[Analytics] Received events:', {
-      count: processedEvents.length,
-      sessionId: body.sessionId,
-      clientIP,
-      events: processedEvents.map(e => ({
-        name: e.name,
-        timestamp: e.timestamp,
-        url: e.properties?.url
-      }))
+    logger.debug('[Analytics] Received events', {
+      metadata: {
+        count: processedEvents.length,
+        sessionId: body.sessionId,
+        clientIP
+      }
     })
 
     // In production, you would:
@@ -92,7 +90,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Analytics] Error processing events:', error)
+    logger.error('[Analytics] Error processing events', { metadata: { error: error instanceof Error ? error.message : String(error) } })
     
     return NextResponse.json(
       { 
@@ -117,15 +115,17 @@ async function logAnalyticsEvents(events: any[]) {
 
   for (const [eventType, eventList] of Object.entries(eventsByType)) {
     const events = eventList as any[]
-    console.log(`[Analytics] ${eventType}: ${events.length} events`)
+    logger.debug(`[Analytics] ${eventType}: ${events.length} events`)
     
     // Log specific important events with more detail
     if (['javascript_error', 'slow_resource', 'web_vital_cls'].includes(eventType)) {
       events.forEach(event => {
-        console.log(`[Analytics] ${eventType} details:`, {
-          timestamp: new Date(event.timestamp).toISOString(),
-          properties: event.properties,
-          sessionId: event.sessionId
+        logger.debug(`[Analytics] ${eventType} details:`, {
+          metadata: {
+            timestamp: new Date(event.timestamp).toISOString(),
+            properties: event.properties,
+            sessionId: event.sessionId
+          }
         })
       })
     }
@@ -136,19 +136,19 @@ async function logAnalyticsEvents(events: any[]) {
 async function sendToGoogleAnalytics(events: any[]) {
   // Implementation would depend on your GA setup
   // This is just a placeholder
-  console.log('[Analytics] Would send to Google Analytics:', events.length, 'events')
+  logger.debug(`[Analytics] Would send to Google Analytics: ${events.length} events`)
 }
 
 // Example function to send to Mixpanel
 async function sendToMixpanel(events: any[]) {
   // Implementation would use Mixpanel API
-  console.log('[Analytics] Would send to Mixpanel:', events.length, 'events')
+  logger.debug(`[Analytics] Would send to Mixpanel: ${events.length} events`)
 }
 
 // Example function to store in database
 async function storeInDatabase(events: any[]) {
   // Implementation would store in your database
-  console.log('[Analytics] Would store in database:', events.length, 'events')
+  logger.debug(`[Analytics] Would store in database: ${events.length} events`)
 }
 
 export async function GET() {

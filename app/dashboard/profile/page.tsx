@@ -5,6 +5,7 @@ import { lusitana } from '@/app/ui/fonts';
 import { notFound } from 'next/navigation';
 import UserProfileClient from './UserProfileClient';
 import Image from 'next/image';
+import { logger } from '@/app/lib/logger';
 
 export default async function UserProfilePage() {
   const session = await auth();
@@ -49,7 +50,7 @@ export default async function UserProfilePage() {
       </main>
     );
   } catch (error) {
-    console.error('Error loading user profile:', error);
+    logger.error('Error loading user profile', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return (
       <main>
         <h1 className={`${lusitana.className} text-2xl md:text-3xl text-white mb-6`}>

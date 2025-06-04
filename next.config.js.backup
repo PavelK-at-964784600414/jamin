@@ -1,0 +1,217 @@
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Enable experimental features for better performance
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['heroicons/react'],
+    // Server Actions configuration for larger file uploads
+    serverActions: {
+      bodySizeLimit: '50mb', // Allow up to 50MB for video uploads
+    },
+  },
+
+  // Bundle optimization
+  webpack: (config, { buildId, dev, isServer, defaultLoaders }) => {
+    // Optimize bundle size with intelligent chunk splitting
+    if (!dev && !isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        maxSize: 300000, // 300KB max per chunk
+        cacheGroups: {
+          // AWS SDK chunk
+          aws: {
+            test: /[\\/]node_modules[\\/]@aws-sdk[\\/]/,
+            name: 'aws-sdk',
+            chunks: 'all',
+            priority: 20,
+            maxSize: 250000,
+          },
+          // Animation libraries
+          animations: {
+            test: /[\\/]node_modules[\\/](framer-motion)[\\/]/,
+            name: 'animations',
+            chunks: 'all',
+            priority: 15,
+            maxSize: 200000,
+          },
+          // Icon libraries
+          icons: {
+            test: /[\\/]node_modules[\\/](@heroicons|lucide-react)[\\/]/,
+            name: 'icons',
+            chunks: 'all',
+            priority: 15,
+            maxSize: 150000,
+          },
+          // React ecosystem
+          react: {
+            test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+            name: 'react',
+            chunks: 'all',
+            priority: 10,
+          },
+          // Next.js core
+          nextjs: {
+            test: /[\\/]node_modules[\\/]next[\\/]/,
+            name: 'nextjs',
+            chunks: 'all',
+            priority: 10,
+          },
+          // Other vendor libraries
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendor',
+            chunks: 'all',
+            priority: 1,
+            maxSize: 250000,
+            minSize: 20000,
+          },
+          // Common app code
+          common: {
+            name: 'common',
+            minChunks: 2,
+            priority: 5,
+            chunks: 'all',
+            reuseExistingChunk: true,
+            maxSize: 200000,
+          },
+        },
+      }
+    }
+
+    return config
+  },
+
+  // Image optimization
+  images: {
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
+
+  // Compression
+  compress: true,
+
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(self), geolocation=()',
+          },
+          // Safari-specific headers for production mode
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+          // Connection management for Safari
+          {
+            key: 'Connection',
+            value: 'keep-alive',
+          },
+          {
+            key: 'Keep-Alive',
+            value: 'timeout=5, max=100',
+          },
+        ],
+      },
+      // Static assets with Safari-compatible caching
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
+        ],
+      },
+      // JavaScript bundles with Safari-specific headers
+      {
+        source: '/_next/static/chunks/(.*)',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/manifest.json',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400',
+          },
+        ],
+      },
+    ]
+  },
+
+  // PWA configuration
+  async rewrites() {
+    return [
+      {
+        source: '/sw.js',
+        destination: '/sw.js',
+      },
+    ]
+  },
+
+  // Production optimizations
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
+}
+
+module.exports = withBundleAnalyzer(nextConfig)

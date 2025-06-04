@@ -2,6 +2,7 @@ import { fetchThemesByMemberId, fetchCollaborationsByMemberId } from '@/app/lib/
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
 import MemberDetailClient from './MemberDetailClient';
+import { logger } from '@/app/lib/logger';
 
 export default async function MemberDetailPage({ 
   params 
@@ -35,7 +36,7 @@ export default async function MemberDetailPage({
       />
     );
   } catch (error) {
-    console.error('Error fetching member data:', error);
+    logger.error('Error fetching member data', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     notFound();
   }
 }

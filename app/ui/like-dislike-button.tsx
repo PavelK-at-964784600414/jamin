@@ -6,6 +6,7 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { LikeStats, LikeType } from '@/app/lib/definitions';
 import { toggleThemeLike, toggleCollabLike } from '@/app/lib/actions';
 import { useSession } from 'next-auth/react';
+import { logger } from '@/app/lib/logger';
 
 interface LikeDislikeButtonProps {
   itemId: string;
@@ -65,7 +66,7 @@ export default function LikeDislikeButton({
           setStats(result.like_stats);
         }
       } catch (error) {
-        console.error('Error toggling like:', error);
+        logger.error('Error toggling like', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       }
     });
   };

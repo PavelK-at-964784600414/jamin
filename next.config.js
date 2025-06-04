@@ -16,23 +16,67 @@ const nextConfig = {
 
   // Bundle optimization
   webpack: (config, { buildId, dev, isServer, defaultLoaders }) => {
-    // Optimize bundle size
+    // Optimize bundle size with intelligent chunk splitting
     if (!dev && !isServer) {
       config.optimization.splitChunks = {
         chunks: 'all',
+        maxSize: 300000, // 300KB max per chunk
         cacheGroups: {
+          // AWS SDK chunk
+          aws: {
+            test: /[\\/]node_modules[\\/]@aws-sdk[\\/]/,
+            name: 'aws-sdk',
+            chunks: 'all',
+            priority: 20,
+            maxSize: 250000,
+          },
+          // Animation libraries
+          animations: {
+            test: /[\\/]node_modules[\\/](framer-motion)[\\/]/,
+            name: 'animations',
+            chunks: 'all',
+            priority: 15,
+            maxSize: 200000,
+          },
+          // Icon libraries
+          icons: {
+            test: /[\\/]node_modules[\\/](@heroicons|lucide-react)[\\/]/,
+            name: 'icons',
+            chunks: 'all',
+            priority: 15,
+            maxSize: 150000,
+          },
+          // React ecosystem
+          react: {
+            test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+            name: 'react',
+            chunks: 'all',
+            priority: 10,
+          },
+          // Next.js core
+          nextjs: {
+            test: /[\\/]node_modules[\\/]next[\\/]/,
+            name: 'nextjs',
+            chunks: 'all',
+            priority: 10,
+          },
+          // Other vendor libraries
           vendor: {
             test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            priority: 10,
+            name: 'vendor',
             chunks: 'all',
+            priority: 1,
+            maxSize: 250000,
+            minSize: 20000,
           },
+          // Common app code
           common: {
             name: 'common',
             minChunks: 2,
             priority: 5,
             chunks: 'all',
             reuseExistingChunk: true,
+            maxSize: 200000,
           },
         },
       }
@@ -64,7 +108,8 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        // Apply general headers to HTML pages only (exclude JS/CSS/static assets)
+        source: '/((?!_next/static|favicon.ico|sw.js|manifest.json).*)',
         headers: [
           {
             key: 'X-Frame-Options',
@@ -80,7 +125,57 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value: 'camera=(self), microphone=(self), geolocation=()',
+          },
+          // Safari-specific headers for HTML pages only
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+          // Connection management for Safari
+          {
+            key: 'Connection',
+            value: 'keep-alive',
+          },
+          {
+            key: 'Keep-Alive',
+            value: 'timeout=5, max=100',
+          },
+        ],
+      },
+      // Static assets with Safari-compatible caching
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
+        ],
+      },
+      // JavaScript bundles with Safari-specific headers
+      {
+        source: '/_next/static/chunks/(.*)',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

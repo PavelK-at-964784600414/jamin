@@ -2,6 +2,7 @@ import { fetchThemeById } from '@/app/lib/data';
 import { notFound } from 'next/navigation';
 import AddLayerPageContent from './add-layer-content';
 import { themeFormToThemesTable } from '@/app/lib/type-converters';
+import { logger } from '@/app/lib/logger';
 
 // This is a server component that will fetch the theme data server-side
 export default async function AddLayerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +27,7 @@ export default async function AddLayerPage({ params }: { params: Promise<{ id: s
     // Now we're guaranteed to have a theme
     return <AddLayerPageContent theme={theme} />;
   } catch (err) {
-    console.error('Error loading theme:', err);
+    logger.error('Error loading theme', { metadata: { data: err } });
     return <div className="p-4 bg-red-900 text-white rounded-md">
       Failed to load theme. Please try again.
     </div>;

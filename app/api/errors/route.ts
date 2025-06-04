@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit } from '@/app/lib/rate-limiter'
+import { logger } from '@/app/lib/logger'
 
 export async function POST(request: NextRequest) {
   // Only accept error reports in production
@@ -32,10 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the error (replace with your preferred logging service)
-    console.error('Client-side error reported:', {
-      ...errorData,
-      ip: clientIp,
-      reportedAt: new Date().toISOString(),
+    logger.error('Client-side error reported', {
+      metadata: { ...errorData, ip: clientIp, reportedAt: new Date().toISOString() }
     })
 
     // TODO: Send to your error tracking service
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error in error reporting endpoint:', error)
+    logger.error('Error in error reporting endpoint', { metadata: { error: error instanceof Error ? error.message : String(error) } })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

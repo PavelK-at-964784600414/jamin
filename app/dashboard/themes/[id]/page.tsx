@@ -8,6 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MicrophoneIcon, PlayIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
 import MediaPlayer from '@/app/ui/themes/MediaPlayer';
+import { logger } from '@/app/lib/logger';
 
 export default function ThemePage() {
   const { id } = useParams();
@@ -50,7 +51,7 @@ export default function ThemePage() {
         setTheme(data.theme);
         setLayers(data.layers || []);
       } catch (err) {
-        console.error('Error loading theme:', err);
+        logger.error('Error loading theme', { metadata: { data: err } });
         setError('Failed to load theme. Please try again.');
       } finally {
         setLoading(false);

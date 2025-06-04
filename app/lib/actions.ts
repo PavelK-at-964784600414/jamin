@@ -9,6 +9,7 @@ import { uploadToS3 } from './s3';
 import { LikeActionResponse, LikeType, LikeStats } from './definitions';
 import { fetchThemeById, fetchLayersByThemeId, fetchCollaborationById } from './data';
 import { uploadFileToS3WithRetry } from '@/app/lib/upload-utils';
+import { logger } from '@/app/lib/logger';
 
 // Helper function to check if an error is an auth error
 function isAuthError(error: unknown): error is { type: string } {
@@ -64,14 +65,14 @@ export async function createTheme(prevState: State, formData: FormData) {
   let session;
   try {
     session = await auth();
-    console.log('session details:', session);
+    logger.debug('session details', { metadata: { data: session } });
   } catch (authError) {
-    console.error('Auth execution failed:', authError);
+    logger.error('Auth execution failed', { metadata: { error: authError instanceof Error ? authError.message : String(authError) } });
   }
   
   let memberId = session?.user?.id;
   if (!memberId) {
-    console.warn('User not authenticated. Using default member id for testing.');
+    logger.warn('User not authenticated. Using default member id for testing.');
     memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
     //throw new Error('User not authenticated.');
   }
@@ -95,7 +96,7 @@ export async function createTheme(prevState: State, formData: FormData) {
 
     
     if (!validatedFields.success) {
-      console.error('Validation failed:', validatedFields.error);
+      logger.error('Validation failed', { metadata: { data: validatedFields.error } });
       return {
         errors: validatedFields.error.flatten().fieldErrors,
         message: 'Missing or Invalid Fields. Failed to Create Theme.',
@@ -112,7 +113,7 @@ export async function createTheme(prevState: State, formData: FormData) {
           // Use the safe upload utility instead of direct uploadToS3
           const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
           recording_url = await uploadFileToS3WithRetry(audioFile, 'recordings');
-          console.log('File uploaded from File object, URL:', recording_url);
+          logger.debug('File uploaded from File object, URL', { metadata: { data: recording_url } });
         } else if (audioFile instanceof Blob) {
           // Handle if it's a Blob
           const fileKey = `recordings/${Date.now()}-recording.webm`;
@@ -120,20 +121,20 @@ export async function createTheme(prevState: State, formData: FormData) {
           // Use the safe upload utility instead of direct uploadToS3
           const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
           recording_url = await uploadFileToS3WithRetry(blobFile, 'recordings');
-          console.log('File uploaded from Blob, URL:', recording_url);
+          logger.debug('File uploaded from Blob, URL', { metadata: { data: recording_url } });
         } else {
-          console.error('Invalid file object:', typeof audioFile, audioFile);
+          logger.error('Invalid file object', { metadata: { data: typeof audioFile, audioFile } });
           throw new Error('Invalid file object provided');
         }
       } catch (error) {
-        console.error('Failed to upload file:', error);
+        logger.error('Failed to upload file', { metadata: { error: error instanceof Error ? error.message : String(error) } });
         throw error;
       }
     }
     
     // If we still don't have a recording URL, throw an error - it's required
     if (!recording_url) {
-      console.error('No recording_url after file upload attempt');
+      logger.error('No recording_url after file upload attempt');
       return {
         errors: {
           audioFile: ['Audio file is required. Please record or upload an audio file.']
@@ -154,12 +155,12 @@ export async function createTheme(prevState: State, formData: FormData) {
         ${memberId}, ${seconds}, ${key}, ${mode}, ${chords}, ${tempo}, ${date}, ${status}, ${description}, ${title}, ${genre} , ${recording_url}, ${instrument}
       )
     `;
-    console.log('Theme created successfully');
+    logger.debug('Theme created successfully');
     revalidatePath('/dashboard/themes');
     // Always return a State object for useActionState compatibility
     return { message: null, errors: {}, success: true };
   } catch (error) {
-    console.error('Error creating theme:', error);
+    logger.error('Error creating theme', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
       success: false,
       message: 'Database Error: Failed to Create Theme.',
@@ -176,11 +177,10 @@ export async function updateTheme(id: string, prevState: State, formData: FormDa
     tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
     seconds: formData.get('seconds') ? Number(formData.get('seconds')) : 0,
     instrument: formData.get('instrument'),
-    mode: formData.get('mode') ?? "",
-    chords: formData.get('chords'),
+    mode: formData.get('mode') ?? "",    chords: formData.get('chords'),
   });
   
-  console.log(validatedFields);
+  logger.debug('Theme validation results', { metadata: { success: validatedFields.success, data: validatedFields.success ? 'valid' : 'invalid' } });
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
@@ -222,7 +222,7 @@ export async function deleteTheme(id: string) {
     revalidatePath('/dashboard/themes');
     return { success: true };
   } catch (error) {
-    console.error('Failed to delete theme:', error);
+    logger.error('Failed to delete theme', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
       message: 'Database Error: Failed to Delete Theme.',
     };
@@ -281,7 +281,7 @@ export async function register(
     // Success: let client handle redirect
     return undefined;
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return 'Something went wrong. Please try again.';
   }
 }
@@ -335,15 +335,15 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
   let session;
   try {
     session = await auth();
-    console.log('session details:', session);
+    logger.debug('session details', { metadata: { data: session } });
   } catch (authError) {
-    console.error('Auth execution failed:', authError);
+    logger.error('Auth execution failed', { metadata: { error: authError instanceof Error ? authError.message : String(authError) } });
   }
   
   let memberId = session?.user?.id;
   
   if (!memberId) {
-    console.warn('User not authenticated. Using default member id for testing.');
+    logger.warn('User not authenticated. Using default member id for testing.');
     memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
   }
   const themeId = formData.get('themeId') as string | null;
@@ -363,7 +363,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     let parentThemeId: string;
     let mixingAudioUrl: string | undefined = undefined;    if (collaborationId) {
       // We're adding a layer to an existing collaboration
-      console.log('Adding layer to collaboration:', collaborationId);
+      logger.debug('Adding layer to collaboration', { metadata: { data: collaborationId } });
       
       const collaboration = await fetchCollaborationById(collaborationId);
       if (!collaboration) {
@@ -384,7 +384,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       newLayerTitle = `${collaboration.parent_theme_title} - Layer ${layerNumber} (${instrumentForTitle})`;
     } else if (themeId) {
       // We're adding the first layer to a theme (original behavior)
-      console.log('Adding first layer to theme:', themeId);
+      logger.debug('Adding first layer to theme', { metadata: { data: themeId } });
       
       const [parentThemeData, themeLayers] = await Promise.all([
         fetchThemeById(themeId),
@@ -431,7 +431,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     });
     
     if (!validatedFields.success) {
-      console.error('Validation failed:', validatedFields.error);
+      logger.error('Validation failed', { metadata: { data: validatedFields.error } });
       return {
         errors: validatedFields.error.flatten().fieldErrors,
         message: 'Missing or Invalid Fields. Failed to Create Layer.',
@@ -443,14 +443,14 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     } = validatedFields.data;
     
     // Debug: Log audioFile details
-    console.log('audioFile received:', {
+    logger.debug('audioFile received', { metadata: { data: {
       audioFile,
       type: typeof audioFile,
       constructor: audioFile?.constructor?.name,
       size: audioFile?.size,
       name: audioFile?.name,
       type_property: audioFile?.type
-    });
+    } } });
       let recording_url = null;
     const status = 'complete'; // Layers are considered complete
     
@@ -471,9 +471,9 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
               // Use the uploadFileToS3WithRetry utility which handles environment differences
             // This avoids direct FileReader usage on the server
             recording_url = await uploadFileToS3WithRetry(audioFile, 'layers/' + themeId);
-            console.log('Layer file uploaded successfully to S3:', recording_url);
+            logger.debug('Layer file uploaded successfully to S3', { metadata: { data: recording_url } });
           } catch (error) {
-            console.error('Error uploading file to S3:', error);
+            logger.error('Error uploading file to S3', { metadata: { error: error instanceof Error ? error.message : String(error) } });
             return {
               message: 'Failed to upload audio file. Please try again.',
             };
@@ -487,9 +487,9 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
               lastModified: Date.now() 
             });            // Use the uploadFileToS3WithRetry utility which handles environment differences
             recording_url = await uploadFileToS3WithRetry(blobAsFile, 'layers/' + themeId);
-            console.log('Layer file uploaded from Blob, URL:', recording_url);
+            logger.debug('Layer file uploaded from Blob, URL', { metadata: { data: recording_url } });
           } catch (error) {
-            console.error('Error uploading Blob to S3:', error);
+            logger.error('Error uploading Blob to S3', { metadata: { error: error instanceof Error ? error.message : String(error) } });
             return {
               message: 'Failed to upload audio blob. Please try again.',
             };
@@ -526,7 +526,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
                   });
                 }
               } catch (parseError) {
-                console.error('Error parsing string audio data:', parseError);
+                logger.error('Error parsing string audio data', { metadata: { error: parseError instanceof Error ? parseError.message : String(parseError) } });
                 return {
                   message: 'Invalid audio data format. Please try again with a proper audio file.',
                 };
@@ -552,7 +552,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
                   lastModified: Date.now()
                 });
               } catch (blobError) {
-                console.error('Failed to create blob from unknown type:', blobError);
+                logger.error('Failed to create blob from unknown type', { metadata: { error: blobError instanceof Error ? blobError.message : String(blobError) } });
                 return {
                   message: 'Unsupported file format. Please try again with a different file.',
                 };
@@ -565,16 +565,16 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
             
             // Upload the converted file using the utility function that's safe for server-side
             recording_url = await uploadFileToS3WithRetry(uploadableFile, 'layers/' + themeId);
-            console.log('Layer file uploaded from converted format, URL:', recording_url);
+            logger.debug('Layer file uploaded from converted format, URL', { metadata: { data: recording_url } });
           } catch (conversionError) {
-            console.error('Failed to convert or upload audio file:', conversionError);
+            logger.error('Failed to convert or upload audio file', { metadata: { error: conversionError instanceof Error ? conversionError.message : String(conversionError) } });
             return {
               message: 'Unsupported file format. Please try again with a different file.',
             };
           }
         }
       } catch (uploadError) {
-        console.error('Error in file upload process:', uploadError);
+        logger.error('Error in file upload process', { metadata: { error: uploadError instanceof Error ? uploadError.message : String(uploadError) } });
         return {
           message: 'Failed to process audio file. Please try again.',
         };
@@ -590,9 +590,9 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         const { mixAudioFiles } = await import('./audio-mix-server');
         const mixedUrl = await mixAudioFiles(mixingAudioUrl, recording_url);
         recording_url = mixedUrl;
-        console.log('Mixed audio URL:', recording_url);
+        logger.debug('Mixed audio URL', { metadata: { data: recording_url } });
       } catch (mixingError) {
-        console.warn('Audio mixing failed, using layer recording as-is:', mixingError);
+        logger.warn('Audio mixing failed, using layer recording as-is', { metadata: { error: mixingError instanceof Error ? mixingError.message : String(mixingError) } });
         // Continue with the original recording_url - this allows the layer to be created without mixing
       }
     }
@@ -608,7 +608,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         ${genre}, ${recording_url}, ${instrument}, ${parentThemeId}
       )
     `;
-    console.log('Layer created successfully in collabs table with title:', title);
+    logger.debug('Layer created successfully in collabs table with title', { metadata: { data: title } });
     // Make sure parentThemeId is a string before using it with revalidatePath
     const pathToRevalidate = `/dashboard/themes/${String(parentThemeId)}`;
     revalidatePath(pathToRevalidate);
@@ -622,7 +622,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       themeId: String(themeId), // Include themeId for client-side navigation
     };
   } catch (error) {
-    console.error('Error creating layer:', error);
+    logger.error('Error creating layer', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
       message: 'Database Error: Failed to Create Layer.',
       success: false,
@@ -638,7 +638,7 @@ export async function getLayersForThemeAction(themeId: string) {
     const layers = await fetchLayersByThemeId(themeId);
     return layers; // Successfully return layers
   } catch (error) {
-    console.error('[Server Action Error] Failed to fetch layers:', error);
+    logger.error('[Server Action Error] Failed to fetch layers', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     // Return a more structured error or an empty array to indicate failure
     return []; // Or throw error to be caught by client if preferred
   }
@@ -652,7 +652,7 @@ export async function toggleThemeLike(themeId: string, likeType: LikeType): Prom
     const memberId = session?.user?.id;
     
     if (!memberId) {
-      console.warn('User not authenticated. Using default member id for testing.');
+      logger.warn('User not authenticated. Using default member id for testing.');
       // For testing purposes, use default member id
       // In production, you would return an error here
       return {
@@ -708,7 +708,7 @@ export async function toggleThemeLike(themeId: string, likeType: LikeType): Prom
       like_stats: likeStats
     };
   } catch (error) {
-    console.error('Error toggling theme like:', error);
+    logger.error('Error toggling theme like', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
       success: false,
       message: 'Failed to update like status.'
@@ -723,7 +723,7 @@ export async function toggleCollabLike(collabId: string, likeType: LikeType): Pr
     const memberId = session?.user?.id;
     
     if (!memberId) {
-      console.warn('User not authenticated. Using default member id for testing.');
+      logger.warn('User not authenticated. Using default member id for testing.');
       // For testing purposes, use default member id
       // In production, you would return an error here
       return {
@@ -771,7 +771,7 @@ export async function toggleCollabLike(collabId: string, likeType: LikeType): Pr
       like_stats: likeStats
     };
   } catch (error) {
-    console.error('Error toggling collaboration like:', error);
+    logger.error('Error toggling collaboration like', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
       success: false,
       message: 'Failed to update like status.'
@@ -813,7 +813,7 @@ export async function getThemeLikeStats(themeId: string, userId?: string): Promi
       userLike
     };
   } catch (error) {
-    console.error('Error fetching theme like stats:', error);
+    logger.error('Error fetching theme like stats', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
       likes: 0,
       dislikes: 0,
@@ -856,7 +856,7 @@ export async function getCollabLikeStats(collabId: string, userId?: string): Pro
       userLike
     };
   } catch (error) {
-    console.error('Error fetching collaboration like stats:', error);
+    logger.error('Error fetching collaboration like stats', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
       likes: 0,
       dislikes: 0,

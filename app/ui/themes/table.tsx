@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { PlayIcon } from '@heroicons/react/24/outline';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/app/ui/themes/accordion';
 import { getLayersForThemeAction } from '@/app/lib/actions'; 
+import { logger } from '@/app/lib/logger'; 
 
 export default function ThemesTable({
   themes,
@@ -18,7 +19,7 @@ export default function ThemesTable({
   themes: ThemesTableWithLikes[];
   currentUserId?: string;
 }) {
-  console.log('[Client] ThemesTable received themes:', JSON.stringify(themes?.map(t => t.id) || 'No themes'));
+  logger.debug('[Client] ThemesTable received themes', { metadata: { data: JSON.stringify(themes?.map(t => t.id)) || 'No themes' } });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null);
   const [layersByTheme, setLayersByTheme] = useState<{ [key: string]: CollabRecord[] }>({});
@@ -39,7 +40,7 @@ export default function ThemesTable({
         const fetchedLayers = await getLayersForThemeAction(themeId);
         setLayersByTheme(prev => ({ ...prev, [themeId]: Array.isArray(fetchedLayers) ? fetchedLayers : [] }));
       } catch (error) {
-        console.error('Failed to fetch layers for theme:', themeId, error);
+        logger.error('Failed to fetch layers for theme', { metadata: { data: themeId, error } });
         setLayersByTheme(prev => ({ ...prev, [themeId]: [] }));
       }
     }

@@ -5,6 +5,7 @@
  */
 
 import { uploadFileToS3WithRetry } from '@/app/lib/upload-utils';
+import { logger } from '@/app/lib/logger';
 
 /**
  * Check if an audio file is valid and playable
@@ -20,20 +21,20 @@ export async function validateAudioFile(file: File): Promise<boolean> {
     // Success handler
     audio.oncanplaythrough = () => {
       clearTimeout(timeout);
-      console.log('Audio file validated successfully');
+      logger.debug('Audio file validated successfully');
       resolve(true);
     };
     
     // Error handler
     audio.onerror = (err) => {
       clearTimeout(timeout);
-      console.error('Audio validation failed:', err);
+      logger.error('Audio validation failed', { metadata: { data: err } });
       resolve(false);
     };
     
     // Set timeout to prevent long waits
     timeout = setTimeout(() => {
-      console.warn('Audio validation timed out');
+      logger.warn('Audio validation timed out');
       resolve(false);
     }, 3000);
     
@@ -102,7 +103,7 @@ export function getSupportedAudioFormats() {
   // Safari specific detection
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   if (isSafari) {
-    console.log('Safari browser detected, using Safari-compatible audio formats');
+    logger.debug('Safari browser detected, using Safari-compatible audio formats');
     // For Safari, prefer MP4 formats when available
     const safariAudio = supportedAudio.find(format => format.includes('mp4'));
     if (safariAudio) {
@@ -115,7 +116,7 @@ export function getSupportedAudioFormats() {
     }
   }
   
-  console.log('Browser supported audio formats:', result);
+  logger.debug('Browser supported audio formats', { metadata: { data: result } });
   return result;
 }
 
@@ -133,7 +134,7 @@ export async function getAudioDuration(file: File): Promise<number> {
     audio.onloadedmetadata = () => {
       clearTimeout(timeout);
       const duration = audio.duration;
-      console.log('Audio duration:', duration, 'seconds');
+      logger.debug('Audio duration', { metadata: { duration: duration, unit: 'seconds' } });
       // Clean up
       URL.revokeObjectURL(audio.src);
       resolve(isFinite(duration) ? Math.round(duration) : 0);
@@ -142,14 +143,14 @@ export async function getAudioDuration(file: File): Promise<number> {
     // Error handler
     audio.onerror = (err) => {
       clearTimeout(timeout);
-      console.error('Failed to get audio duration:', err);
+      logger.error('Failed to get audio duration', { metadata: { data: err } });
       URL.revokeObjectURL(audio.src);
       reject(new Error('Failed to load audio file'));
     };
     
     // Set timeout to prevent long waits
     timeout = setTimeout(() => {
-      console.warn('Audio duration detection timed out');
+      logger.warn('Audio duration detection timed out');
       URL.revokeObjectURL(audio.src);
       resolve(0); // Default to 0 if we can't determine duration
     }, 5000);
@@ -177,7 +178,7 @@ export async function getMediaDuration(file: File): Promise<number> {
     element.onloadedmetadata = () => {
       clearTimeout(timeout);
       const duration = (element as HTMLMediaElement).duration;
-      console.log(`Media duration detected: ${duration} seconds for ${file.name}`);
+      logger.debug(`Media duration detected: ${duration} seconds for ${file.name}`);
       resolve(duration);
       URL.revokeObjectURL(element.src);
     };
@@ -185,14 +186,14 @@ export async function getMediaDuration(file: File): Promise<number> {
     // Error handler
     element.onerror = (err) => {
       clearTimeout(timeout);
-      console.error('Media duration detection failed:', err);
+      logger.error('Media duration detection failed', { metadata: { data: err } });
       resolve(0);
       URL.revokeObjectURL(element.src);
     };
     
     // Set timeout to prevent long waits
     timeout = setTimeout(() => {
-      console.warn('Media duration detection timed out');
+      logger.warn('Media duration detection timed out');
       resolve(0);
       URL.revokeObjectURL(element.src);
     }, 5000);

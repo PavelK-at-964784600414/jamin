@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PowerIcon } from '@heroicons/react/24/outline'
 import { signOut } from 'next-auth/react';
+import { logger } from '@/app/lib/logger';
 
 export function CoolSignOut() {
   const [isHovered, setIsHovered] = useState(false)
@@ -22,7 +23,7 @@ export function CoolSignOut() {
           try {
             await signOut({ callbackUrl: '/login' });
           } catch (error) {
-            console.error('Error signing out:', error);
+            logger.error('Error signing out', { metadata: { error: error instanceof Error ? error.message : String(error) } });
           }
         }}
         className="relative overflow-hidden flex h-[48px] w-full items-center justify-center gap-2 rounded-md bg-black p-0.5"

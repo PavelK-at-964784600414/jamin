@@ -1,6 +1,7 @@
 'use client';
  
 import { useEffect } from 'react';
+import { logger } from '@/app/lib/logger';
  
 export default function Error({
   error,
@@ -8,10 +9,15 @@ export default function Error({
 }: {
   error: Error & { digest?: string };
   reset: () => void;
-}) {
-  useEffect(() => {
+}) {  useEffect(() => {
     // Optionally log the error to an error reporting service
-    console.error(error);
+    logger.error('Themes page error', { 
+      metadata: { 
+        error: error.message, 
+        digest: error.digest,
+        stack: error.stack 
+      } 
+    });
   }, [error]);
  
   return (

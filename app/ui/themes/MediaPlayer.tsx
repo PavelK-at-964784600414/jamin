@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/app/lib/logger';
 
 interface MediaPlayerModalProps {
   mediaURL: string | null;
@@ -33,10 +34,10 @@ export default function MediaPlayerModal({ mediaURL, isOpen, onClose, isVideo }:
     if (isOpen && mediaURL) {
       if (isVideoFile && videoRef.current) {
         videoRef.current.load();
-        videoRef.current.play().catch(error => console.error("Error playing video:", error));
+        videoRef.current.play().catch(error => logger.error("Error playing video", { metadata: { error: error instanceof Error ? error.message : String(error) } }));
       } else if (!isVideoFile && audioRef.current) {
         audioRef.current.load();
-        audioRef.current.play().catch(error => console.error("Error playing audio:", error));
+        audioRef.current.play().catch(error => logger.error("Error playing audio", { metadata: { error: error instanceof Error ? error.message : String(error) } }));
       }
     } else {
       // Pause both audio and video when closing

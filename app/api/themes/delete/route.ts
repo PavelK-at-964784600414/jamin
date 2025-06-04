@@ -2,6 +2,7 @@ import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiCsrf } from '@/app/lib/api-security';
 import { auth } from '@/auth';
+import { logger } from '@/app/lib/logger';
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -59,7 +60,7 @@ export async function DELETE(request: NextRequest) {
     
     return NextResponse.json({ message: 'Theme deleted successfully' });
   } catch (error) {
-    console.error('Error deleting theme:', error);
+    logger.error('Error deleting theme', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return NextResponse.json(
       { message: 'Error deleting theme' },
       { status: 500 }

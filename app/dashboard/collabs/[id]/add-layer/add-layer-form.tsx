@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import RecordingControls from '@/app/ui/themes/RecordingControls';
 import LayerMetadataForm from '@/app/ui/themes/LayerMetadataForm';
 import { getSupportedAudioFormats, validateAudioFile, getAudioDuration } from '@/app/lib/audio-utils';
+import { logger } from '@/app/lib/logger';
 
 interface AddLayerToCollabFormProps {
   collaboration: CollaborationDisplayData;
@@ -119,7 +120,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
       }, maxDuration * 1000);
       
     } catch (error) {
-      console.error("Error playing collaboration:", error);
+      logger.error("Error playing collaboration", { metadata: { error: error instanceof Error ? error.message : String(error) } });
       setError("Failed to play the collaboration. Please try again.");
       setIsPlaying(false);
     }
@@ -204,9 +205,9 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
             try {
               const recordedDuration = await getAudioDuration(recordedFile);
               setDuration(recordedDuration);
-              console.log('Recorded collaboration layer duration set to:', recordedDuration, 'seconds');
+              logger.debug('Recorded collaboration layer duration set to', { metadata: { duration: recordedDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get recorded collaboration layer duration:', error);
+              logger.error('Failed to get recorded collaboration layer duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else if (isVideoMode && recordedFile.type.startsWith('video/')) {
@@ -214,9 +215,9 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
               const { getVideoDuration } = await import('@/app/lib/video-utils');
               const videoDuration = await getVideoDuration(recordedFile);
               setDuration(videoDuration);
-              console.log('Recorded collaboration video duration set to:', videoDuration, 'seconds');
+              logger.debug('Recorded collaboration video duration set to', { metadata: { duration: videoDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get recorded collaboration video duration:', error);
+              logger.error('Failed to get recorded collaboration video duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else {
@@ -233,7 +234,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
         // Start collaboration playback
         await playCollaboration();
       } catch (err) {
-        console.error('Error accessing media devices:', err);
+        logger.error('Error accessing media devices', { metadata: { data: err } });
         setError('Failed to access your microphone or camera. Please check permissions.');
       }
     }
@@ -262,9 +263,9 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
             try {
               const fileDuration = await getAudioDuration(selectedFile);
               setDuration(fileDuration);
-              console.log('Uploaded collaboration layer duration set to:', fileDuration, 'seconds');
+              logger.debug('Uploaded collaboration layer duration set to', { metadata: { duration: fileDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get uploaded collaboration layer duration:', error);
+              logger.error('Failed to get uploaded collaboration layer duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else if (selectedFile.type.startsWith('video/')) {
@@ -272,9 +273,9 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
               const { getVideoDuration } = await import('@/app/lib/video-utils');
               const videoDuration = await getVideoDuration(selectedFile);
               setDuration(videoDuration);
-              console.log('Uploaded collaboration video duration set to:', videoDuration, 'seconds');
+              logger.debug('Uploaded collaboration video duration set to', { metadata: { duration: videoDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get uploaded collaboration video duration:', error);
+              logger.error('Failed to get uploaded collaboration video duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else {
@@ -285,7 +286,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
           e.target.value = '';
         }
       } catch (validationError) {
-        console.error('Error validating file:', validationError);
+        logger.error('Error validating file', { metadata: { error: validationError instanceof Error ? validationError.message : String(validationError) } });
         setFile(selectedFile);
       }
     }
@@ -352,7 +353,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
     // Add the file
     if (file) {
       formData.append('audioFile', file);
-      console.log('File attached to form:', file.name, file.type, file.size);
+      logger.debug('File attached to form', { metadata: { name: file.name, type: file.type, size: file.size } });
     }
     
     // Call the server action directly

@@ -1,5 +1,24 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+// Dynamic imports for AWS SDK to reduce bundle size
+// import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+// import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { logger } from './logger';
+
+// Lazy load AWS SDK components
+let S3Client: any, PutObjectCommand: any, GetObjectCommand: any, getSignedUrl: any;
+
+const loadAWSSDK = async () => {
+  if (!S3Client) {
+    const [clientS3, presigner] = await Promise.all([
+      import('@aws-sdk/client-s3'),
+      import('@aws-sdk/s3-request-presigner')
+    ]);
+    S3Client = clientS3.S3Client;
+    PutObjectCommand = clientS3.PutObjectCommand;
+    GetObjectCommand = clientS3.GetObjectCommand;
+    getSignedUrl = presigner.getSignedUrl;
+  }
+  return { S3Client, PutObjectCommand, GetObjectCommand, getSignedUrl };
+};
 
 // Clean up AWS credentials from any comments or extra whitespace
 // Check that required environment variables exist
@@ -15,20 +34,32 @@ const cleanSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY.split('#')[0].tri
 const region = process.env.AWS_REGION;
 
 
-// Create S3 client with cleaned credentials
-const s3Client = new S3Client({
-  region: region,
-  credentials: {
-    accessKeyId: cleanAccessKeyId,
-    secretAccessKey: cleanSecretAccessKey,
-  },
-  // Add retry configuration for better error handling
-  retryMode: 'standard',
-  maxAttempts: 3,
-});
+// Create S3 client factory function
+let s3ClientInstance: any = null;
+
+const getS3Client = async () => {
+  if (!s3ClientInstance) {
+    const { S3Client } = await loadAWSSDK();
+    s3ClientInstance = new S3Client({
+      region: region,
+      credentials: {
+        accessKeyId: cleanAccessKeyId,
+        secretAccessKey: cleanSecretAccessKey,
+      },
+      // Add retry configuration for better error handling
+      retryMode: 'standard',
+      maxAttempts: 3,
+    });
+  }
+  return s3ClientInstance;
+};
 
 export async function uploadToS3(file: File, key: string) {
-  console.log('Starting S3 upload for:', key);
+  logger.debug('Starting S3 upload for', { metadata: { data: key } });
+  
+  // Load AWS SDK dynamically
+  const { PutObjectCommand } = await loadAWSSDK();
+  const s3Client = await getS3Client();
   
   try {
     // Get file data with error handling for Safari
@@ -38,7 +69,7 @@ export async function uploadToS3(file: File, key: string) {
       const arrayBuffer = await file.arrayBuffer();
       fileBuffer = new Uint8Array(arrayBuffer);
     } catch (arrayBufferError) {
-      console.warn('Error getting arrayBuffer:', arrayBufferError);
+      logger.warn('Error getting arrayBuffer', { metadata: { data: arrayBufferError } });
       
       // Check if we're in a browser environment where FileReader is available
       if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
@@ -75,7 +106,7 @@ export async function uploadToS3(file: File, key: string) {
                 else contentType = 'audio/webm';
               }
               
-              console.log(`S3 upload (FileReader method) using content type: ${contentType} for key: ${key}`);
+              logger.s3.debug(`S3 upload (FileReader method) using content type: ${contentType} for key: ${key}`);
               
               const command = new PutObjectCommand({
                 Bucket: process.env.AWS_BUCKET_NAME,
@@ -86,7 +117,7 @@ export async function uploadToS3(file: File, key: string) {
               
               await s3Client.send(command);
               const url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-              console.log('S3 upload successful (FileReader method):', url);
+              logger.debug('S3 upload successful (FileReader method)', { metadata: { data: url } });
               resolve(url);
             } catch (uploadError) {
               reject(uploadError);
@@ -99,7 +130,7 @@ export async function uploadToS3(file: File, key: string) {
         // Server-side code - Attempt different approach for Node.js
         try {
           // Try to get buffer from Node.js specific methods
-          console.log('Attempting server-side file reading');
+          logger.debug('Attempting server-side file reading');
           if ('buffer' in file && typeof file.buffer === 'function') {
             const buffer = await file.buffer();
             fileBuffer = new Uint8Array(buffer);
@@ -128,11 +159,11 @@ export async function uploadToS3(file: File, key: string) {
             }
           } else {
             // Emergency fallback
-            console.error('Unable to read file using standard methods');
+            logger.error('Unable to read file using standard methods');
             throw new Error('Unable to read file data in server environment');
           }
         } catch (nodeError) {
-          console.error('Server-side file processing failed:', nodeError);
+          logger.error('Server-side file processing failed', { metadata: { error: nodeError instanceof Error ? nodeError.message : String(nodeError) } });
           throw nodeError;
         }
       }
@@ -159,7 +190,7 @@ export async function uploadToS3(file: File, key: string) {
       else contentType = 'audio/webm';
     }
     
-    console.log(`S3 upload using content type: ${contentType} for key: ${key}`);
+    logger.s3.debug(`S3 upload using content type: ${contentType} for key: ${key}`);
     
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
@@ -170,15 +201,19 @@ export async function uploadToS3(file: File, key: string) {
 
     await s3Client.send(command);
     const url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-    console.log('S3 upload successful:', url);
+    logger.debug('S3 upload successful', { metadata: { data: url } });
     return url;
   } catch (error) {
-    console.error('Error uploading to S3:', error);
+    logger.error('Error uploading to S3', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }
 
 export async function generateSignedUrl(key: string) {
+  // Load AWS SDK dynamically
+  const { GetObjectCommand, getSignedUrl } = await loadAWSSDK();
+  const s3Client = await getS3Client();
+  
   const command = new GetObjectCommand({
     Bucket: process.env.AWS_BUCKET_NAME,
     Key: key,
@@ -216,7 +251,7 @@ export async function createSafariCompatibleFile(file: File): Promise<File> {
       return file;
     }
   } catch (error) {
-    console.error('Error creating Safari-compatible file:', error);
+    logger.error('Error creating Safari-compatible file', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     // Return the original file as fallback
     return file;
   }

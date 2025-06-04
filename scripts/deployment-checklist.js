@@ -1,3 +1,5 @@
+import { logger } from './lib/logger';
+
 #!/usr/bin/env node
 
 const { execSync } = require('child_process');
@@ -9,8 +11,8 @@ const { runLighthouseAudit } = require('./lighthouse-audit.js');
 const { analyzeBundles } = require('./bundle-analyzer.js');
 
 async function deploymentChecklist() {
-  console.log('🚀 Production Deployment Checklist');
-  console.log('==================================\n');
+  logger.debug('🚀 Production Deployment Checklist');
+  logger.debug('==================================\n');
 
   const results = {
     timestamp: new Date().toISOString(),
@@ -22,7 +24,7 @@ async function deploymentChecklist() {
 
   // Step 1: Environment validation
   await runStep(results, 'Environment Validation', async () => {
-    console.log('   📋 Checking environment variables...');
+    logger.debug('   📋 Checking environment variables...');
     try {
       execSync('npm run env:validate', { stdio: 'inherit' });
       return { status: 'pass', message: 'Environment variables validated' };
@@ -33,7 +35,7 @@ async function deploymentChecklist() {
 
   // Step 2: Security audit
   await runStep(results, 'Security Audit', async () => {
-    console.log('   🔒 Running security audit...');
+    logger.debug('   🔒 Running security audit...');
     try {
       const auditOutput = execSync('npm audit --audit-level moderate', { encoding: 'utf8' });
       const vulnerabilities = auditOutput.includes('vulnerabilities');
@@ -48,7 +50,7 @@ async function deploymentChecklist() {
 
   // Step 3: Type checking
   await runStep(results, 'TypeScript Type Check', async () => {
-    console.log('   📝 Running TypeScript type check...');
+    logger.debug('   📝 Running TypeScript type check...');
     try {
       execSync('npm run type-check', { stdio: 'inherit' });
       return { status: 'pass', message: 'TypeScript compilation successful' };
@@ -59,7 +61,7 @@ async function deploymentChecklist() {
 
   // Step 4: Linting
   await runStep(results, 'Code Linting', async () => {
-    console.log('   🧹 Running linter...');
+    logger.debug('   🧹 Running linter...');
     try {
       execSync('npm run lint', { stdio: 'inherit' });
       return { status: 'pass', message: 'Code linting passed' };
@@ -70,7 +72,7 @@ async function deploymentChecklist() {
 
   // Step 5: Production build
   await runStep(results, 'Production Build', async () => {
-    console.log('   🔨 Building for production...');
+    logger.debug('   🔨 Building for production...');
     try {
       execSync('npm run build', { stdio: 'inherit' });
       
@@ -87,7 +89,7 @@ async function deploymentChecklist() {
 
   // Step 6: Bundle analysis
   await runStep(results, 'Bundle Analysis', async () => {
-    console.log('   📦 Analyzing bundle size...');
+    logger.debug('   📦 Analyzing bundle size...');
     try {
       const analysis = await analyzeBundles();
       const sizeMB = analysis.summary.totalSizeMB;
@@ -107,7 +109,7 @@ async function deploymentChecklist() {
   // Step 7: Start production server (background)
   let serverProcess;
   await runStep(results, 'Start Production Server', async () => {
-    console.log('   🌐 Starting production server...');
+    logger.debug('   🌐 Starting production server...');
     try {
       // Start server in background
       const { spawn } = require('child_process');
@@ -145,7 +147,7 @@ async function deploymentChecklist() {
   // Step 8: Performance audit (if server is running)
   if (serverProcess) {
     await runStep(results, 'Performance Audit', async () => {
-      console.log('   🏃 Running Lighthouse performance audit...');
+      logger.debug('   🏃 Running Lighthouse performance audit...');
       try {
         // Wait a bit for server to be fully ready
         await new Promise(resolve => setTimeout(resolve, 3000));
@@ -169,13 +171,13 @@ async function deploymentChecklist() {
     try {
       serverProcess.kill();
     } catch (error) {
-      console.log('   ⚠️  Could not kill server process, may need manual cleanup');
+      logger.debug('   ⚠️  Could not kill server process, may need manual cleanup');
     }
   }
 
   // Step 9: PWA validation
   await runStep(results, 'PWA Validation', async () => {
-    console.log('   📱 Validating PWA configuration...');
+    logger.debug('   📱 Validating PWA configuration...');
     
     const checks = [];
     
@@ -225,7 +227,7 @@ async function deploymentChecklist() {
 
   // Step 10: Security headers check
   await runStep(results, 'Security Headers', async () => {
-    console.log('   🛡️  Checking security configuration...');
+    logger.debug('   🛡️  Checking security configuration...');
     
     const checks = [];
     
@@ -269,8 +271,8 @@ async function deploymentChecklist() {
 }
 
 async function runStep(results, stepName, stepFunction) {
-  console.log(`\n🔄 ${stepName}`);
-  console.log('─'.repeat(stepName.length + 3));
+  logger.debug(`\n🔄 ${stepName}`);
+  logger.debug('─'.repeat(stepName.length + 3));
   
   try {
     const result = await stepFunction();
@@ -288,25 +290,25 @@ async function runStep(results, stepName, stepFunction) {
     
     switch (result.status) {
       case 'pass':
-        console.log(`   ✅ ${result.message}`);
+        logger.debug(`   ✅ ${result.message}`);
         results.passed++;
         break;
       case 'warning':
-        console.log(`   ⚠️  ${result.message}`);
+        logger.debug(`   ⚠️  ${result.message}`);
         results.warnings++;
         break;
       case 'fail':
-        console.log(`   ❌ ${result.message}`);
+        logger.debug(`   ❌ ${result.message}`);
         results.failed++;
         break;
     }
     
     if (result.error) {
-      console.log(`   💬 ${result.error}`);
+      logger.debug(`   💬 ${result.error}`);
     }
     
   } catch (error) {
-    console.log(`   💥 Unexpected error: ${error.message}`);
+    logger.debug(`   💥 Unexpected error: ${error.message}`);
     results.steps.push({
       name: stepName,
       status: 'fail',
@@ -319,35 +321,35 @@ async function runStep(results, stepName, stepFunction) {
 }
 
 function generateFinalReport(results) {
-  console.log('\n🎯 Deployment Readiness Report');
-  console.log('===============================\n');
+  logger.debug('\n🎯 Deployment Readiness Report');
+  logger.debug('===============================\n');
   
   const total = results.passed + results.warnings + results.failed;
   const successRate = Math.round((results.passed / total) * 100);
   
-  console.log(`📊 Overall Status: ${successRate}% Ready`);
-  console.log(`✅ Passed: ${results.passed}`);
-  console.log(`⚠️  Warnings: ${results.warnings}`);
-  console.log(`❌ Failed: ${results.failed}`);
-  console.log(`📋 Total Steps: ${total}\n`);
+  logger.debug(`📊 Overall Status: ${successRate}% Ready`);
+  logger.debug(`✅ Passed: ${results.passed}`);
+  logger.debug(`⚠️  Warnings: ${results.warnings}`);
+  logger.debug(`❌ Failed: ${results.failed}`);
+  logger.debug(`📋 Total Steps: ${total}\n`);
   
   // Deployment recommendation
   if (results.failed === 0 && results.warnings <= 2) {
-    console.log('🚀 READY FOR DEPLOYMENT');
-    console.log('   Your application is ready for production deployment!');
+    logger.debug('🚀 READY FOR DEPLOYMENT');
+    logger.debug('   Your application is ready for production deployment!');
   } else if (results.failed <= 1 && results.warnings <= 3) {
-    console.log('⚠️  DEPLOY WITH CAUTION');
-    console.log('   You can deploy but should address the issues above.');
+    logger.debug('⚠️  DEPLOY WITH CAUTION');
+    logger.debug('   You can deploy but should address the issues above.');
   } else {
-    console.log('🛑 NOT READY FOR DEPLOYMENT');
-    console.log('   Please fix the failing checks before deploying.');
+    logger.debug('🛑 NOT READY FOR DEPLOYMENT');
+    logger.debug('   Please fix the failing checks before deploying.');
   }
   
   // Save detailed report
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const reportPath = path.join(__dirname, `deployment-report-${timestamp}.json`);
   fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
-  console.log(`\n📄 Detailed report saved to: ${reportPath}`);
+  logger.debug(`\n📄 Detailed report saved to: ${reportPath}`);
 }
 
 // Run checklist if called directly
@@ -358,7 +360,7 @@ if (require.main === module) {
       process.exit(exitCode);
     })
     .catch((error) => {
-      console.error('\n💥 Deployment checklist failed:', error);
+      logger.error('\n💥 Deployment checklist failed:', error);
       process.exit(1);
     });
 }

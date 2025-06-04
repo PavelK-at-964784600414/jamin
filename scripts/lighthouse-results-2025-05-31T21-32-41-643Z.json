@@ -1,0 +1,29 @@
+[
+  {
+    "url": "http://localhost:3000",
+    "error": "lighthouse is not a function",
+    "performance": 0,
+    "accessibility": 0,
+    "bestPractices": 0,
+    "seo": 0,
+    "pwa": 0
+  },
+  {
+    "url": "http://localhost:3000/dashboard",
+    "error": "lighthouse is not a function",
+    "performance": 0,
+    "accessibility": 0,
+    "bestPractices": 0,
+    "seo": 0,
+    "pwa": 0
+  },
+  {
+    "url": "http://localhost:3000/dashboard/tools",
+    "error": "lighthouse is not a function",
+    "performance": 0,
+    "accessibility": 0,
+    "bestPractices": 0,
+    "seo": 0,
+    "pwa": 0
+  }
+]

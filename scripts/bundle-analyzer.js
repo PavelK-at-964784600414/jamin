@@ -5,11 +5,11 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 async function analyzeBundles() {
-  console.log('📦 Starting Bundle Analysis...\n');
+  logger.debug('📦 Starting Bundle Analysis...\n');
 
   // Ensure build directory exists
   if (!fs.existsSync('.next')) {
-    console.log('🔨 Building application first...');
+    logger.debug('🔨 Building application first...');
     execSync('npm run build', { stdio: 'inherit' });
   }
 
@@ -17,7 +17,7 @@ async function analyzeBundles() {
   const staticDir = path.join(buildDir, 'static');
   
   if (!fs.existsSync(staticDir)) {
-    console.error('❌ Build directory not found. Please run "npm run build" first.');
+    logger.error('❌ Build directory not found. Please run "npm run build" first.');
     process.exit(1);
   }
 
@@ -31,21 +31,21 @@ async function analyzeBundles() {
   };
 
   // Analyze pages
-  console.log('📄 Analyzing pages...');
+  logger.debug('📄 Analyzing pages...');
   const pagesDir = path.join(buildDir, 'server', 'pages');
   if (fs.existsSync(pagesDir)) {
     analysis.pages = analyzeDirectory(pagesDir, 'Pages');
   }
 
   // Analyze chunks
-  console.log('🧩 Analyzing chunks...');
+  logger.debug('🧩 Analyzing chunks...');
   const chunksDir = path.join(staticDir, 'chunks');
   if (fs.existsSync(chunksDir)) {
     analysis.chunks = analyzeDirectory(chunksDir, 'Chunks');
   }
 
   // Analyze static assets
-  console.log('🖼️  Analyzing static assets...');
+  logger.debug('🖼️  Analyzing static assets...');
   if (fs.existsSync(staticDir)) {
     analysis.assets = analyzeDirectory(staticDir, 'Static Assets');
   }
@@ -61,7 +61,7 @@ async function analyzeBundles() {
   // Display results
   displayResults(analysis);
 
-  console.log(`\n💾 Full analysis saved to: ${outputPath}`);
+  logger.debug(`\n💾 Full analysis saved to: ${outputPath}`);
   
   return analysis;
 }
@@ -194,40 +194,40 @@ function generateRecommendations(analysis, totalSizeMB, largestFiles) {
 }
 
 function displayResults(analysis) {
-  console.log('\n📊 Bundle Analysis Results:');
-  console.log('========================\n');
+  logger.debug('\n📊 Bundle Analysis Results:');
+  logger.debug('========================\n');
 
   // Summary
-  console.log(`📦 Total Bundle Size: ${analysis.summary.totalSizeMB} MB (${analysis.summary.totalSizeKB} KB)`);
-  console.log(`📁 Total Files: ${analysis.summary.totalFiles}\n`);
+  logger.debug(`📦 Total Bundle Size: ${analysis.summary.totalSizeMB} MB (${analysis.summary.totalSizeKB} KB)`);
+  logger.debug(`📁 Total Files: ${analysis.summary.totalFiles}\n`);
 
   // By category
   if (analysis.pages.files) {
-    console.log(`📄 Pages: ${analysis.pages.count} files, ${analysis.pages.totalSizeKB} KB`);
+    logger.debug(`📄 Pages: ${analysis.pages.count} files, ${analysis.pages.totalSizeKB} KB`);
   }
   if (analysis.chunks.files) {
-    console.log(`🧩 Chunks: ${analysis.chunks.count} files, ${analysis.chunks.totalSizeKB} KB`);
+    logger.debug(`🧩 Chunks: ${analysis.chunks.count} files, ${analysis.chunks.totalSizeKB} KB`);
   }
   if (analysis.assets.files) {
-    console.log(`🖼️  Assets: ${analysis.assets.count} files, ${analysis.assets.totalSizeKB} KB`);
+    logger.debug(`🖼️  Assets: ${analysis.assets.count} files, ${analysis.assets.totalSizeKB} KB`);
   }
 
   // Largest files
-  console.log('\n🔝 Top 10 Largest Files:');
+  logger.debug('\n🔝 Top 10 Largest Files:');
   analysis.summary.largestFiles.slice(0, 10).forEach((file, index) => {
-    console.log(`   ${index + 1}. ${file.name} - ${file.sizeKB} KB`);
+    logger.debug(`   ${index + 1}. ${file.name} - ${file.sizeKB} KB`);
   });
 
   // By extension
-  console.log('\n📋 By File Type:');
+  logger.debug('\n📋 By File Type:');
   analysis.summary.byExtension.slice(0, 5).forEach(ext => {
-    console.log(`   ${ext.extension}: ${ext.count} files, ${ext.totalSizeKB} KB (avg: ${ext.averageSize} KB)`);
+    logger.debug(`   ${ext.extension}: ${ext.count} files, ${ext.totalSizeKB} KB (avg: ${ext.averageSize} KB)`);
   });
 
   // Recommendations
-  console.log('\n💡 Recommendations:');
+  logger.debug('\n💡 Recommendations:');
   analysis.summary.recommendations.forEach(rec => {
-    console.log(`   ${rec}`);
+    logger.debug(`   ${rec}`);
   });
 }
 
@@ -235,11 +235,11 @@ function displayResults(analysis) {
 if (require.main === module) {
   analyzeBundles()
     .then(() => {
-      console.log('\n✨ Bundle analysis completed!');
+      logger.debug('\n✨ Bundle analysis completed!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('\n💥 Bundle analysis failed:', error);
+      logger.error('\n💥 Bundle analysis failed:', error);
       process.exit(1);
     });
 }

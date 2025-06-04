@@ -1,6 +1,12 @@
 import { Suspense } from 'react';
 import { lusitana } from '@/app/ui/fonts';
-import ToolsPageClient from './ToolsPageClient';
+import dynamic from 'next/dynamic';
+
+// Lazy load the tools client component to reduce initial bundle size
+const ToolsPageClient = dynamic(() => import('./ToolsPageClient'), {
+  loading: () => <div className="text-white">Loading tools...</div>,
+  ssr: false // Tools are interactive, don't need SSR
+});
 
 export default async function ToolsPage() {
   return (
@@ -14,9 +20,7 @@ export default async function ToolsPage() {
         Professional music tools to enhance your creativity and workflow. Access chord generators, metronomes, and instrument-specific assistance.
       </p>
       
-      <Suspense fallback={<div className="text-white">Loading tools...</div>}>
-        <ToolsPageClient />
-      </Suspense>
+      <ToolsPageClient />
     </div>
   );
 }

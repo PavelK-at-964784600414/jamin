@@ -5,9 +5,10 @@ import { lusitana } from '@/app/ui/fonts';
 import { fetchCardData } from '@/app/lib/data';
 import { Suspense } from 'react';
 import { CollabChartSkeleton, LatestThemesSkeleton, CardsSkeleton } from '@/app/ui/skeletons';
+import { logger } from '@/app/lib/logger';
 
 export default async function Page() {
-  console.log('On dashboard page');
+  logger.debug('On dashboard page');
 
   return (
     <main>

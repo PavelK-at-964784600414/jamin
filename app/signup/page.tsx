@@ -8,7 +8,7 @@ export default function SignupPage() {
         <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-2xl">
           {/* Header with gradient */}
           <div className="relative bg-gradient-to-r from-primary/90 to-primary/70 px-6 py-8">
-            <div className="absolute inset-0 bg-[url('/placeholder.svg?height=100&width=100')] bg-[length:20px_20px] bg-repeat opacity-5"></div>
+            <div className="absolute inset-0 bg-[url('/placeholder.svg')] bg-[length:20px_20px] bg-repeat opacity-5"></div>
             <div className="relative mb-2 w-32 text-white md:w-36">
               <JaminLogo />
             </div>

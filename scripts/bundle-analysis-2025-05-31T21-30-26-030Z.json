@@ -1,0 +1,1029 @@
+{
+  "timestamp": "2025-05-31T21:30:26.027Z",
+  "pages": {
+    "files": [
+      {
+        "name": "_error.js",
+        "size": 8670,
+        "sizeKB": 8.47,
+        "extension": ".js",
+        "category": "Pages"
+      },
+      {
+        "name": "_document.js.nft.json",
+        "size": 8318,
+        "sizeKB": 8.12,
+        "extension": ".json",
+        "category": "Pages"
+      },
+      {
+        "name": "_error.js.nft.json",
+        "size": 8241,
+        "sizeKB": 8.05,
+        "extension": ".json",
+        "category": "Pages"
+      },
+      {
+        "name": "_app.js",
+        "size": 3307,
+        "sizeKB": 3.23,
+        "extension": ".js",
+        "category": "Pages"
+      },
+      {
+        "name": "500.html",
+        "size": 3017,
+        "sizeKB": 2.95,
+        "extension": ".html",
+        "category": "Pages"
+      },
+      {
+        "name": "_app.js.nft.json",
+        "size": 509,
+        "sizeKB": 0.5,
+        "extension": ".json",
+        "category": "Pages"
+      },
+      {
+        "name": "_document.js",
+        "size": 385,
+        "sizeKB": 0.38,
+        "extension": ".js",
+        "category": "Pages"
+      }
+    ],
+    "totalSize": 32447,
+    "totalSizeKB": 31.69,
+    "count": 7
+  },
+  "chunks": {
+    "files": [
+      {
+        "name": "react-a924b268-c2b8133e873a1021.js",
+        "size": 163491,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-ff30e0d3-2356d2e542ad542d.js",
+        "size": 163490,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "polyfills-78c92fac7aa8fdd8.js",
+        "size": 91381,
+        "sizeKB": 89.24,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-4a7382ad-1813976d950ddb1c.js",
+        "size": 80521,
+        "sizeKB": 78.63,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-2898f16f-805482c833d3db06.js",
+        "size": 79617,
+        "sizeKB": 77.75,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "vendor-61bc7edef0b5576e.js",
+        "size": 70495,
+        "sizeKB": 68.84,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-c3a08eae-34076b35e9811a9f.js",
+        "size": 45648,
+        "sizeKB": 44.58,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "common-33c7530482f1847c.js",
+        "size": 38464,
+        "sizeKB": 37.56,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "animations-4305cb47-0c835feed5bbe3a3.js",
+        "size": 31920,
+        "sizeKB": 31.17,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "animations-518ca55f-b01c7f9fbad2f94d.js",
+        "size": 30950,
+        "sizeKB": 30.22,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-d91c2bd6-6af21d1b2a341804.js",
+        "size": 29497,
+        "sizeKB": 28.81,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-6808aa01-90096bfefc627c66.js",
+        "size": 26802,
+        "sizeKB": 26.17,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "icons-a440139735ee1602.js",
+        "size": 26113,
+        "sizeKB": 25.5,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "9332.84fb36e8e713b1c8.js",
+        "size": 23831,
+        "sizeKB": 23.27,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "animations-dfc0d3ba-daaa0ecbc5536779.js",
+        "size": 19699,
+        "sizeKB": 19.24,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "3706.1bda987286d48c6c.js",
+        "size": 17750,
+        "sizeKB": 17.33,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "animations-3812de41-34fcade2a4504fea.js",
+        "size": 17066,
+        "sizeKB": 16.67,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/themes/create/page-d1f0689cda1f6946.js",
+        "size": 15055,
+        "sizeKB": 14.7,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-4aa88247-677c0d15917df493.js",
+        "size": 13036,
+        "sizeKB": 12.73,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-a6f90180-9b9f3dc791cc77e8.js",
+        "size": 12272,
+        "sizeKB": 11.98,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "react-d031d8a3-8ee5360c190335d7.js",
+        "size": 12120,
+        "sizeKB": 11.84,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/collabs/[id]/add-layer/page-bc8075dea9f80aae.js",
+        "size": 11852,
+        "sizeKB": 11.57,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/themes/[id]/add-layer/page-49bc568d8e725222.js",
+        "size": 11456,
+        "sizeKB": 11.19,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/profile/page-ccab45497ca33c23.js",
+        "size": 11407,
+        "sizeKB": 11.14,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/members/[id]/page-643f6150f5203b09.js",
+        "size": 10340,
+        "sizeKB": 10.1,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "animations-ae080475-ada9bbd870f4e945.js",
+        "size": 10135,
+        "sizeKB": 9.9,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-27f02048-9f040e491684f494.js",
+        "size": 9561,
+        "sizeKB": 9.34,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/themes/page-979e7277360f7da2.js",
+        "size": 9519,
+        "sizeKB": 9.3,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "2448.1643cfcb767fde5c.js",
+        "size": 9118,
+        "sizeKB": 8.9,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/layout-06a73bfe3008eb01.js",
+        "size": 9031,
+        "sizeKB": 8.82,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "7343.ebc501391b0c0429.js",
+        "size": 7714,
+        "sizeKB": 7.53,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "7504.8d994e2ce5ee7209.js",
+        "size": 7514,
+        "sizeKB": 7.34,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "animations-6ed9541f-619331a79332d832.js",
+        "size": 7134,
+        "sizeKB": 6.97,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/signup/page-ffe64ea67e5d4857.js",
+        "size": 6783,
+        "sizeKB": 6.62,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/members/page-bf64be45b0a9a10d.js",
+        "size": 6739,
+        "sizeKB": 6.58,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/themes/[id]/page-cf7e99bc0e681357.js",
+        "size": 6344,
+        "sizeKB": 6.2,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/collabs/page-5c04dc48fd534870.js",
+        "size": 5845,
+        "sizeKB": 5.71,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "nextjs-9c587c8a-435a27872ad90e59.js",
+        "size": 5472,
+        "sizeKB": 5.34,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/themes/[id]/edit/page-b035d0d44fe7465d.js",
+        "size": 5402,
+        "sizeKB": 5.28,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/tools/page-4d439f00dabc6d00.js",
+        "size": 4948,
+        "sizeKB": 4.83,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/login/page-c4ad4e18869e0470.js",
+        "size": 3746,
+        "sizeKB": 3.66,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "webpack-e5d277900dda3f0f.js",
+        "size": 3640,
+        "sizeKB": 3.55,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/layout-b979d5c411b09085.js",
+        "size": 3414,
+        "sizeKB": 3.33,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/offline/page-43306dab5f906c98.js",
+        "size": 1899,
+        "sizeKB": 1.85,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/error-79061b180abc844b.js",
+        "size": 1767,
+        "sizeKB": 1.73,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/not-found-3c41084efaeb5831.js",
+        "size": 1385,
+        "sizeKB": 1.35,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/(overview)/page-378735d58401ea30.js",
+        "size": 1245,
+        "sizeKB": 1.22,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "9658.c800b97d25affe95.js",
+        "size": 810,
+        "sizeKB": 0.79,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/themes/error-07ee7f476c9a685b.js",
+        "size": 744,
+        "sizeKB": 0.73,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "main-app-1ae533abb6c89dd5.js",
+        "size": 475,
+        "sizeKB": 0.46,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/page-10a5c1cc266fe9ef.js",
+        "size": 425,
+        "sizeKB": 0.42,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "pages/_app-9623ab45296d12fb.js",
+        "size": 301,
+        "sizeKB": 0.29,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "pages/_error-f7ce9a06f65c8ef3.js",
+        "size": 296,
+        "sizeKB": 0.29,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/themes/[id]/edit/not-found-43ef5020faafa4f8.js",
+        "size": 244,
+        "sizeKB": 0.24,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/_not-found/page-2344fbdc73d39209.js",
+        "size": 188,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/dashboard/(overview)/loading-8d966d153a6416ed.js",
+        "size": 188,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "app/loading-058ab8c4c1cf052d.js",
+        "size": 188,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "main-f6d71c54d9d0280c.js",
+        "size": 187,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Chunks"
+      }
+    ],
+    "totalSize": 1186674,
+    "totalSizeKB": 1158.86,
+    "count": 58
+  },
+  "assets": {
+    "files": [
+      {
+        "name": "chunks/react-a924b268-c2b8133e873a1021.js",
+        "size": 163491,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-ff30e0d3-2356d2e542ad542d.js",
+        "size": 163490,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/polyfills-78c92fac7aa8fdd8.js",
+        "size": 91381,
+        "sizeKB": 89.24,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-4a7382ad-1813976d950ddb1c.js",
+        "size": 80521,
+        "sizeKB": 78.63,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-2898f16f-805482c833d3db06.js",
+        "size": 79617,
+        "sizeKB": 77.75,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/vendor-61bc7edef0b5576e.js",
+        "size": 70495,
+        "sizeKB": 68.84,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "css/74eed6818f550e8f.css",
+        "size": 56940,
+        "sizeKB": 55.61,
+        "extension": ".css",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-c3a08eae-34076b35e9811a9f.js",
+        "size": 45648,
+        "sizeKB": 44.58,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/common-33c7530482f1847c.js",
+        "size": 38464,
+        "sizeKB": 37.56,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/animations-4305cb47-0c835feed5bbe3a3.js",
+        "size": 31920,
+        "sizeKB": 31.17,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/animations-518ca55f-b01c7f9fbad2f94d.js",
+        "size": 30950,
+        "sizeKB": 30.22,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-d91c2bd6-6af21d1b2a341804.js",
+        "size": 29497,
+        "sizeKB": 28.81,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-6808aa01-90096bfefc627c66.js",
+        "size": 26802,
+        "sizeKB": 26.17,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/icons-a440139735ee1602.js",
+        "size": 26113,
+        "sizeKB": 25.5,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/9332.84fb36e8e713b1c8.js",
+        "size": 23831,
+        "sizeKB": 23.27,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/animations-dfc0d3ba-daaa0ecbc5536779.js",
+        "size": 19699,
+        "sizeKB": 19.24,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/3706.1bda987286d48c6c.js",
+        "size": 17750,
+        "sizeKB": 17.33,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/animations-3812de41-34fcade2a4504fea.js",
+        "size": 17066,
+        "sizeKB": 16.67,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/themes/create/page-d1f0689cda1f6946.js",
+        "size": 15055,
+        "sizeKB": 14.7,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-4aa88247-677c0d15917df493.js",
+        "size": 13036,
+        "sizeKB": 12.73,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-a6f90180-9b9f3dc791cc77e8.js",
+        "size": 12272,
+        "sizeKB": 11.98,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/react-d031d8a3-8ee5360c190335d7.js",
+        "size": 12120,
+        "sizeKB": 11.84,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/collabs/[id]/add-layer/page-bc8075dea9f80aae.js",
+        "size": 11852,
+        "sizeKB": 11.57,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/themes/[id]/add-layer/page-49bc568d8e725222.js",
+        "size": 11456,
+        "sizeKB": 11.19,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/profile/page-ccab45497ca33c23.js",
+        "size": 11407,
+        "sizeKB": 11.14,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/members/[id]/page-643f6150f5203b09.js",
+        "size": 10340,
+        "sizeKB": 10.1,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/animations-ae080475-ada9bbd870f4e945.js",
+        "size": 10135,
+        "sizeKB": 9.9,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-27f02048-9f040e491684f494.js",
+        "size": 9561,
+        "sizeKB": 9.34,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/themes/page-979e7277360f7da2.js",
+        "size": 9519,
+        "sizeKB": 9.3,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/2448.1643cfcb767fde5c.js",
+        "size": 9118,
+        "sizeKB": 8.9,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/layout-06a73bfe3008eb01.js",
+        "size": 9031,
+        "sizeKB": 8.82,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/7343.ebc501391b0c0429.js",
+        "size": 7714,
+        "sizeKB": 7.53,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/7504.8d994e2ce5ee7209.js",
+        "size": 7514,
+        "sizeKB": 7.34,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/animations-6ed9541f-619331a79332d832.js",
+        "size": 7134,
+        "sizeKB": 6.97,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/signup/page-ffe64ea67e5d4857.js",
+        "size": 6783,
+        "sizeKB": 6.62,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/members/page-bf64be45b0a9a10d.js",
+        "size": 6739,
+        "sizeKB": 6.58,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/themes/[id]/page-cf7e99bc0e681357.js",
+        "size": 6344,
+        "sizeKB": 6.2,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/collabs/page-5c04dc48fd534870.js",
+        "size": 5845,
+        "sizeKB": 5.71,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/nextjs-9c587c8a-435a27872ad90e59.js",
+        "size": 5472,
+        "sizeKB": 5.34,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/themes/[id]/edit/page-b035d0d44fe7465d.js",
+        "size": 5402,
+        "sizeKB": 5.28,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/tools/page-4d439f00dabc6d00.js",
+        "size": 4948,
+        "sizeKB": 4.83,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/login/page-c4ad4e18869e0470.js",
+        "size": 3746,
+        "sizeKB": 3.66,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/webpack-e5d277900dda3f0f.js",
+        "size": 3640,
+        "sizeKB": 3.55,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/layout-b979d5c411b09085.js",
+        "size": 3414,
+        "sizeKB": 3.33,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/offline/page-43306dab5f906c98.js",
+        "size": 1899,
+        "sizeKB": 1.85,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/error-79061b180abc844b.js",
+        "size": 1767,
+        "sizeKB": 1.73,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/not-found-3c41084efaeb5831.js",
+        "size": 1385,
+        "sizeKB": 1.35,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/(overview)/page-378735d58401ea30.js",
+        "size": 1245,
+        "sizeKB": 1.22,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/9658.c800b97d25affe95.js",
+        "size": 810,
+        "sizeKB": 0.79,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/themes/error-07ee7f476c9a685b.js",
+        "size": 744,
+        "sizeKB": 0.73,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/main-app-1ae533abb6c89dd5.js",
+        "size": 475,
+        "sizeKB": 0.46,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/page-10a5c1cc266fe9ef.js",
+        "size": 425,
+        "sizeKB": 0.42,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/pages/_app-9623ab45296d12fb.js",
+        "size": 301,
+        "sizeKB": 0.29,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/pages/_error-f7ce9a06f65c8ef3.js",
+        "size": 296,
+        "sizeKB": 0.29,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "SHDG3neDWcQW23IdmkAyu/_buildManifest.js",
+        "size": 288,
+        "sizeKB": 0.28,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/themes/[id]/edit/not-found-43ef5020faafa4f8.js",
+        "size": 244,
+        "sizeKB": 0.24,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/_not-found/page-2344fbdc73d39209.js",
+        "size": 188,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/dashboard/(overview)/loading-8d966d153a6416ed.js",
+        "size": 188,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/app/loading-058ab8c4c1cf052d.js",
+        "size": 188,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "chunks/main-f6d71c54d9d0280c.js",
+        "size": 187,
+        "sizeKB": 0.18,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "css/10bfa46d53230a04.css",
+        "size": 157,
+        "sizeKB": 0.15,
+        "extension": ".css",
+        "category": "Static Assets"
+      },
+      {
+        "name": "SHDG3neDWcQW23IdmkAyu/_ssgManifest.js",
+        "size": 80,
+        "sizeKB": 0.08,
+        "extension": ".js",
+        "category": "Static Assets"
+      }
+    ],
+    "totalSize": 1244139,
+    "totalSizeKB": 1214.98,
+    "count": 62
+  },
+  "summary": {
+    "totalSize": 2463260,
+    "totalSizeKB": 2405.53,
+    "totalSizeMB": 2.35,
+    "totalFiles": 127,
+    "largestFiles": [
+      {
+        "name": "react-a924b268-c2b8133e873a1021.js",
+        "size": 163491,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "chunks/react-a924b268-c2b8133e873a1021.js",
+        "size": 163491,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "nextjs-ff30e0d3-2356d2e542ad542d.js",
+        "size": 163490,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "chunks/nextjs-ff30e0d3-2356d2e542ad542d.js",
+        "size": 163490,
+        "sizeKB": 159.66,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "polyfills-78c92fac7aa8fdd8.js",
+        "size": 91381,
+        "sizeKB": 89.24,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "chunks/polyfills-78c92fac7aa8fdd8.js",
+        "size": 91381,
+        "sizeKB": 89.24,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "nextjs-4a7382ad-1813976d950ddb1c.js",
+        "size": 80521,
+        "sizeKB": 78.63,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "chunks/nextjs-4a7382ad-1813976d950ddb1c.js",
+        "size": 80521,
+        "sizeKB": 78.63,
+        "extension": ".js",
+        "category": "Static Assets"
+      },
+      {
+        "name": "nextjs-2898f16f-805482c833d3db06.js",
+        "size": 79617,
+        "sizeKB": 77.75,
+        "extension": ".js",
+        "category": "Chunks"
+      },
+      {
+        "name": "chunks/nextjs-2898f16f-805482c833d3db06.js",
+        "size": 79617,
+        "sizeKB": 77.75,
+        "extension": ".js",
+        "category": "Static Assets"
+      }
+    ],
+    "byExtension": [
+      {
+        "extension": ".js",
+        "count": 121,
+        "totalSize": 2386078,
+        "totalSizeKB": 2330.15,
+        "averageSize": 19.26
+      },
+      {
+        "extension": ".css",
+        "count": 2,
+        "totalSize": 57097,
+        "totalSizeKB": 55.76,
+        "averageSize": 27.88
+      },
+      {
+        "extension": ".json",
+        "count": 3,
+        "totalSize": 17068,
+        "totalSizeKB": 16.67,
+        "averageSize": 5.56
+      },
+      {
+        "extension": ".html",
+        "count": 1,
+        "totalSize": 3017,
+        "totalSizeKB": 2.95,
+        "averageSize": 2.95
+      }
+    ],
+    "recommendations": [
+      "🟡 Bundle size is moderate (>2MB). Monitor for growth and optimize where possible.",
+      "🟡 Many chunk files detected. Ensure proper chunk optimization strategy.",
+      "💡 Consider using dynamic imports for route-based code splitting",
+      "💡 Implement tree shaking to remove unused code",
+      "💡 Use bundle analyzer visualization: npm run build:analyze",
+      "💡 Consider lazy loading heavy components and libraries"
+    ]
+  }
+}

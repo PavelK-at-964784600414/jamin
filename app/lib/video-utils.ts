@@ -4,6 +4,7 @@
  */
 
 import { uploadFileToS3WithRetry } from '@/app/lib/upload-utils';
+import { logger } from '@/app/lib/logger';
 
 /**
  * Check if a video file is valid and playable
@@ -19,20 +20,20 @@ export async function validateVideoFile(file: File): Promise<boolean> {
     // Success handler
     video.oncanplaythrough = () => {
       clearTimeout(timeout);
-      console.log('Video file validated successfully');
+      logger.debug('Video file validated successfully');
       resolve(true);
     };
     
     // Error handler
     video.onerror = (err) => {
       clearTimeout(timeout);
-      console.error('Video validation failed:', err);
+      logger.error('Video validation failed', { metadata: { data: err } });
       resolve(false);
     };
     
     // Set timeout to prevent long waits
     timeout = setTimeout(() => {
-      console.warn('Video validation timed out');
+      logger.warn('Video validation timed out');
       resolve(false);
     }, 5000);
     

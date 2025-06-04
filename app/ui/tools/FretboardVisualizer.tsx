@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { MusicalNoteIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/app/lib/logger';
 
 // Import all the separate components we created
 import DisplayModeSelector from './fretboard/DisplayModeSelector';
@@ -79,9 +80,9 @@ export default function FretboardVisualizer() {
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
       try {
         await audioContextRef.current.resume();
-        console.log('Audio context resumed successfully');
+        logger.debug('Audio context resumed successfully');
       } catch (error) {
-        console.error('Failed to resume audio context:', error);
+        logger.error('Failed to resume audio context', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       }
     }
   };
@@ -226,12 +227,12 @@ export default function FretboardVisualizer() {
       const nextLoopTime = loopStartTime + progressionDuration;
       const timeoutMs = progressionDuration * 1000; // Convert seconds to milliseconds
       
-      console.log(`Scheduling next fretboard loop in ${timeoutMs}ms`);
-      console.log(`Current loop started at: ${loopStartTime}, next will start at: ${nextLoopTime}`);
+      logger.debug(`Scheduling next fretboard loop in ${timeoutMs}ms`);
+      logger.debug(`Current loop started at: ${loopStartTime}, next will start at: ${nextLoopTime}`);
       
       const timeout = setTimeout(async () => {
         if (isPlayingRef.current) {
-          console.log('Looping fretboard progression back to start');
+          logger.debug('Looping fretboard progression back to start');
           // Reset to first chord for visual feedback
           setCurrentChordIndex(0);
           // Start next loop with the pre-calculated start time
@@ -491,7 +492,7 @@ export default function FretboardVisualizer() {
                       }`}
                     >
                       {/* Fret markers */}
-                      {displayIndex === Math.floor(tuning.length / 2) && isMarkerFret && (
+                      {stringIndex === Math.floor(tuning.length / 2) && isMarkerFret && (
                         <div className={`absolute w-2 h-2 rounded-full ${
                           isDotFret ? 'bg-gray-400' : 'bg-gray-500'
                         } opacity-30`} style={{ top: '50%', transform: 'translateY(-50%)' }} />

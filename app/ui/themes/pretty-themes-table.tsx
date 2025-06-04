@@ -7,6 +7,7 @@ import { ChevronDownIcon } from "lucide-react"
 import { UpdateTheme, DeleteTheme } from "@/app/ui/themes/buttons"
 import { formatDateToLocal } from "@/app/lib/utils"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/app/ui/themes/accordion"
+import { logger } from '@/app/lib/logger';
 
 interface Theme {
   id: string
@@ -23,7 +24,7 @@ interface PrettyThemesTableProps {
 }
 
 export default function PrettyThemesTable({ themes }: PrettyThemesTableProps) {
-  console.log("PrettyThemesTable: ", themes); 
+  logger.debug("PrettyThemesTable: ", { metadata: { themeCount: themes.length, themeIds: themes.map(t => t.id) } }); 
   return (
     <Accordion type="single">
       {themes.map((theme) => (

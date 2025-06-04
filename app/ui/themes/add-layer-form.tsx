@@ -8,6 +8,7 @@ import RecordingControls from './RecordingControls';
 import MediaPlayer from './MediaPlayer';
 import LayerMetadataForm from './LayerMetadataForm';
 import { getSupportedAudioFormats, validateAudioFile, getAudioDuration } from '@/app/lib/audio-utils';
+import { logger } from '@/app/lib/logger';
 
 interface AddLayerFormProps {
   theme: ThemesTable;
@@ -111,7 +112,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           ? formats.video.preferredFormat 
           : formats.audio.preferredFormat;
         
-        console.log(`Using media recorder with MIME type: ${mimeType}`);
+        logger.debug(`Using media recorder with MIME type: ${mimeType}`);
         
         // Create media recorder with the best supported MIME type
         const mediaRecorder = new MediaRecorder(stream, { 
@@ -131,7 +132,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
         mediaRecorder.onstop = async () => {
           // Get the proper MIME type from the recorder
           const mimeType = mediaRecorder.mimeType || (isVideoMode ? 'video/webm' : 'audio/webm');
-          console.log(`Recording completed with MIME type: ${mimeType}`);
+          logger.debug(`Recording completed with MIME type: ${mimeType}`);
           
           // Create blob with explicit MIME type
           const recordedBlob = new Blob(chunks, { type: mimeType });
@@ -150,7 +151,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             lastModified: Date.now()
           });
           
-          console.log(`Created recording file: ${fileName}, size: ${recordedBlob.size} bytes, type: ${mimeType}`);
+          logger.debug(`Created recording file: ${fileName}, size: ${recordedBlob.size} bytes, type: ${mimeType}`);
           
           setFile(recordedFile);
           
@@ -159,9 +160,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             try {
               const recordedDuration = await getAudioDuration(recordedFile);
               setDuration(recordedDuration);
-              console.log('Recorded layer duration set to:', recordedDuration, 'seconds');
+              logger.debug('Recorded layer duration set to', { metadata: { duration: recordedDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get recorded layer duration:', error);
+              logger.error('Failed to get recorded layer duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else if (isVideoMode && recordedFile.type.startsWith('video/')) {
@@ -169,9 +170,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
               const { getVideoDuration } = await import('@/app/lib/video-utils');
               const videoDuration = await getVideoDuration(recordedFile);
               setDuration(videoDuration);
-              console.log('Recorded video duration set to:', videoDuration, 'seconds');
+              logger.debug('Recorded video duration set to', { metadata: { duration: videoDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get recorded video duration:', error);
+              logger.error('Failed to get recorded video duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else {
@@ -191,12 +192,12 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           themeAudioRef.current.play()
             .then(() => setIsPlaying(true))
             .catch(error => {
-              console.error("Error playing theme audio:", error);
+              logger.error("Error playing theme audio", { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setError("Failed to play the original theme. Please try again.");
             });
         }
       } catch (err) {
-        console.error('Error accessing media devices:', err);
+        logger.error('Error accessing media devices', { metadata: { data: err } });
         setError('Failed to access your microphone or camera. Please check permissions.');
       }
     }
@@ -219,7 +220,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
         }
         
         if (isValid) {
-          console.log('File validated successfully:', selectedFile.name);
+          logger.debug('File validated successfully', { metadata: { data: selectedFile.name } });
           setFile(selectedFile);
           setError(null);
           
@@ -228,9 +229,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             try {
               const audioDuration = await getAudioDuration(selectedFile);
               setDuration(audioDuration);
-              console.log('Layer audio duration set to:', audioDuration, 'seconds');
+              logger.debug('Layer audio duration set to', { metadata: { duration: audioDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get layer audio duration:', error);
+              logger.error('Failed to get layer audio duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else if (selectedFile.type.startsWith('video/')) {
@@ -238,21 +239,21 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
               const { getVideoDuration } = await import('@/app/lib/video-utils');
               const videoDuration = await getVideoDuration(selectedFile);
               setDuration(videoDuration);
-              console.log('Layer video duration set to:', videoDuration, 'seconds');
+              logger.debug('Layer video duration set to', { metadata: { duration: videoDuration, unit: 'seconds' } });
             } catch (error) {
-              console.error('Failed to get layer video duration:', error);
+              logger.error('Failed to get layer video duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
               setDuration(0);
             }
           } else {
             setDuration(0);
           }
         } else {
-          console.error('Invalid audio file:', selectedFile.name);
+          logger.error('Invalid audio file', { metadata: { data: selectedFile.name } });
           setError('The selected file appears to be invalid or corrupted. Please try another file.');
           e.target.value = ''; // Reset the input
         }
       } catch (validationError) {
-        console.error('Error validating file:', validationError);
+        logger.error('Error validating file', { metadata: { error: validationError instanceof Error ? validationError.message : String(validationError) } });
         setFile(selectedFile); // Still set the file, we'll try to handle it
       }
     }
@@ -301,7 +302,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
         return false;
       }
       // If it's an audio type but not in our allowed list, we'll still try to process it
-      console.warn(`File type ${file.type} not in allowed list, but appears to be audio/video`);
+      logger.warn(`File type ${file.type} not in allowed list, but appears to be audio/video`);
     }
     
     // Validate that the media file is playable (use appropriate validation for file type)
@@ -315,11 +316,11 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       }
       
       if (!isValid) {
-        console.warn('Media validation detected potential issues with the file');
+        logger.warn('Media validation detected potential issues with the file');
         // We'll still continue, but log the warning
       }
     } catch (error) {
-      console.error('Error validating media file:', error);
+      logger.error('Error validating media file', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       // Continue despite validation error
     }
     
@@ -447,9 +448,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           
           // Append the safe file to the form data
           safeFormData.append('audioFile', safeFile);
-          console.log('Using FileReader approach for Safari compatibility');
+          logger.debug('Using FileReader approach for Safari compatibility');
         } catch (error) {
-          console.error('Error with FileReader approach:', error);
+          logger.error('Error with FileReader approach', { metadata: { error: error instanceof Error ? error.message : String(error) } });
           try {
             // Fallback: Try to create a new simple Blob and File
             const blobType = file.type || 'audio/webm';
@@ -462,27 +463,29 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
               lastModified: Date.now()
             });
             safeFormData.append('audioFile', safeFile);
-            console.log('Using slice fallback for Safari compatibility');
+            logger.debug('Using slice fallback for Safari compatibility');
           } catch (fallbackError) {
-            console.error('All safe approaches failed:', fallbackError);
+            logger.error('All safe approaches failed', { metadata: { error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError) } });
             // Last resort - direct append and hope for the best
             safeFormData.append('audioFile', file);
-            console.log('Using direct file append as last resort');
+            logger.debug('Using direct file append as last resort');
           }
         }
       }
       
       // Submit form using the server action
-      console.log('Submitting form with data', {
-        title: safeFormData.get('title'),
-        hasFile: !!safeFormData.get('audioFile')
+      logger.debug('Submitting form with data', {
+        metadata: {
+          title: safeFormData.get('title'),
+          hasFile: !!safeFormData.get('audioFile')
+        }
       });
       
       await formAction(safeFormData);
       
       // The form submission result is handled in the useEffect through the updated state
     } catch (e) {
-      console.error('Error saving layer:', e);
+      logger.error('Error saving layer', { metadata: { data: e } });
       // Using the correctly typed error state
       setError('Failed to save layer. Please try again.');
     }

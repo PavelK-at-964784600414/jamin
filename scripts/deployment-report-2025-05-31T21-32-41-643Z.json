@@ -1,0 +1,226 @@
+{
+  "timestamp": "2025-05-31T21:31:55.332Z",
+  "steps": [
+    {
+      "name": "Environment Validation",
+      "status": "pass",
+      "message": "Environment variables validated",
+      "timestamp": "2025-05-31T21:31:55.470Z"
+    },
+    {
+      "name": "Security Audit",
+      "status": "warning",
+      "message": "Security vulnerabilities found - review npm audit output",
+      "timestamp": "2025-05-31T21:31:56.120Z"
+    },
+    {
+      "name": "TypeScript Type Check",
+      "status": "pass",
+      "message": "TypeScript compilation successful",
+      "timestamp": "2025-05-31T21:31:58.820Z"
+    },
+    {
+      "name": "Code Linting",
+      "status": "pass",
+      "message": "Code linting passed",
+      "timestamp": "2025-05-31T21:31:59.987Z"
+    },
+    {
+      "name": "Production Build",
+      "status": "pass",
+      "message": "Production build successful",
+      "timestamp": "2025-05-31T21:32:07.844Z"
+    },
+    {
+      "name": "Bundle Analysis",
+      "status": "pass",
+      "message": "Bundle size optimal: 2.35MB",
+      "data": {
+        "totalSize": 2463260,
+        "totalSizeKB": 2405.53,
+        "totalSizeMB": 2.35,
+        "totalFiles": 127,
+        "largestFiles": [
+          {
+            "name": "react-a924b268-c2b8133e873a1021.js",
+            "size": 163491,
+            "sizeKB": 159.66,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/react-a924b268-c2b8133e873a1021.js",
+            "size": 163491,
+            "sizeKB": 159.66,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "nextjs-ff30e0d3-2356d2e542ad542d.js",
+            "size": 163490,
+            "sizeKB": 159.66,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/nextjs-ff30e0d3-2356d2e542ad542d.js",
+            "size": 163490,
+            "sizeKB": 159.66,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "polyfills-78c92fac7aa8fdd8.js",
+            "size": 91381,
+            "sizeKB": 89.24,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/polyfills-78c92fac7aa8fdd8.js",
+            "size": 91381,
+            "sizeKB": 89.24,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "nextjs-4a7382ad-1813976d950ddb1c.js",
+            "size": 80521,
+            "sizeKB": 78.63,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/nextjs-4a7382ad-1813976d950ddb1c.js",
+            "size": 80521,
+            "sizeKB": 78.63,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "nextjs-2898f16f-805482c833d3db06.js",
+            "size": 79617,
+            "sizeKB": 77.75,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/nextjs-2898f16f-805482c833d3db06.js",
+            "size": 79617,
+            "sizeKB": 77.75,
+            "extension": ".js",
+            "category": "Static Assets"
+          }
+        ],
+        "byExtension": [
+          {
+            "extension": ".js",
+            "count": 121,
+            "totalSize": 2386078,
+            "totalSizeKB": 2330.15,
+            "averageSize": 19.26
+          },
+          {
+            "extension": ".css",
+            "count": 2,
+            "totalSize": 57097,
+            "totalSizeKB": 55.76,
+            "averageSize": 27.88
+          },
+          {
+            "extension": ".json",
+            "count": 3,
+            "totalSize": 17068,
+            "totalSizeKB": 16.67,
+            "averageSize": 5.56
+          },
+          {
+            "extension": ".html",
+            "count": 1,
+            "totalSize": 3017,
+            "totalSizeKB": 2.95,
+            "averageSize": 2.95
+          }
+        ],
+        "recommendations": [
+          "🟡 Bundle size is moderate (>2MB). Monitor for growth and optimize where possible.",
+          "🟡 Many chunk files detected. Ensure proper chunk optimization strategy.",
+          "💡 Consider using dynamic imports for route-based code splitting",
+          "💡 Implement tree shaking to remove unused code",
+          "💡 Use bundle analyzer visualization: npm run build:analyze",
+          "💡 Consider lazy loading heavy components and libraries"
+        ]
+      },
+      "timestamp": "2025-05-31T21:32:07.848Z"
+    },
+    {
+      "name": "Start Production Server",
+      "status": "fail",
+      "message": "Failed to start production server",
+      "error": "Server start timeout",
+      "timestamp": "2025-05-31T21:32:37.850Z"
+    },
+    {
+      "name": "Performance Audit",
+      "status": "fail",
+      "message": "Performance score too low: 0/100",
+      "data": [
+        {
+          "url": "http://localhost:3000",
+          "error": "lighthouse is not a function",
+          "performance": 0,
+          "accessibility": 0,
+          "bestPractices": 0,
+          "seo": 0,
+          "pwa": 0
+        },
+        {
+          "url": "http://localhost:3000/dashboard",
+          "error": "lighthouse is not a function",
+          "performance": 0,
+          "accessibility": 0,
+          "bestPractices": 0,
+          "seo": 0,
+          "pwa": 0
+        },
+        {
+          "url": "http://localhost:3000/dashboard/tools",
+          "error": "lighthouse is not a function",
+          "performance": 0,
+          "accessibility": 0,
+          "bestPractices": 0,
+          "seo": 0,
+          "pwa": 0
+        }
+      ],
+      "timestamp": "2025-05-31T21:32:41.643Z"
+    },
+    {
+      "name": "PWA Validation",
+      "status": "warning",
+      "message": "PWA validation: 3/5 checks passed",
+      "data": [
+        "✅ Manifest file exists",
+        "✅ Manifest has required fields",
+        "✅ Service worker exists",
+        "❌ Icon 192x192 missing",
+        "❌ Icon 512x512 missing"
+      ],
+      "timestamp": "2025-05-31T21:32:41.643Z"
+    },
+    {
+      "name": "Security Headers",
+      "status": "pass",
+      "message": "Security headers: 3/3 configured",
+      "data": [
+        "✅ X-Frame-Options configured",
+        "✅ X-Content-Type-Options configured",
+        "✅ Referrer-Policy configured"
+      ],
+      "timestamp": "2025-05-31T21:32:41.643Z"
+    }
+  ],
+  "passed": 6,
+  "failed": 2,
+  "warnings": 2
+}

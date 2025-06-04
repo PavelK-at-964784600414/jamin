@@ -3,6 +3,7 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
+import { logger } from '@/app/lib/logger';
 
 
 export default function Search() {
@@ -11,7 +12,7 @@ export default function Search() {
   const { replace } = useRouter();
  
 const handleSearch = useDebouncedCallback((term) => {
-    console.log(`Searching... ${term}`);
+    logger.debug(`Searching... ${term}`);
 
     const params = new URLSearchParams(searchParams);
     params.set('page', '1');

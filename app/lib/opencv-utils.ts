@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 // OpenCV.js utility for loading and managing OpenCV instances
 let openCVPromise: Promise<any> | null = null;
 let isOpenCVLoaded = false;
@@ -35,7 +37,7 @@ export const loadOpenCV = (): Promise<any> => {
       return;
     }
 
-    console.log(`Loading OpenCV from local file: ${OPENCV_LOCAL_PATH}`);
+    logger.debug(`Loading OpenCV from local file: ${OPENCV_LOCAL_PATH}`);
     
     // Clean up any existing OpenCV modules to prevent "IntVector" conflicts
     if (typeof window !== 'undefined') {
@@ -49,7 +51,7 @@ export const loadOpenCV = (): Promise<any> => {
     script.id = 'opencv-local-script';
     
     const timeout = setTimeout(() => {
-      console.warn(`Timeout loading OpenCV from: ${OPENCV_LOCAL_PATH}`);
+      logger.warn(`Timeout loading OpenCV from: ${OPENCV_LOCAL_PATH}`);
       script.remove();
       openCVPromise = null;
       reject(new Error('Failed to load OpenCV.js - timeout'));
@@ -57,13 +59,13 @@ export const loadOpenCV = (): Promise<any> => {
     
     script.onload = () => {
       clearTimeout(timeout);
-      console.log(`OpenCV script loaded from: ${OPENCV_LOCAL_PATH}`);
+      logger.debug(`OpenCV script loaded from: ${OPENCV_LOCAL_PATH}`);
       
       // Set up the onRuntimeInitialized callback
       if (typeof window !== 'undefined') {
         (window as any).Module = {
           onRuntimeInitialized: () => {
-            console.log('OpenCV runtime initialized');
+            logger.debug('OpenCV runtime initialized');
             isOpenCVLoaded = true;
             resolve((window as any).cv);
           }
@@ -72,7 +74,7 @@ export const loadOpenCV = (): Promise<any> => {
         // Fallback check in case onRuntimeInitialized doesn't fire
         const checkOpenCV = () => {
           if ((window as any).cv && (window as any).cv.Mat) {
-            console.log('OpenCV is ready (fallback check)');
+            logger.debug('OpenCV is ready (fallback check)');
             isOpenCVLoaded = true;
             resolve((window as any).cv);
           } else {
@@ -85,7 +87,7 @@ export const loadOpenCV = (): Promise<any> => {
     
     script.onerror = () => {
       clearTimeout(timeout);
-      console.error(`Failed to load OpenCV from: ${OPENCV_LOCAL_PATH}`);
+      logger.error(`Failed to load OpenCV from: ${OPENCV_LOCAL_PATH}`);
       script.remove();
       openCVPromise = null;
       reject(new Error('Failed to load OpenCV.js - network error'));

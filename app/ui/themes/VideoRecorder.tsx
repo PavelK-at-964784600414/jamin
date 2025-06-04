@@ -8,6 +8,7 @@ import {
   VideoCameraIcon,
   MicrophoneIcon 
 } from '@heroicons/react/24/outline';
+import { logger } from '@/app/lib/logger';
 import { getSupportedVideoFormats, getVideoDuration, isVideoFile } from '@/app/lib/video-utils';
 
 interface VideoRecorderProps {
@@ -55,7 +56,7 @@ export default function VideoRecorder({
       setHasPermissions(true);
       return true;
     } catch (error) {
-      console.error('Permission denied:', error);
+      logger.error('Permission denied', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       onError('Camera and microphone permissions are required for video recording');
       return false;
     }
@@ -125,7 +126,7 @@ export default function VideoRecorder({
           const duration = await getVideoDuration(file);
           onRecordingComplete(file, duration);
         } catch (error) {
-          console.error('Failed to get video duration:', error);
+          logger.error('Failed to get video duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
           onRecordingComplete(file, 0);
         }
 
@@ -142,7 +143,7 @@ export default function VideoRecorder({
       };
 
       mediaRecorderRef.current.onerror = (event) => {
-        console.error('MediaRecorder error:', event);
+        logger.error('MediaRecorder error', { metadata: { data: event } });
         onError('An error occurred during recording');
       };
 
@@ -152,7 +153,7 @@ export default function VideoRecorder({
       setIsRecording(true);
 
     } catch (error) {
-      console.error('Error starting video recording:', error);
+      logger.error('Error starting video recording', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       onError('Failed to start video recording. Please check your camera and microphone permissions.');
     }
   };

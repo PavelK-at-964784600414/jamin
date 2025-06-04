@@ -16,6 +16,7 @@ import {
   LikeStats,
 } from './definitions';
 import { auth } from '../../auth';
+import { logger } from './logger';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -25,7 +26,7 @@ async function getCurrentUserId(): Promise<string | null> {
     const session = await auth();
     return session?.user?.id || null;
   } catch (error) {
-    console.error('Error getting current user:', error);
+    logger.error('Error getting current user', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return null;
   }
 }
@@ -57,7 +58,7 @@ async function getThemeLikeStats(themeId: string, userId?: string | null): Promi
       userLike: userLike,
     };
   } catch (error) {
-    console.error('Error fetching theme like stats:', error);
+    logger.error('Error fetching theme like stats', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return { likes: 0, dislikes: 0, userLike: null };
   }
 }
@@ -89,7 +90,7 @@ async function getCollabLikeStats(collabId: string, userId?: string | null): Pro
       userLike: userLike,
     };
   } catch (error) {
-    console.error('Error fetching collab like stats:', error);
+    logger.error('Error fetching collab like stats', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return { likes: 0, dislikes: 0, userLike: null };
   }
 }
@@ -100,7 +101,7 @@ export async function fetchUser(email: string): Promise<Member | undefined> {
     const user = await sql<Member>`SELECT * FROM members WHERE email=${email}`;
     return user.rows[0];
   } catch (error) {
-    console.error('Failed to fetch user:', error);
+    logger.error('Failed to fetch user', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch user.');
   }
 }
@@ -140,7 +141,7 @@ export async function fetchThemeById(id: string): Promise<ThemeForm | null> {
     }
     return theme || null;
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch theme.');
   }
 }
@@ -162,7 +163,7 @@ export async function fetchLatestThemes(): Promise<LatestThemes[]> {
     `;
     return data.rows;
   } catch (error) {
-    console.error('Database Error fetchLatestThemes:', error);
+    logger.error('Database Error fetchLatestThemes', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch the latest themes.');
   }
 }
@@ -217,7 +218,7 @@ export async function fetchFilteredThemes(
 
     return themesWithLikes;
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch themes.');
   }
 }
@@ -237,7 +238,7 @@ export async function fetchThemesPages(query: string, itemsPerPage: number = ITE
     const totalPages = Math.ceil(Number(count.rows[0]?.count ?? 0) / itemsPerPage);
     return totalPages;
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch total number of theme pages.');
   }
 }
@@ -283,7 +284,7 @@ export async function fetchMembers(query?: string, currentPage?: number): Promis
 
     return formattedMembers;
   } catch (err) {
-    console.error('Database Error (fetchMembers):', err);
+    logger.error('Database Error (fetchMembers)', { metadata: { data: err } });
     throw new Error('Failed to fetch members.');
   }
 }
@@ -301,7 +302,7 @@ export async function fetchMembersPages(query: string): Promise<number> {
     const totalPages = Math.ceil(Number(count.rows[0]?.count ?? 0) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch total number of member pages.');
   }
 }
@@ -326,7 +327,7 @@ export async function fetchLayersByThemeId(themeId: string): Promise<CollabRecor
     `;
     return data.rows;
   } catch (error) {
-    console.error(`Database Error: Failed to fetch layers for theme ID ${themeId}:`, error);
+    logger.error(`Database Error: Failed to fetch layers for theme ID ${themeId}:`, error);
     throw error;
   }
 }
@@ -359,7 +360,7 @@ export async function fetchAllLayersWithParentThemes(): Promise<EnrichedLayerWit
     `;
     return data.rows;
   } catch (error) {
-    console.error('Database Error: Failed to fetch all layers with parent themes:', error);
+    logger.error('Database Error: Failed to fetch all layers with parent themes', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }
@@ -448,7 +449,7 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
           participants: Array.from(participantMap.values()),
         };
         
-        console.log('Creating collaboration with ID:', newCollab.collab_id);
+        logger.debug('Creating collaboration with ID', { metadata: { data: newCollab.collab_id } });
         collaborations.push(newCollab);
       }
     }
@@ -470,7 +471,7 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
     return collaborationsWithLikes;
 
   } catch (error) {
-    console.error('Database Error: Failed to fetch collaboration data:', error);
+    logger.error('Database Error: Failed to fetch collaboration data', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }
@@ -479,7 +480,7 @@ export async function fetchCollaborationData(): Promise<CollaborationDisplayData
 export async function fetchCollabs(): Promise<any[]> { // Using any[] for now
   noStore();
   try {
-    console.log('fetchCollabs: Starting query...');
+    logger.debug('fetchCollabs: Starting query...');
     const data = await sql`
       SELECT
         TO_CHAR(date::timestamp, 'YYYY-MM') AS month,
@@ -488,7 +489,7 @@ export async function fetchCollabs(): Promise<any[]> { // Using any[] for now
       GROUP BY month
       ORDER BY month ASC;
     `;
-    console.log('fetchCollabs: Raw SQL result:', data.rows);
+    logger.debug('fetchCollabs: Raw SQL result', { metadata: { data: data.rows } });
     
     // Map to the expected structure, converting count to number
     const result = data.rows.map((row: any) => ({
@@ -496,10 +497,10 @@ export async function fetchCollabs(): Promise<any[]> { // Using any[] for now
       count: parseInt(row.count, 10),
     }));
     
-    console.log('fetchCollabs: Processed result:', result);
+    logger.debug('fetchCollabs: Processed result', { metadata: { data: result } });
     return result;
   } catch (error) {
-    console.error('Database Error (fetchCollabs):', error);
+    logger.error('Database Error (fetchCollabs)', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch collaboration data for chart.');
   }
 }
@@ -532,7 +533,7 @@ export async function fetchCardData() {
       totalThemes: numberOfThemes, // Assuming this means total parent themes for now
     };
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch card data.');
   }
 }
@@ -548,21 +549,21 @@ export async function fetchCardData() {
 export async function fetchCollaborationById(collabId: string): Promise<CollaborationDisplayDataWithLikes | null> {
   noStore();
   try {
-    console.log('fetchCollaborationById: Looking for collaboration with ID:', collabId, '(type:', typeof collabId, ')');
+    logger.debug('fetchCollaborationById: Looking for collaboration with ID', { metadata: { collabId: collabId, type: typeof collabId } });
     
     // First, fetch all collaborations
     const collaborations = await fetchCollaborationData();
     
-    console.log('fetchCollaborationById: Available collaboration IDs:', collaborations.map(c => ({ id: c.collab_id, type: typeof c.collab_id })));
+    logger.debug('fetchCollaborationById: Available collaboration IDs', { metadata: { data: collaborations.map(c => ({ id: c.collab_id, type: typeof c.collab_id })) } });
     
     // Find the specific collaboration by ID (ensure both are strings for comparison)
     const collaboration = collaborations.find(collab => String(collab.collab_id) === String(collabId));
     
-    console.log('fetchCollaborationById: Found collaboration:', collaboration ? 'Yes' : 'No');
+    logger.debug('fetchCollaborationById: Found collaboration', { metadata: { data: collaboration ? 'Yes' : 'No' } });
     
     return collaboration || null;
   } catch (error) {
-    console.error('Database Error: Failed to fetch collaboration by ID:', error);
+    logger.error('Database Error: Failed to fetch collaboration by ID', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }
@@ -609,7 +610,7 @@ export async function fetchThemesByMemberId(memberId: string): Promise<ThemesTab
 
     return themesWithLikes;
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch themes by member ID.');
   }
 }
@@ -643,7 +644,7 @@ export async function fetchCollaborationsByMemberId(memberId: string): Promise<C
 
     return memberFilteredCollaborations;
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch collaborations by member ID.');
   }
 }
@@ -663,7 +664,7 @@ export async function fetchThemesCount(query: string): Promise<number> {
     `;
     return Number(count.rows[0]?.count ?? 0);
   } catch (error) {
-    console.error('Database Error:', error);
+    logger.error('Database Error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw new Error('Failed to fetch total number of themes.');
   }
 }
@@ -797,7 +798,7 @@ export async function fetchFilteredCollaborations(
     return collaborationsWithLikes;
 
   } catch (error) {
-    console.error('Database Error: Failed to fetch filtered collaboration data:', error);
+    logger.error('Database Error: Failed to fetch filtered collaboration data', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }
@@ -893,7 +894,7 @@ export async function fetchCollaborationsPages(query: string = '', itemsPerPage:
     return totalPages;
 
   } catch (error) {
-    console.error('Database Error: Failed to fetch collaboration pages count:', error);
+    logger.error('Database Error: Failed to fetch collaboration pages count', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }
@@ -986,7 +987,7 @@ export async function fetchCollaborationsCount(query: string = ''): Promise<numb
     return filteredCollaborations.length;
 
   } catch (error) {
-    console.error('Database Error: Failed to fetch collaborations count:', error);
+    logger.error('Database Error: Failed to fetch collaborations count', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }

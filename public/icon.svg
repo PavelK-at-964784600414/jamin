@@ -1,0 +1,40 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" fill="#0f0f23" rx="80"/>
+  
+  <!-- Musical note design -->
+  <g transform="translate(128, 96)">
+    <!-- Main note stem -->
+    <rect x="180" y="40" width="16" height="280" fill="url(#gradient)"/>
+    
+    <!-- Note head -->
+    <ellipse cx="156" cy="320" rx="32" ry="24" fill="url(#gradient)" transform="rotate(-20 156 320)"/>
+    
+    <!-- Flag -->
+    <path d="M196 40 Q280 20 320 80 Q300 120 240 140 Q220 120 196 100 Z" fill="url(#gradient)" opacity="0.8"/>
+    
+    <!-- Sound waves -->
+    <g stroke="url(#gradient)" stroke-width="8" fill="none" opacity="0.6">
+      <path d="M60 180 Q80 160 100 180 Q120 200 140 180"/>
+      <path d="M60 220 Q80 200 100 220 Q120 240 140 220"/>
+      <path d="M60 260 Q80 240 100 260 Q120 280 140 260"/>
+    </g>
+    
+    <!-- Collaboration symbol -->
+    <circle cx="80" cy="120" r="24" fill="url(#gradient)" opacity="0.7"/>
+    <circle cx="120" cy="140" r="24" fill="url(#gradient)" opacity="0.7"/>
+    <circle cx="100" cy="180" r="24" fill="url(#gradient)" opacity="0.7"/>
+  </g>
+  
+  <!-- Brand text -->
+  <text x="256" y="460" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="url(#gradient)">
+    JAMIN
+  </text>
+</svg>

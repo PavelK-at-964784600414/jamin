@@ -1,3 +1,5 @@
+import { logger } from './lib/logger';
+
 #!/usr/bin/env node
 
 const fs = require('fs');
@@ -100,7 +102,7 @@ const cdnConfig = {
 
 // Generate optimized asset configurations
 function generateAssetOptimization() {
-  console.log('🌐 Generating CDN and Asset Optimization Configuration\n');
+  logger.debug('🌐 Generating CDN and Asset Optimization Configuration\n');
   
   const optimization = {
     timestamp: new Date().toISOString(),
@@ -426,28 +428,28 @@ function generateVercelConfig() {
 
 // Main execution
 if (require.main === module) {
-  console.log('🎯 CDN and Asset Optimization Analysis');
-  console.log('====================================\n');
+  logger.debug('🎯 CDN and Asset Optimization Analysis');
+  logger.debug('====================================\n');
   
   const optimization = generateAssetOptimization();
   
   // Display results
-  console.log('📊 Asset Analysis:');
+  logger.debug('📊 Asset Analysis:');
   Object.entries(optimization.assetAnalysis).forEach(([type, analysis]) => {
-    console.log(`  ${type}: ${analysis.totalFiles} files, ${Math.round(analysis.totalSize / 1024 / 1024 * 100) / 100} MB`);
+    logger.debug(`  ${type}: ${analysis.totalFiles} files, ${Math.round(analysis.totalSize / 1024 / 1024 * 100) / 100} MB`);
     
     if (analysis.largeFiles && analysis.largeFiles.length > 0) {
-      console.log(`    Large files (>1MB): ${analysis.largeFiles.length}`);
+      logger.debug(`    Large files (>1MB): ${analysis.largeFiles.length}`);
     }
     
     if (analysis.unoptimized && analysis.unoptimized.length > 0) {
-      console.log(`    Unoptimized files: ${analysis.unoptimized.length}`);
+      logger.debug(`    Unoptimized files: ${analysis.unoptimized.length}`);
     }
   });
   
-  console.log('\n💡 Recommendations:');
+  logger.debug('\n💡 Recommendations:');
   optimization.recommendations.forEach(rec => {
-    console.log(`  ${rec}`);
+    logger.debug(`  ${rec}`);
   });
   
   // Save configurations
@@ -455,8 +457,8 @@ if (require.main === module) {
   const outputPath = path.join(__dirname, `cdn-optimization-${timestamp}.json`);
   fs.writeFileSync(outputPath, JSON.stringify(optimization, null, 2));
   
-  console.log(`\n💾 Optimization configurations saved to: ${outputPath}`);
-  console.log('\n✨ CDN optimization analysis completed!');
+  logger.debug(`\n💾 Optimization configurations saved to: ${outputPath}`);
+  logger.debug('\n✨ CDN optimization analysis completed!');
 }
 
 module.exports = { generateAssetOptimization };`;

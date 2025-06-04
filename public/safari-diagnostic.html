@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Safari Service Worker Diagnostic</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px; 
+            background: #f0f0f0; 
+            line-height: 1.6;
+        }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { color: #007AFF; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        button { 
+            background: #007AFF; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        button:hover { background: #0056CC; }
+        .log { 
+            background: #f8f9fa; 
+            border: 1px solid #e9ecef; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍎 Safari Service Worker Diagnostic</h1>
+        
+        <div id="browserInfo" class="status warning">
+            Detecting browser and environment...
+        </div>
+        
+        <div id="swStatus" class="status warning">
+            Checking Service Worker status...
+        </div>
+        
+        <div id="cacheStatus" class="status warning">
+            Checking cache status...
+        </div>
+        
+        <button onclick="checkServiceWorkers()">Check Service Workers</button>
+        <button onclick="clearAllCaches()">Clear All Caches</button>
+        <button onclick="unregisterAllSW()">Unregister All Service Workers</button>
+        <button onclick="testFetch()">Test Network Fetch</button>
+        <button onclick="location.reload()">Refresh Page</button>
+        
+        <h2>Diagnostic Log</h2>
+        <div id="log" class="log">Ready for diagnostics...\n</div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const logMessage = (message, type = 'info') => {
+            const timestamp = new Date().toLocaleTimeString();
+            log.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        };
+
+        const updateStatus = (elementId, message, type = 'warning') => {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        };
+
+        const detectBrowser = () => {
+            const userAgent = navigator.userAgent;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+            const isChrome = /chrome/i.test(userAgent);
+            const isFirefox = /firefox/i.test(userAgent);
+            
+            let browser = 'Unknown';
+            if (isSafari) browser = 'Safari';
+            else if (isChrome) browser = 'Chrome';
+            else if (isFirefox) browser = 'Firefox';
+            
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = window.location.port;
+            
+            logMessage(`Browser: ${browser}`, 'info');
+            logMessage(`User Agent: ${userAgent}`, 'info');
+            logMessage(`Protocol: ${protocol}`, 'info');
+            logMessage(`Hostname: ${hostname}`, 'info');
+            logMessage(`Port: ${port}`, 'info');
+            logMessage(`Full URL: ${window.location.href}`, 'info');
+            
+            const envInfo = `${browser} | ${protocol}//${hostname}:${port}`;
+            if (isSafari && hostname === 'localhost') {
+                updateStatus('browserInfo', `⚠️ ${envInfo} - Safari on localhost detected`, 'warning');
+            } else {
+                updateStatus('browserInfo', `✅ ${envInfo}`, 'success');
+            }
+        };
+
+        const checkServiceWorkers = async () => {
+            logMessage('Checking Service Worker registrations...', 'info');
+            
+            if (!('serviceWorker' in navigator)) {
+                updateStatus('swStatus', '❌ Service Workers not supported', 'error');
+                logMessage('Service Workers not supported in this browser', 'error');
+                return;
+            }
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                logMessage(`Found ${registrations.length} Service Worker registrations`, 'info');
+                
+                if (registrations.length === 0) {
+                    updateStatus('swStatus', '✅ No Service Workers registered', 'success');
+                } else {
+                    updateStatus('swStatus', `⚠️ ${registrations.length} Service Worker(s) found`, 'warning');
+                    registrations.forEach((reg, index) => {
+                        logMessage(`SW ${index + 1}: Scope: ${reg.scope}`, 'info');
+                        logMessage(`SW ${index + 1}: State: ${reg.active ? reg.active.state : 'No active worker'}`, 'info');
+                    });
+                }
+            } catch (error) {
+                updateStatus('swStatus', '❌ Error checking Service Workers', 'error');
+                logMessage(`Error checking Service Workers: ${error.message}`, 'error');
+            }
+        };
+
+        const checkCaches = async () => {
+            logMessage('Checking cache storage...', 'info');
+            
+            if (!('caches' in window)) {
+                updateStatus('cacheStatus', '❌ Cache API not supported', 'error');
+                logMessage('Cache API not supported in this browser', 'error');
+                return;
+            }
+            
+            try {
+                const cacheNames = await caches.keys();
+                logMessage(`Found ${cacheNames.length} cache(s)`, 'info');
+                
+                if (cacheNames.length === 0) {
+                    updateStatus('cacheStatus', '✅ No caches found', 'success');
+                } else {
+                    updateStatus('cacheStatus', `⚠️ ${cacheNames.length} cache(s) found`, 'warning');
+                    cacheNames.forEach((name, index) => {
+                        logMessage(`Cache ${index + 1}: ${name}`, 'info');
+                    });
+                }
+            } catch (error) {
+                updateStatus('cacheStatus', '❌ Error checking caches', 'error');
+                logMessage(`Error checking caches: ${error.message}`, 'error');
+            }
+        };
+
+        const clearAllCaches = async () => {
+            logMessage('Clearing all caches...', 'info');
+            
+            if (!('caches' in window)) {
+                logMessage('Cache API not supported', 'error');
+                return;
+            }
+            
+            try {
+                const cacheNames = await caches.keys();
+                const deletePromises = cacheNames.map(name => {
+                    logMessage(`Deleting cache: ${name}`, 'info');
+                    return caches.delete(name);
+                });
+                
+                await Promise.all(deletePromises);
+                logMessage(`Successfully cleared ${cacheNames.length} cache(s)`, 'success');
+                checkCaches(); // Refresh status
+            } catch (error) {
+                logMessage(`Error clearing caches: ${error.message}`, 'error');
+            }
+        };
+
+        const unregisterAllSW = async () => {
+            logMessage('Unregistering all Service Workers...', 'info');
+            
+            if (!('serviceWorker' in navigator)) {
+                logMessage('Service Workers not supported', 'error');
+                return;
+            }
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                const unregisterPromises = registrations.map(reg => {
+                    logMessage(`Unregistering SW with scope: ${reg.scope}`, 'info');
+                    return reg.unregister();
+                });
+                
+                await Promise.all(unregisterPromises);
+                logMessage(`Successfully unregistered ${registrations.length} Service Worker(s)`, 'success');
+                checkServiceWorkers(); // Refresh status
+            } catch (error) {
+                logMessage(`Error unregistering Service Workers: ${error.message}`, 'error');
+            }
+        };
+
+        const testFetch = async () => {
+            logMessage('Testing network fetch...', 'info');
+            
+            try {
+                const response = await fetch('/manifest.json');
+                if (response.ok) {
+                    logMessage(`✅ Fetch test successful: ${response.status} ${response.statusText}`, 'success');
+                } else {
+                    logMessage(`⚠️ Fetch test returned: ${response.status} ${response.statusText}`, 'warning');
+                }
+            } catch (error) {
+                logMessage(`❌ Fetch test failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Initialize diagnostics
+        detectBrowser();
+        checkServiceWorkers();
+        checkCaches();
+    </script>
+</body>
+</html>

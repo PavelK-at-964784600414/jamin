@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { MusicalNoteIcon, PlayIcon, PauseIcon, StopIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/app/lib/logger';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const CHORD_TYPES = [
@@ -120,9 +121,9 @@ export default function ChordGenerator() {
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
       try {
         await audioContextRef.current.resume();
-        console.log('Audio context resumed successfully');
+        logger.debug('Audio context resumed successfully');
       } catch (error) {
-        console.error('Failed to resume audio context:', error);
+        logger.error('Failed to resume audio context', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       }
     }
   };
@@ -351,7 +352,7 @@ export default function ChordGenerator() {
   const playProgressionIteration = async (startTime: number) => {
     if (!audioContextRef.current || !isPlayingRef.current) return;
     
-    console.log('Playing progression iteration starting at:', startTime);
+    logger.debug(`Playing progression iteration starting at: ${startTime}`);
     
     const context = audioContextRef.current;
     
@@ -366,7 +367,7 @@ export default function ChordGenerator() {
     const bassPattern = BASS_PATTERNS[selectedBassPattern as keyof typeof BASS_PATTERNS];
     
     if (!drumPattern || !bassPattern) {
-      console.error('Invalid drum or bass pattern selected');
+      logger.error('Invalid drum or bass pattern selected');
       return;
     }
     
@@ -458,13 +459,13 @@ export default function ChordGenerator() {
     const totalDurationMs = totalDurationSeconds * 1000;
     const nextIterationStartTime = startTime + totalDurationSeconds;
     
-    console.log(`Scheduling next loop in ${totalDurationMs}ms (${totalDurationSeconds}s)`);
-    console.log(`Current iteration started at: ${startTime}, next will start at: ${nextIterationStartTime}`);
+    logger.debug(`Scheduling next loop in ${totalDurationMs}ms (${totalDurationSeconds}s)`);
+    logger.debug(`Current iteration started at: ${startTime}, next will start at: ${nextIterationStartTime}`);
     
     progressionTimeoutRef.current = setTimeout(() => {
-      console.log('Loop timeout fired, isPlayingRef.current:', isPlayingRef.current);
+      logger.debug(`Loop timeout fired, isPlayingRef.current: ${isPlayingRef.current}`);
       if (isPlayingRef.current) {
-        console.log('Looping progression back to start');
+        logger.debug('Looping progression back to start');
         // Reset chord index to 0 for next loop
         setCurrentChordIndex(0);
         // Start next iteration with the calculated start time

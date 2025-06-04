@@ -9,6 +9,7 @@ import { ThemesTableSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
 import { fetchThemesPages, fetchFilteredThemes, fetchThemesCount } from '@/app/lib/data';
 import { ThemesTableWithLikes } from '@/app/lib/definitions';
+import { logger } from '@/app/lib/logger';
 import { auth } from '@/auth';
 
 export default async function Page({
@@ -36,7 +37,7 @@ export default async function Page({
     fetchThemesCount(query)
   ]);
 
-  console.log('Themes being passed to Table:', JSON.stringify(themes.map(t => t.id))); // Log theme IDs
+  logger.debug('Themes being passed to Table', { metadata: { data: JSON.stringify(themes.map(t => t.id)) } }); // Log theme IDs
 
   return (
     <div className="w-full">

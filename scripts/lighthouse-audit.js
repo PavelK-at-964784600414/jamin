@@ -1,3 +1,5 @@
+import { logger } from './lib/logger';
+
 #!/usr/bin/env node
 
 const lighthouse = require('lighthouse');
@@ -20,7 +22,7 @@ async function runLighthouseAudit() {
   const results = [];
   
   for (const url of urls) {
-    console.log(`🔍 Auditing ${url}...`);
+    logger.debug(`🔍 Auditing ${url}...`);
     
     try {
       const { lhr } = await lighthouse(url, {
@@ -52,19 +54,19 @@ async function runLighthouseAudit() {
       results.push({ ...scores, metrics });
       
       // Display results
-      console.log(`✅ ${url}`);
-      console.log(`   Performance: ${scores.performance}/100`);
-      console.log(`   Accessibility: ${scores.accessibility}/100`);
-      console.log(`   Best Practices: ${scores.bestPractices}/100`);
-      console.log(`   SEO: ${scores.seo}/100`);
-      console.log(`   PWA: ${scores.pwa}/100`);
-      console.log(`   FCP: ${metrics.firstContentfulPaint}`);
-      console.log(`   LCP: ${metrics.largestContentfulPaint}`);
-      console.log(`   CLS: ${metrics.cumulativeLayoutShift}`);
-      console.log('');
+      logger.debug(`✅ ${url}`);
+      logger.debug(`   Performance: ${scores.performance}/100`);
+      logger.debug(`   Accessibility: ${scores.accessibility}/100`);
+      logger.debug(`   Best Practices: ${scores.bestPractices}/100`);
+      logger.debug(`   SEO: ${scores.seo}/100`);
+      logger.debug(`   PWA: ${scores.pwa}/100`);
+      logger.debug(`   FCP: ${metrics.firstContentfulPaint}`);
+      logger.debug(`   LCP: ${metrics.largestContentfulPaint}`);
+      logger.debug(`   CLS: ${metrics.cumulativeLayoutShift}`);
+      logger.debug('');
 
     } catch (error) {
-      console.error(`❌ Error auditing ${url}:`, error.message);
+      logger.error(`❌ Error auditing ${url}:`, error.message);
       results.push({
         url: url,
         error: error.message,
@@ -84,12 +86,12 @@ async function runLighthouseAudit() {
   const resultPath = path.join(__dirname, `lighthouse-results-${timestamp}.json`);
   fs.writeFileSync(resultPath, JSON.stringify(results, null, 2));
   
-  console.log(`📊 Results saved to: ${resultPath}`);
+  logger.debug(`📊 Results saved to: ${resultPath}`);
 
   // Generate summary
   const summary = generateSummary(results);
-  console.log('\n📈 Performance Summary:');
-  console.log(summary);
+  logger.debug('\n📈 Performance Summary:');
+  logger.debug(summary);
 
   return results;
 }
@@ -134,15 +136,15 @@ function getScoreEmoji(score) {
 
 // Run the audit if called directly
 if (require.main === module) {
-  console.log('🚀 Starting Lighthouse Performance Audit...\n');
+  logger.debug('🚀 Starting Lighthouse Performance Audit...\n');
   
   runLighthouseAudit()
     .then(() => {
-      console.log('\n✨ Audit completed successfully!');
+      logger.debug('\n✨ Audit completed successfully!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('\n💥 Audit failed:', error);
+      logger.error('\n💥 Audit failed:', error);
       process.exit(1);
     });
 }

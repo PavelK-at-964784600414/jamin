@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { logger } from '@/app/lib/logger';
 
 interface PerformanceMetric {
   name: string
@@ -21,7 +22,14 @@ export function PerformanceMonitor() {
       const longTaskObserver = new PerformanceObserver((list) => {
         list.getEntries().forEach((entry) => {
           if (entry.duration > 50) {
-            console.warn(`Long task detected: ${entry.duration}ms`, entry)
+            logger.warn(`Long task detected: ${entry.duration}ms`, { 
+              metadata: { 
+                duration: entry.duration, 
+                name: entry.name,
+                entryType: entry.entryType,
+                startTime: entry.startTime
+              } 
+            })
           }
         })
       })
@@ -42,7 +50,7 @@ export function PerformanceMonitor() {
         })
         
         if (clsValue > 0.1) {
-          console.warn(`High Cumulative Layout Shift: ${clsValue}`)
+          logger.warn(`High Cumulative Layout Shift: ${clsValue}`)
         }
       })
 
@@ -60,7 +68,7 @@ export function PerformanceMonitor() {
           const totalMB = Math.round(memory.totalJSHeapSize / 1048576)
           
           if (usedMB > 100) { // Warn if over 100MB
-            console.warn(`High memory usage: ${usedMB}MB / ${totalMB}MB`)
+            logger.warn(`High memory usage: ${usedMB}MB / ${totalMB}MB`)
           }
         }
 

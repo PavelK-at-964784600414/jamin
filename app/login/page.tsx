@@ -6,9 +6,8 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 to-slate-900 p-4">
       <div className="w-full max-w-md transform transition-all">
         <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-2xl">
-          {/* Header with gradient */}
-          <div className="relative bg-gradient-to-r from-primary/90 to-primary/70 px-6 py-8">
-            <div className="absolute inset-0 bg-[url('/placeholder.svg?height=100&width=100')] bg-[length:20px_20px] bg-repeat opacity-5"></div>
+          {/* Header with gradient */}          <div className="relative bg-gradient-to-r from-primary/90 to-primary/70 px-6 py-8">
+            <div className="absolute inset-0 bg-[url('/placeholder.svg')] bg-[length:20px_20px] bg-repeat opacity-5"></div>
             <div className="relative mb-2 w-36 text-white md:w-40">
               <JaminLogo />
             </div>

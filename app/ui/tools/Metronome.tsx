@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/app/lib/logger';
 
 const TIME_SIGNATURES = [
   { name: '4/4', beatsPerMeasure: 4, noteValue: 4 },
@@ -52,9 +53,9 @@ export default function Metronome() {
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
       try {
         await audioContextRef.current.resume();
-        console.log('Audio context resumed successfully');
+        logger.debug('Audio context resumed successfully');
       } catch (error) {
-        console.error('Failed to resume audio context:', error);
+        logger.error('Failed to resume audio context', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       }
     }
   };

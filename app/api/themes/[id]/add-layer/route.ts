@@ -4,6 +4,7 @@ import { checkAuth, ALLOWED_AUDIO_TYPES, MAX_FILE_SIZE } from '@/app/lib/api-aut
 import { checkRateLimit } from '@/app/lib/rate-limiter';
 import { validateApiCsrf } from '@/app/lib/api-security';
 import { z } from 'zod';
+import { logger } from '@/app/lib/logger';
 
 // Input validation schema for the layer data
 const LayerSchema = z.object({
@@ -92,7 +93,7 @@ export async function POST(
       
       LayerSchema.parse(formDataObj);
     } catch (validationError) {
-      console.error('Validation error:', validationError);
+      logger.error('Validation error', { metadata: { error: validationError instanceof Error ? validationError.message : String(validationError) } });
       return NextResponse.json(
         { error: 'Invalid form data', details: (validationError as Error).message },
         { status: 400 }
@@ -112,14 +113,14 @@ export async function POST(
       });
     } catch (error) {
       // If the server action threw an error, it might be a validation error
-      console.error('Layer creation error:', error);
+      logger.error('Layer creation error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       return NextResponse.json(
         { error: 'Failed to create layer' },
         { status: 400 }
       );
     }
   } catch (error) {
-    console.error('Error creating layer:', error);
+    logger.error('Error creating layer', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return NextResponse.json(
       { error: 'Failed to create layer' },
       { status: 500 }

@@ -1,12 +1,13 @@
 'use client'
 
 import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals'
+import { logger } from '@/app/lib/logger';
 
 function sendToAnalytics(metric: any) {
   // Replace with your analytics service
   if (process.env.NODE_ENV === 'production') {
     // Example: send to Google Analytics, Vercel Analytics, etc.
-    console.log('Web Vital:', metric)
+    logger.debug('Web Vital', { metadata: { data: metric } })
     
     // You can send to your analytics service here
     // Example for Google Analytics:
@@ -27,6 +28,6 @@ export function reportWebVitals() {
     onTTFB(sendToAnalytics)
     onINP(sendToAnalytics) // Replaces FID in web-vitals v3+
   } catch (err) {
-    console.error('Error collecting web vitals:', err)
+    logger.error('Error collecting web vitals', { metadata: { data: err } })
   }
 }

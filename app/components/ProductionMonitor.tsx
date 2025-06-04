@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
+import { logger } from '@/app/lib/logger';
 
 interface AnalyticsEvent {
   name: string
@@ -48,7 +49,7 @@ export default function ProductionMonitor() {
 
   const flushQueuedData = useCallback((isUnloading = false) => {
     if (!isOnline.current && !isUnloading) {
-      console.log('[ProductionMonitor] Offline - queuing data')
+      logger.debug('[ProductionMonitor] Offline - queuing data')
       return
     }
 
@@ -79,15 +80,15 @@ export default function ProductionMonitor() {
               sessionId: sessionId.current
             })
           }).catch((error) => {
-            console.error('[ProductionMonitor] Failed to send analytics:', error)
+            logger.error('[ProductionMonitor] Failed to send analytics', { metadata: { error: error instanceof Error ? error.message : String(error) } })
             // Re-queue failed events
             analyticsQueue.current.unshift(...analyticsToSend)
           })
         }
         
-        console.log(`[ProductionMonitor] Sent ${analyticsToSend.length} analytics events`)
+        logger.debug(`[ProductionMonitor] Sent ${analyticsToSend.length} analytics events`)
       } catch (error) {
-        console.error('[ProductionMonitor] Failed to send analytics:', error)
+        logger.error('[ProductionMonitor] Failed to send analytics', { metadata: { error: error instanceof Error ? error.message : String(error) } })
         // Re-queue failed events
         analyticsQueue.current.unshift(...analyticsToSend)
       }
@@ -112,15 +113,15 @@ export default function ProductionMonitor() {
               sessionId: sessionId.current
             })
           }).catch((error) => {
-            console.error('[ProductionMonitor] Failed to send errors:', error)
+            logger.error('[ProductionMonitor] Failed to send errors', { metadata: { error: error instanceof Error ? error.message : String(error) } })
             // Re-queue failed errors
             errorQueue.current.unshift(...errorsToSend)
           })
         }
         
-        console.log(`[ProductionMonitor] Sent ${errorsToSend.length} error events`)
+        logger.debug(`[ProductionMonitor] Sent ${errorsToSend.length} error events`)
       } catch (error) {
-        console.error('[ProductionMonitor] Failed to send errors:', error)
+        logger.error('[ProductionMonitor] Failed to send errors', { metadata: { error: error instanceof Error ? error.message : String(error) } })
         // Re-queue failed errors
         errorQueue.current.unshift(...errorsToSend)
       }
@@ -153,7 +154,7 @@ export default function ProductionMonitor() {
         flushQueuedData();
       }
     } else {
-      console.warn('[ProductionMonitor] Unknown event type - not queuing:', event);
+      logger.warn('[ProductionMonitor] Unknown event type - not queuing', { metadata: { data: event } });
       // Do not push to any queue if the type is truly unknown and unhandled by heuristics
       // analyticsQueue.current.push(event as AnalyticsEvent); 
     }
@@ -245,7 +246,7 @@ export default function ProductionMonitor() {
     // For simplicity, this is a placeholder.
     // In a real scenario, you'd use PerformanceObserver or web-vitals library
     // and call trackEvent with PerformanceEvent data.
-    console.log('[ProductionMonitor] Performance monitoring setup (placeholder)');
+    logger.debug('[ProductionMonitor] Performance monitoring setup (placeholder)');
 
     // Example of how you might track a custom performance event
     const startTime = performance.now();
@@ -265,7 +266,7 @@ export default function ProductionMonitor() {
   const setupNetworkMonitoring = useCallback(() => {
     // Example: Monkey-patch fetch and XHR to intercept requests
     // This is a simplified example and might need a more robust solution
-    console.log('[ProductionMonitor] Network monitoring setup (placeholder)');
+    logger.debug('[ProductionMonitor] Network monitoring setup (placeholder)');
     
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
@@ -297,7 +298,7 @@ export default function ProductionMonitor() {
 
   const setupUserTracking = useCallback(() => {
     // Example: Track user interactions or custom events
-    console.log('[ProductionMonitor] User tracking setup (placeholder)');
+    logger.debug('[ProductionMonitor] User tracking setup (placeholder)');
     // document.addEventListener('click', (event) => {
     //   if (event.target instanceof HTMLElement) {
     //     const targetElement = event.target as HTMLElement;
@@ -317,16 +318,16 @@ export default function ProductionMonitor() {
   }, []); // Remove unnecessary trackEvent dependency
 
   useEffect(() => {
-    console.log('[ProductionMonitor] Initializing...');
+    logger.debug('[ProductionMonitor] Initializing...');
 
     const handleOnline = () => {
-      console.log('[ProductionMonitor] Back online');
+      logger.debug('[ProductionMonitor] Back online');
       isOnline.current = true;
       flushQueuedData(); // Attempt to flush any queued data
     };
 
     const handleOffline = () => {
-      console.log('[ProductionMonitor] Offline');
+      logger.debug('[ProductionMonitor] Offline');
       isOnline.current = false;
     };
 
@@ -366,7 +367,7 @@ export default function ProductionMonitor() {
 
     // Cleanup
     return () => {
-      console.log('[ProductionMonitor] Cleaning up...');
+      logger.debug('[ProductionMonitor] Cleaning up...');
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('visibilitychange', handleVisibilityChange);

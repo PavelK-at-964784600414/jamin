@@ -70,9 +70,13 @@ export default async function RootLayout({
         </Providers>
         {/* Add nonce to the document for client-side access */}
         {nonce && (
-          <script nonce={nonce} dangerouslySetInnerHTML={{
-            __html: `window.__CSP_NONCE__ = "${nonce}";`
-          }} />
+          <script 
+            nonce={nonce} 
+            dangerouslySetInnerHTML={{
+              __html: `if (!window.__CSP_NONCE__) { window.__CSP_NONCE__ = "${nonce}"; }`
+            }} 
+            suppressHydrationWarning={true}
+          />
         )}
       </body>
     </html>

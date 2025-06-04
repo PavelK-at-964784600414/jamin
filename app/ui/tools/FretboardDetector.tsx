@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { CameraIcon, PhotoIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/app/lib/logger';
 
 // Guitar scale patterns (in semitones from root)
 const SCALES = {
@@ -76,7 +77,7 @@ export default function FretboardDetector() {
         setUseCamera(true);
       }
     } catch (error) {
-      console.error('Error accessing camera:', error);
+      logger.error('Error accessing camera', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       alert('Could not access camera. Please try uploading an image instead.');
     }
   };
@@ -216,7 +217,7 @@ export default function FretboardDetector() {
       lines.delete();
       
     } catch (error) {
-      console.error('Error detecting fretboard:', error);
+      logger.error('Error detecting fretboard', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       alert('Error detecting fretboard. Please try a clearer image with better lighting.');
     } finally {
       setIsDetecting(false);

@@ -1,0 +1,226 @@
+{
+  "timestamp": "2025-05-31T20:59:54.988Z",
+  "steps": [
+    {
+      "name": "Environment Validation",
+      "status": "pass",
+      "message": "Environment variables validated",
+      "timestamp": "2025-05-31T20:59:55.117Z"
+    },
+    {
+      "name": "Security Audit",
+      "status": "warning",
+      "message": "Security audit completed with findings",
+      "error": "Command failed: npm audit --audit-level moderate",
+      "timestamp": "2025-05-31T20:59:57.150Z"
+    },
+    {
+      "name": "TypeScript Type Check",
+      "status": "pass",
+      "message": "TypeScript compilation successful",
+      "timestamp": "2025-05-31T20:59:58.113Z"
+    },
+    {
+      "name": "Code Linting",
+      "status": "pass",
+      "message": "Code linting passed",
+      "timestamp": "2025-05-31T20:59:59.112Z"
+    },
+    {
+      "name": "Production Build",
+      "status": "pass",
+      "message": "Production build successful",
+      "timestamp": "2025-05-31T21:00:07.933Z"
+    },
+    {
+      "name": "Bundle Analysis",
+      "status": "pass",
+      "message": "Bundle size optimal: 2.34MB",
+      "data": {
+        "totalSize": 2450015,
+        "totalSizeKB": 2392.59,
+        "totalSizeMB": 2.34,
+        "totalFiles": 89,
+        "largestFiles": [
+          {
+            "name": "vendors-56983c7fb9a2258f.js",
+            "size": 854886,
+            "sizeKB": 834.85,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/vendors-56983c7fb9a2258f.js",
+            "size": 854886,
+            "sizeKB": 834.85,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "polyfills-78c92fac7aa8fdd8.js",
+            "size": 91381,
+            "sizeKB": 89.24,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/polyfills-78c92fac7aa8fdd8.js",
+            "size": 91381,
+            "sizeKB": 89.24,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "css/74eed6818f550e8f.css",
+            "size": 56940,
+            "sizeKB": 55.61,
+            "extension": ".css",
+            "category": "Static Assets"
+          },
+          {
+            "name": "common-543103e5564b9c75.js",
+            "size": 24030,
+            "sizeKB": 23.47,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/common-543103e5564b9c75.js",
+            "size": 24030,
+            "sizeKB": 23.47,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "884.9e898356dbe7a1f1.js",
+            "size": 23824,
+            "sizeKB": 23.27,
+            "extension": ".js",
+            "category": "Chunks"
+          },
+          {
+            "name": "chunks/884.9e898356dbe7a1f1.js",
+            "size": 23824,
+            "sizeKB": 23.27,
+            "extension": ".js",
+            "category": "Static Assets"
+          },
+          {
+            "name": "_document.js.nft.json",
+            "size": 18984,
+            "sizeKB": 18.54,
+            "extension": ".json",
+            "category": "Pages"
+          }
+        ],
+        "byExtension": [
+          {
+            "extension": ".js",
+            "count": 83,
+            "totalSize": 2352115,
+            "totalSizeKB": 2296.99,
+            "averageSize": 27.67
+          },
+          {
+            "extension": ".css",
+            "count": 2,
+            "totalSize": 57097,
+            "totalSizeKB": 55.76,
+            "averageSize": 27.88
+          },
+          {
+            "extension": ".json",
+            "count": 3,
+            "totalSize": 38815,
+            "totalSizeKB": 37.91,
+            "averageSize": 12.64
+          },
+          {
+            "extension": ".html",
+            "count": 1,
+            "totalSize": 1988,
+            "totalSizeKB": 1.94,
+            "averageSize": 1.94
+          }
+        ],
+        "recommendations": [
+          "🟡 Bundle size is moderate (>2MB). Monitor for growth and optimize where possible.",
+          "🔴 Found 2 large JavaScript files (>500KB). Consider splitting these.",
+          "💡 Consider using dynamic imports for route-based code splitting",
+          "💡 Implement tree shaking to remove unused code",
+          "💡 Use bundle analyzer visualization: npm run build:analyze",
+          "💡 Consider lazy loading heavy components and libraries"
+        ]
+      },
+      "timestamp": "2025-05-31T21:00:07.936Z"
+    },
+    {
+      "name": "Start Production Server",
+      "status": "pass",
+      "message": "Production server started successfully",
+      "timestamp": "2025-05-31T21:00:08.128Z"
+    },
+    {
+      "name": "Performance Audit",
+      "status": "fail",
+      "message": "Performance score too low: 0/100",
+      "data": [
+        {
+          "url": "http://localhost:3000",
+          "error": "lighthouse is not a function",
+          "performance": 0,
+          "accessibility": 0,
+          "bestPractices": 0,
+          "seo": 0,
+          "pwa": 0
+        },
+        {
+          "url": "http://localhost:3000/dashboard",
+          "error": "lighthouse is not a function",
+          "performance": 0,
+          "accessibility": 0,
+          "bestPractices": 0,
+          "seo": 0,
+          "pwa": 0
+        },
+        {
+          "url": "http://localhost:3000/dashboard/tools",
+          "error": "lighthouse is not a function",
+          "performance": 0,
+          "accessibility": 0,
+          "bestPractices": 0,
+          "seo": 0,
+          "pwa": 0
+        }
+      ],
+      "timestamp": "2025-05-31T21:00:13.889Z"
+    },
+    {
+      "name": "PWA Validation",
+      "status": "warning",
+      "message": "PWA validation: 3/5 checks passed",
+      "data": [
+        "✅ Manifest file exists",
+        "✅ Manifest has required fields",
+        "✅ Service worker exists",
+        "❌ Icon 192x192 missing",
+        "❌ Icon 512x512 missing"
+      ],
+      "timestamp": "2025-05-31T21:00:13.889Z"
+    },
+    {
+      "name": "Security Headers",
+      "status": "pass",
+      "message": "Security headers: 3/3 configured",
+      "data": [
+        "✅ X-Frame-Options configured",
+        "✅ X-Content-Type-Options configured",
+        "✅ Referrer-Policy configured"
+      ],
+      "timestamp": "2025-05-31T21:00:13.889Z"
+    }
+  ],
+  "passed": 7,
+  "failed": 1,
+  "warnings": 2
+}

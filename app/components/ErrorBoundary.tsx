@@ -2,6 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { MusicalNoteIcon } from '@heroicons/react/24/outline'
+import { logger } from '@/app/lib/logger'
 
 interface Props {
   children: ReactNode
@@ -23,7 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo)
+    logger.error('ErrorBoundary caught an error', { metadata: { data: error, errorInfo } })
     
     this.setState({
       error,
@@ -33,10 +34,12 @@ export class ErrorBoundary extends Component<Props, State> {
     // Log to error reporting service in production
     if (process.env.NODE_ENV === 'production') {
       // TODO: Send to error reporting service (e.g., Sentry, LogRocket)
-      console.error('Production error:', {
-        error: error.toString(),
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
+      logger.error('Production error', { 
+        metadata: { 
+          error: error.toString(),
+          stack: error.stack,
+          componentStack: errorInfo.componentStack,
+        }
       })
     }
   }

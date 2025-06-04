@@ -2,6 +2,7 @@
 // It's intended to be imported in actions.ts or other server-side code
 
 import { uploadToS3, createSafariCompatibleFile } from '@/app/lib/s3';
+import { logger } from '@/app/lib/logger';
 
 /**
  * Process a base64 data URL into a buffer/array that works in both browser and server
@@ -29,7 +30,7 @@ export function processBase64DataUrl(dataUrl: string): Uint8Array {
       }
       return byteArray;
     } catch (error) {
-      console.error('Browser atob failed:', error);
+      logger.error('Browser atob failed', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       // Fallback to Buffer in case we're in a Node.js environment
       return new Uint8Array(Buffer.from(base64Data, 'base64'));
     }
@@ -55,7 +56,7 @@ export async function uploadFileToS3WithRetry(
 ): Promise<string> {
   // First, check if we're in server environment to avoid using browser-only APIs
   if (typeof window === 'undefined') {
-    console.log('Server-side upload detected - using direct S3 upload');
+    logger.debug('Server-side upload detected - using direct S3 upload');
     
     // Generate a unique key for S3
     const timestamp = Date.now();
@@ -80,7 +81,7 @@ export async function uploadFileToS3WithRetry(
       else if (finalFileName.endsWith('.mov')) safeMimeType = 'video/quicktime';
       else if (finalFileName.endsWith('.avi')) safeMimeType = 'video/x-msvideo';
     }
-    console.log(`Server-side upload using MIME type: ${safeMimeType}`);
+    logger.debug(`Server-side upload using MIME type: ${safeMimeType}`);
     
     // Create a file with proper MIME type if needed
     let fileToUpload = file;
@@ -92,9 +93,9 @@ export async function uploadFileToS3WithRetry(
           type: safeMimeType,
           lastModified: Date.now()
         });
-        console.log('Created file with corrected MIME type for server upload');
+        logger.debug('Created file with corrected MIME type for server upload');
       } catch (error) {
-        console.warn('Could not create file with corrected MIME type:', error);
+        logger.warn('Could not create file with corrected MIME type', { metadata: { error: error instanceof Error ? error.message : String(error) } });
         // Continue with original file
       }
     }
@@ -105,10 +106,10 @@ export async function uploadFileToS3WithRetry(
       if (typeof url !== 'string') {
         throw new Error('Upload failed: Invalid URL returned');
       }
-      console.log(`Server upload successful with MIME type ${fileToUpload.type}:`, url);
+      logger.debug(`Server upload successful with MIME type ${fileToUpload.type}:`, { metadata: { url: url } });
       return url;
     } catch (error) {
-      console.error('Server-side S3 upload failed:', error);
+      logger.error('Server-side S3 upload failed', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -143,9 +144,9 @@ export async function uploadFileToS3WithRetry(
           type: safeMimeType,
           lastModified: safeFile.lastModified || Date.now()
         });
-        console.log(`Fixed MIME type to ${safeMimeType} for upload`);
+        logger.debug(`Fixed MIME type to ${safeMimeType} for upload`);
       } catch (error) {
-        console.warn('Could not create file with corrected MIME type:', error);
+        logger.warn('Could not create file with corrected MIME type', { metadata: { error: error instanceof Error ? error.message : String(error) } });
         // Continue with original file
       }
     }
@@ -155,7 +156,7 @@ export async function uploadFileToS3WithRetry(
     const randomSuffix = Math.floor(Math.random() * 10000);
     const finalFileName = fileName || fileToUpload.name;
     const key = `${folderPath}/${timestamp}-${randomSuffix}-${finalFileName}`;
-    console.log(`Client-side upload using MIME type: ${fileToUpload.type}`);
+    logger.debug(`Client-side upload using MIME type: ${fileToUpload.type}`);
     
     // Try to upload with retries
     let lastError: Error | undefined;
@@ -164,22 +165,22 @@ export async function uploadFileToS3WithRetry(
     
     while (retries < MAX_RETRIES) {
       try {
-        console.log(`S3 upload attempt ${retries + 1} for ${key}, MIME type: ${fileToUpload.type}`);
+        logger.debug(`S3 upload attempt ${retries + 1} for ${key}, MIME type: ${fileToUpload.type}`);
         const url = await uploadToS3(fileToUpload, key);
         if (typeof url !== 'string') {
           throw new Error('Upload failed: Invalid URL returned');
         }
-        console.log(`S3 upload successful: ${url}`);
+        logger.debug(`S3 upload successful: ${url}`);
         return url;
       } catch (error) {
         retries++;
         lastError = error instanceof Error ? error : new Error(String(error));
-        console.error(`S3 upload attempt ${retries} failed:`, error);
+        logger.error(`S3 upload attempt ${retries} failed:`, error);
         
         // If we have retries left, wait before trying again
         if (retries < MAX_RETRIES) {
           const delay = 1000 * Math.pow(2, retries); // Exponential backoff
-          console.log(`Retrying in ${delay}ms...`);
+          logger.debug(`Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -188,7 +189,7 @@ export async function uploadFileToS3WithRetry(
     // If we reached here, all retries failed
     throw new Error(`Failed to upload file after ${MAX_RETRIES} attempts: ${lastError?.message}`);
   } catch (error) {
-    console.error('Error in upload process:', error);
+    logger.error('Error in upload process', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     throw error;
   }
 }

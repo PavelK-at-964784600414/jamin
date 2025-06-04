@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { useEffect } from 'react'
+import { logger } from '@/app/lib/logger'
  
 export default function Error({
   error,
@@ -13,7 +14,7 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error('Application error:', error)
+    logger.error('Application error', { metadata: { error: error instanceof Error ? error.message : String(error) } })
     
     // Send to error reporting service in production
     if (process.env.NODE_ENV === 'production') {

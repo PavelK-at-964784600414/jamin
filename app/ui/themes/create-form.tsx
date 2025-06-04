@@ -8,6 +8,7 @@ import { useActionState } from 'react';
 import { saveAs } from 'file-saver';
 import MetadataForm from './MetadataForm';
 import RecordingControls from './RecordingControls';
+import { logger } from '@/app/lib/logger';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
 import { getAudioDuration } from '@/app/lib/audio-utils';
@@ -73,7 +74,7 @@ export default function CreateForm() {
 
   const handleStartRecording = async () => {
     if (!navigator.mediaDevices || !window.MediaRecorder) {
-      console.error('MediaRecorder API is not supported in this browser.');
+      logger.error('MediaRecorder API is not supported in this browser.');
       return;
     }
   
@@ -140,7 +141,7 @@ export default function CreateForm() {
   
       mediaRecorderRef.current.onstop = async () => {
         if (mediaChunksRef.current.length === 0) {
-          console.warn('No media data recorded.');
+          logger.warn('No media data recorded.');
           return;
         }
         const recorderMimeType =
@@ -149,7 +150,7 @@ export default function CreateForm() {
           (isVideoMode ? 'video/webm' : 'audio/webm');
         const blob = new Blob(mediaChunksRef.current, { type: recorderMimeType });
         const blobUrl = URL.createObjectURL(blob);
-        console.log('Blob URL:', blobUrl);
+        logger.debug('Blob URL', { metadata: { data: blobUrl } });
         setMediaURL(blobUrl);
         let extension = "webm";
         if (recorderMimeType) {
@@ -167,9 +168,9 @@ export default function CreateForm() {
           try {
             const recordedDuration = await getAudioDuration(recordedFile);
             setDuration(recordedDuration);
-            console.log('Recorded audio duration set to:', recordedDuration, 'seconds');
+            logger.debug('Recorded audio duration set to', { metadata: { duration: recordedDuration, unit: 'seconds' } });
           } catch (error) {
-            console.error('Failed to get recorded audio duration:', error);
+            logger.error('Failed to get recorded audio duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
             setDuration(0);
           }
         } else {
@@ -190,17 +191,17 @@ export default function CreateForm() {
             metronomeRef.current.currentTime = 0;
             metronomeRef.current
               .play()
-              .catch((error) => console.error("Metronome playback failed:", error));
+              .catch((error) => logger.error("Metronome playback failed", { metadata: { error: error instanceof Error ? error.message : String(error) } }));
           }
         }, interval);
       }
     } catch (error) {
-      console.error("Error accessing media devices:", error);
+      logger.error("Error accessing media devices", { metadata: { error: error instanceof Error ? error.message : String(error) } });
     }
   };
 
   const handleStopRecording = () => {
-    console.log('Stopping recording...');
+    logger.debug('Stopping recording...');
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
@@ -220,7 +221,7 @@ export default function CreateForm() {
     setFile(selectedFile);
     if (selectedFile) {
       const url = URL.createObjectURL(selectedFile);
-      console.log('Selected file URL:', url);
+      logger.debug('Selected file URL', { metadata: { data: url } });
       setMediaURL(url);
       
       // Get audio duration if it's an audio file
@@ -228,9 +229,9 @@ export default function CreateForm() {
         try {
           const audioDuration = await getAudioDuration(selectedFile);
           setDuration(audioDuration);
-          console.log('Audio duration set to:', audioDuration, 'seconds');
+          logger.debug('Audio duration set to', { metadata: { duration: audioDuration, unit: 'seconds' } });
         } catch (error) {
-          console.error('Failed to get audio duration:', error);
+          logger.error('Failed to get audio duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
           setDuration(0);
         }
       } else if (selectedFile.type.startsWith('video/')) {
@@ -238,9 +239,9 @@ export default function CreateForm() {
           const { getVideoDuration } = await import('@/app/lib/video-utils');
           const videoDuration = await getVideoDuration(selectedFile);
           setDuration(videoDuration);
-          console.log('Video duration set to:', videoDuration, 'seconds');
+          logger.debug('Video duration set to', { metadata: { duration: videoDuration, unit: 'seconds' } });
         } catch (error) {
-          console.error('Failed to get video duration:', error);
+          logger.error('Failed to get video duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
           setDuration(0);
         }
       } else {
@@ -254,14 +255,14 @@ export default function CreateForm() {
   const handlePlayMedia = () => {
     if (mediaRef.current) {
       mediaRef.current.play().catch((error) =>
-        console.error('Playback failed:', error)
+        logger.error('Playback failed', { metadata: { error: error instanceof Error ? error.message : String(error) } })
       );
     }
   };
 
   const handleTrimAudio = async () => {
     if (!file || !mediaRef.current || isVideoMode) {
-      console.error('Cannot trim: No audio file, media element, or it is a video.');
+      logger.error('Cannot trim: No audio file, media element, or it is a video.');
       alert('Trimming is currently only supported for audio recordings.');
       return;
     }
@@ -325,7 +326,7 @@ export default function CreateForm() {
       }, (endTime - startTime) * 1000);
 
     } catch (error) {
-      console.error('Error during trimming:', error);
+      logger.error('Error during trimming', { metadata: { error: error instanceof Error ? error.message : String(error) } });
       alert('An error occurred while trimming the audio.');
     }
   };
@@ -361,7 +362,7 @@ export default function CreateForm() {
 
   useEffect(() => {
     if (mediaRef.current && mediaURL) {
-      console.log('Loading media URL:', mediaURL);
+      logger.debug('Loading media URL', { metadata: { data: mediaURL } });
       mediaRef.current.load();
     }
   }, [mediaURL]);
