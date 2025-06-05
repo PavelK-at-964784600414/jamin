@@ -27,17 +27,22 @@ try {
 } catch (error) {
   logger.error("[audio-mix-server] CRITICAL: Failed to resolve ffmpeg-static path:", { metadata: { data: error } });
   
-  // Fallback paths for different environments
+  // Enhanced fallback paths for Vercel and other environments
   const possiblePaths = [
-    // PNPM path (most likely for this project)
+    // PNPM paths (most common)
     mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
+    mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@*/node_modules/ffmpeg-static/ffmpeg'),
     // Standard npm path
     mainPath.join(process.cwd(), 'node_modules/ffmpeg-static/ffmpeg'),
-    // Alternative PNPM path
+    // Vercel-specific paths
+    mainPath.join('/vercel/path0/node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
+    mainPath.join('/vercel/path0/node_modules/ffmpeg-static/ffmpeg'),
+    // Alternative paths
     mainPath.join(process.cwd(), 'node_modules/.ignored/ffmpeg-static/ffmpeg'),
-    // System paths
+    // System paths (rarely available in serverless)
     '/usr/local/bin/ffmpeg',
-    '/usr/bin/ffmpeg'
+    '/usr/bin/ffmpeg',
+    '/opt/bin/ffmpeg'
   ];
   
   // Try to find an existing path
@@ -54,7 +59,7 @@ try {
   }
   
   ffmpegExecutablePath = foundPath || possiblePaths[0]!;
-  logger.debug(`[audio-mix-server] Using fallback path: ${ffmpegExecutablePath}`);
+  logger.warn(`[audio-mix-server] Using fallback path (may not exist): ${ffmpegExecutablePath}`);
 }
 
 logger.debug(`[audio-mix-server] Final ffmpeg executable path: ${ffmpegExecutablePath}`);
@@ -82,6 +87,7 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
     // Try fallback paths if primary path fails
     const fallbackPaths = [
       mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
+      mainPath.join('/vercel/path0/node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
       mainPath.join(process.cwd(), 'node_modules/.ignored/ffmpeg-static/ffmpeg'),
       mainPath.join(process.cwd(), 'node_modules/ffmpeg-static/ffmpeg'),
     ];
@@ -102,7 +108,14 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
       ffmpegExecutablePath = foundWorkingPath;
       logger.debug(`[mixAudioFiles] Updated ffmpeg path to: ${ffmpegExecutablePath}`);
     } else {
-      throw new Error(`ffmpeg not found at ${ffmpegExecutablePath} or any fallback paths. Stat error: ${statError instanceof Error ? statError.message : String(statError)}`);
+      // If no ffmpeg is available, throw a specific error that can be caught and handled gracefully
+      const errorMessage = `ffmpeg not available in production environment. Build scripts for ffmpeg-static were ignored during deployment.`;
+      logger.error(`[mixAudioFiles] ${errorMessage}`, { metadata: { 
+        attempted_path: ffmpegExecutablePath,
+        fallback_paths: fallbackPaths,
+        node_env: process.env.NODE_ENV 
+      }});
+      throw new Error(errorMessage);
     }
   }
 

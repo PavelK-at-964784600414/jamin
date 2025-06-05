@@ -1,0 +1,18 @@
+{
+  "buildCommand": "pnpm install --frozen-lockfile --ignore-scripts=false && pnpm build",
+  "installCommand": "pnpm install --frozen-lockfile --ignore-scripts=false",
+  "build": {
+    "env": {
+      "ENABLE_BUILD_SCRIPTS": "true",
+      "UNSAFE_PERM": "true",
+      "NPM_CONFIG_UNSAFE_PERM": "true",
+      "PNPM_CONFIG_UNSAFE_PERM": "true",
+      "PNPM_CONFIG_ENABLE_BUILD_SCRIPTS": "true"
+    }
+  },
+  "functions": {
+    "app/api/**/*.js": {
+      "maxDuration": 30
+    }
+  }
+}
