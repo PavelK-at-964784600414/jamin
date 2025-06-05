@@ -4,6 +4,9 @@ import { validateApiCsrf } from '@/app/lib/api-security';
 import { auth } from '@/auth';
 import { logger } from '@/app/lib/logger';
 
+// Force Node.js Runtime for auth (bcryptjs) compatibility
+export const runtime = 'nodejs';
+
 export async function DELETE(request: NextRequest) {
   try {
     // Check CSRF validation for DELETE requests

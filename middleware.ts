@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from './auth'; // Import the auth function directly
 
+// Force Node.js Runtime for auth (bcryptjs) compatibility
+export const runtime = 'nodejs';
+
 // Generate a random nonce for CSP
 function generateNonce(): string {
   const array = new Uint8Array(16);

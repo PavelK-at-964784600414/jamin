@@ -6,6 +6,9 @@ import { validateApiCsrf } from '@/app/lib/api-security';
 import { z } from 'zod';
 import { logger } from '@/app/lib/logger';
 
+// Force Node.js Runtime for auth and file processing compatibility
+export const runtime = 'nodejs';
+
 // Input validation schema for the layer data
 const LayerSchema = z.object({
   title: z.string().min(1, "Title is required"),

@@ -5,6 +5,9 @@ import { checkRateLimit } from '@/app/lib/rate-limiter';
 import { validateApiCsrf } from '@/app/lib/api-security';
 import { logger } from '@/app/lib/logger';
 
+// Force Node.js Runtime for auth compatibility
+export const runtime = 'nodejs';
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> }
