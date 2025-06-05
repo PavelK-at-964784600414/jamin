@@ -75,13 +75,7 @@
   },
 "pnpm": {
     "onlyBuiltDependencies": [
-      "bufferutil",
-      "ffmpeg-static", 
-      "puppeteer",
-      "sharp"
-    ],
-    "allowedDeprecatedVersions": {
-      "*": "*"
-    }
+      "ffmpeg-static"
+    ]
   }
 }
