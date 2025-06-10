@@ -1,3 +1,6 @@
+https://jamin-gamma.vercel.app/
+
+
 # 🎵 Jamin - Music Collaboration Platform
 
 A modern, real-time music collaboration platform built with Next.js, TypeScript, and Web Audio APIs. Create, share, and collaborate on musical compositions with advanced audio tools and seamless layering capabilities.
