@@ -1,68 +1,25 @@
 import mainPath from 'path'; // aliased to mainPath to avoid conflict with the path module imported later
 import fsPromises from 'fs/promises'; // Import fs.promises directly
 import { logger } from '@/app/lib/logger';
-// Server-only audio mixing utilities for Next.js (Node.js only)
+import { setupAwsLambdaFfmpeg, getAwsLambdaFfmpegArgs, isAwsLambdaEnvironment } from '@/app/lib/aws-lambda-ffmpeg';
+// Server-only audio mixing utilities for Next.js (Node.js only) with AWS Lambda support
 
 const nodeEnv = process.env.NODE_ENV;
-
-function getFfmpegBinaryName(): string {
-  const platform = process.platform;
-  if (platform === 'darwin') return 'ffmpeg'; // macOS
-  if (platform === 'win32') return 'ffmpeg.exe'; // Windows
-  return 'ffmpeg'; // Linux and other Unix-like
-}
+const isLambda = isAwsLambdaEnvironment();
 
 let ffmpegExecutablePath: string;
 
-logger.debug(`[audio-mix-server] Initializing: NODE_ENV = "${nodeEnv}"`);
+logger.debug(`[audio-mix-server] Initializing: NODE_ENV = "${nodeEnv}", AWS Lambda = ${isLambda}`);
 
-try {
-  // require('ffmpeg-static') returns the path to the ffmpeg binary
-  const resolvedPath = require('ffmpeg-static');
-  if (!resolvedPath || typeof resolvedPath !== 'string') {
-    throw new Error("ffmpeg-static returned invalid path");
-  }
-  ffmpegExecutablePath = resolvedPath;
-  logger.debug(`[audio-mix-server] Using ffmpeg-static path: ${ffmpegExecutablePath}`);
-} catch (error) {
-  logger.error("[audio-mix-server] CRITICAL: Failed to resolve ffmpeg-static path:", { metadata: { data: error } });
-  
-  // Enhanced fallback paths for Vercel and other environments
-  const possiblePaths = [
-    // PNPM paths (most common)
-    mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
-    mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@*/node_modules/ffmpeg-static/ffmpeg'),
-    // Standard npm path
-    mainPath.join(process.cwd(), 'node_modules/ffmpeg-static/ffmpeg'),
-    // Vercel-specific paths
-    mainPath.join('/vercel/path0/node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
-    mainPath.join('/vercel/path0/node_modules/ffmpeg-static/ffmpeg'),
-    // Alternative paths
-    mainPath.join(process.cwd(), 'node_modules/.ignored/ffmpeg-static/ffmpeg'),
-    // System paths (rarely available in serverless)
-    '/usr/local/bin/ffmpeg',
-    '/usr/bin/ffmpeg',
-    '/opt/bin/ffmpeg'
-  ];
-  
-  // Try to find an existing path
-  let foundPath = null;
-  for (const testPath of possiblePaths) {
-    try {
-      require('fs').accessSync(testPath, require('fs').constants.F_OK);
-      foundPath = testPath;
-      logger.debug(`[audio-mix-server] Found working ffmpeg at: ${foundPath}`);
-      break;
-    } catch (accessError) {
-      logger.debug(`[audio-mix-server] Path not accessible: ${testPath}`);
-    }
-  }
-  
-  ffmpegExecutablePath = foundPath || possiblePaths[0]!;
-  logger.warn(`[audio-mix-server] Using fallback path (may not exist): ${ffmpegExecutablePath}`);
+// Initialize ffmpeg path for AWS Lambda or traditional environments
+async function initializeFfmpegPath(): Promise<string> {
+  // Always use AWS Lambda-compatible ffmpeg for consistent behavior
+  logger.debug('[audio-mix-server] Using AWS Lambda-compatible ffmpeg for all environments');
+  return await setupAwsLambdaFfmpeg();
 }
 
-logger.debug(`[audio-mix-server] Final ffmpeg executable path: ${ffmpegExecutablePath}`);
+// Initialize the path (will be resolved when first used)
+let ffmpegPathPromise: Promise<string> | null = null;
 
 /**
  * Mix two audio files by downloading them, combining using ffmpeg, and uploading the result to S3.
@@ -78,51 +35,64 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
   const exec = promisify((await import('child_process')).exec);
 
   // Verify ffmpeg path just before use
+  if (!ffmpegPathPromise) {
+    ffmpegPathPromise = initializeFfmpegPath();
+  }
+  
+  const ffmpegExecutablePath = await ffmpegPathPromise;
+  
   try {
     await fsPromises.stat(ffmpegExecutablePath);
     logger.debug(`[mixAudioFiles] Verified: ffmpeg executable exists at: ${ffmpegExecutablePath}`);
   } catch (statError) {
-    logger.error(`[mixAudioFiles] CRITICAL ERROR: Initial ffmpeg path failed: ${ffmpegExecutablePath}`, { metadata: { data: statError } });
+    logger.error(`[mixAudioFiles] CRITICAL ERROR: ffmpeg path failed: ${ffmpegExecutablePath}`, { metadata: { data: statError } });
     
-    // Try fallback paths if primary path fails
-    const fallbackPaths = [
-      mainPath.join(process.cwd(), 'node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
-      mainPath.join('/vercel/path0/node_modules/.pnpm/ffmpeg-static@5.2.0/node_modules/ffmpeg-static/ffmpeg'),
-      mainPath.join(process.cwd(), 'node_modules/.ignored/ffmpeg-static/ffmpeg'),
-      mainPath.join(process.cwd(), 'node_modules/ffmpeg-static/ffmpeg'),
-    ];
-    
-    let foundWorkingPath = null;
-    for (const fallbackPath of fallbackPaths) {
+    // For AWS Lambda, try re-initializing
+    if (isLambda) {
       try {
-        await fsPromises.stat(fallbackPath);
-        foundWorkingPath = fallbackPath;
-        logger.debug(`[mixAudioFiles] Found working fallback path: ${fallbackPath}`);
-        break;
-      } catch (fallbackError) {
-        logger.debug(`[mixAudioFiles] Fallback path failed: ${fallbackPath}`);
+        const newPath = await setupAwsLambdaFfmpeg();
+        ffmpegPathPromise = Promise.resolve(newPath);
+        logger.debug(`[mixAudioFiles] Re-initialized AWS Lambda ffmpeg path: ${newPath}`);
+        // Verify the new path works
+        await fsPromises.stat(newPath);
+      } catch (reinitError) {
+        const errorMessage = `ffmpeg not available in AWS Lambda environment. Falling back to layer audio without mixing.`;
+        logger.error(`[mixAudioFiles] ${errorMessage}`, { 
+          metadata: { 
+            attempted_path: ffmpegExecutablePath,
+            lambda_environment: isLambda,
+            node_env: process.env.NODE_ENV,
+            aws_execution_env: process.env.AWS_EXECUTION_ENV,
+            current_working_directory: process.cwd()
+          }
+        });
+        // Instead of throwing, return the layer URL as fallback
+        logger.warn('[mixAudioFiles] Falling back to layer recording without mixing');
+        return layerUrl;
       }
-    }
-    
-    if (foundWorkingPath) {
-      ffmpegExecutablePath = foundWorkingPath;
-      logger.debug(`[mixAudioFiles] Updated ffmpeg path to: ${ffmpegExecutablePath}`);
     } else {
-      // If no ffmpeg is available, throw a specific error that can be caught and handled gracefully
-      const errorMessage = `ffmpeg not available in production environment. Build scripts for ffmpeg-static were ignored during deployment.`;
-      logger.error(`[mixAudioFiles] ${errorMessage}`, { metadata: { 
-        attempted_path: ffmpegExecutablePath,
-        fallback_paths: fallbackPaths,
-        node_env: process.env.NODE_ENV 
-      }});
-      throw new Error(errorMessage);
+      const errorMessage = `ffmpeg not available. Falling back to layer audio without mixing.`;
+      logger.error(`[mixAudioFiles] ${errorMessage}`, { 
+        metadata: { 
+          attempted_path: ffmpegExecutablePath,
+          node_env: process.env.NODE_ENV,
+          current_working_directory: process.cwd(),
+          platform: process.platform,
+          arch: process.arch
+        }
+      });
+      
+      // Instead of throwing, return the layer URL as fallback
+      logger.warn('[mixAudioFiles] Falling back to layer recording without mixing');
+      return layerUrl;
     }
   }
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'jamimix-'));
   const originalPath = path.join(tmpDir, 'original.webm');
   const layerPath = path.join(tmpDir, 'layer.webm');
-  const outputPath = path.join(tmpDir, 'mixed.webm');
+  const baseOutputPath = path.join(tmpDir, 'mixed');
+  const outputPath = `${baseOutputPath}.mp4`; // Always use MP4 for consistency
 
   logger.debug(`Temporary directory created: ${tmpDir}`);
   logger.debug(`Original audio will be saved to: ${originalPath}`);
@@ -146,9 +116,20 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
     await fs.writeFile(layerPath, new Uint8Array(Buffer.from(layerBuf)));
     logger.debug(`Layer audio downloaded and saved successfully. Size: ${layerBuf.byteLength} bytes`);
 
-    // Construct and execute ffmpeg command using the resolved ffmpegExecutablePath
-    const ffmpegCommand = `${ffmpegExecutablePath} -y -i "${originalPath}" -i "${layerPath}" -filter_complex "[0:a][1:a]amix=inputs=2:duration=longest" -c:a libopus "${outputPath}"`;
-    logger.debug(`Executing ffmpeg command: ${ffmpegCommand}`);
+    // Construct and execute ffmpeg command using AWS Lambda optimizations (consistent for all environments)
+    const lambdaArgs = getAwsLambdaFfmpegArgs();
+    const baseCommand = `${ffmpegExecutablePath} -y -i "${originalPath}" -i "${layerPath}"`;
+    const filterCommand = `-filter_complex "[0:a][1:a]amix=inputs=2:duration=longest"`;
+    const outputArgs = lambdaArgs.join(' ');
+    const outputFormat = 'mp4'; // Always use MP4 for consistency
+    const outputExtension = '.mp4';
+    
+    // Update output path based on format
+    const finalOutputPath = outputPath.replace('.webm', outputExtension);
+    
+    const ffmpegCommand = `${baseCommand} ${filterCommand} ${outputArgs} "${finalOutputPath}"`;
+    logger.debug(`[mixAudioFiles] Executing ffmpeg command: ${ffmpegCommand}`);
+    logger.debug(`[mixAudioFiles] Using Lambda-compatible mode for all environments, Output format: ${outputFormat}`);
     
     try {
       const { stdout, stderr } = await exec(ffmpegCommand);
@@ -161,28 +142,34 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
       logger.error('Error during ffmpeg execution:', { metadata: { error: ffmpegError instanceof Error ? ffmpegError.message : String(ffmpegError) } });
       logger.error('ffmpeg execution stdout:', { metadata: { data: ffmpegError.stdout } });
       logger.error('ffmpeg execution stderr:', { metadata: { data: ffmpegError.stderr } });
-      throw new Error(`ffmpeg execution failed: ${ffmpegError.message}`);
+      
+      // Instead of throwing, return the layer URL as fallback when ffmpeg fails
+      logger.warn('[mixAudioFiles] ffmpeg execution failed, falling back to layer recording without mixing');
+      return layerUrl;
     }
 
     // Check if outputPath was created and has content
     try {
-      const stats = await fs.stat(outputPath);
+      const stats = await fs.stat(finalOutputPath);
       if (stats.size === 0) {
-        logger.error('ffmpeg output file is empty:', { metadata: { path: outputPath } });
-        throw new Error('ffmpeg output file is empty after mixing.');
+        logger.error('ffmpeg output file is empty:', { metadata: { path: finalOutputPath } });
+        logger.warn('[mixAudioFiles] ffmpeg output file is empty, falling back to layer recording without mixing');
+        return layerUrl;
       }
-      logger.debug(`ffmpeg output file created: ${outputPath}, Size: ${stats.size} bytes`);
+      logger.debug(`ffmpeg output file created: ${finalOutputPath}, Size: ${stats.size} bytes`);
     } catch (statError) {
-      logger.error('Error accessing ffmpeg output file stats:', { metadata: { path: outputPath, error: statError instanceof Error ? statError.message : String(statError) } });
-      const errorMessage = statError instanceof Error ? statError.message : String(statError);
-      throw new Error(`Failed to access or verify ffmpeg output file: ${errorMessage}`);
+      logger.error('Error accessing ffmpeg output file stats:', { metadata: { path: finalOutputPath, error: statError instanceof Error ? statError.message : String(statError) } });
+      logger.warn('[mixAudioFiles] ffmpeg output file not found, falling back to layer recording without mixing');
+      return layerUrl;
     }
 
     // Read and upload mixed output
     logger.debug('Reading mixed audio file for upload...');
-    const mixedBuf = await fs.readFile(outputPath);
-    const mixedFile = new File([mixedBuf], `mixed-${Date.now()}.webm`, { type: 'audio/webm' });
-    logger.debug(`Uploading mixed file: ${mixedFile.name}, Size: ${mixedFile.size} bytes`);
+    const mixedBuf = await fs.readFile(finalOutputPath);
+    const mimeType = 'audio/mp4'; // Always use MP4 for consistency
+    const fileName = `mixed-${Date.now()}${outputExtension}`;
+    const mixedFile = new File([mixedBuf], fileName, { type: mimeType });
+    logger.debug(`Uploading mixed file: ${mixedFile.name}, Size: ${mixedFile.size} bytes, MIME: ${mimeType}`);
     const { uploadFileToS3WithRetry } = await import('@/app/lib/upload-utils');
     const uploadUrl = await uploadFileToS3WithRetry(mixedFile, 'mixed');
     logger.debug(`Mixed file uploaded successfully to: ${uploadUrl}`);

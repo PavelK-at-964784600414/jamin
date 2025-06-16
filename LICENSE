@@ -25,11 +25,23 @@ SOFTWARE.
 JAMIN - Music Collaboration Platform
 Copyright (c) 2025 Pavel Klug
 
+ATTRIBUTION REQUIREMENTS:
+When using, modifying, or distributing this software:
+- You MUST include this license file and copyright notice
+- You MUST credit Pavel Klug as the original author
+- You MUST maintain attribution in any derivative works
+
 This project includes:
 - Interactive music tools (Metronome, Chord Generator, Fretboard Visualizer)
 - Audio collaboration and layering capabilities
 - Real-time music creation and sharing features
 - Web Audio API integration for synthesized instruments
+- AWS Lambda-compatible audio processing
+- Progressive Web App (PWA) functionality
+
+Original Author: Pavel Klug
+Project: JAMIN Music Collaboration Platform
+Repository: https://github.com/pavelklug/jamin
 
 Third-party libraries and dependencies are subject to their respective licenses.
 Audio samples and media files may be subject to additional licensing terms.

@@ -204,7 +204,23 @@ We welcome contributions! Please follow these steps:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## �‍💻 Author
+
+**Pavel Klug** - *Creator and Lead Developer*
+
+- 🎵 **Vision**: Building modern tools for music collaboration
+- 🚀 **Project**: JAMIN Music Collaboration Platform  
+- 📧 **Attribution**: When using this project, please credit Pavel Klug as the original author
+- 🔗 **Repository**: [github.com/pavelklug/jamin](https://github.com/pavelklug/jamin)
+
+### Attribution Requirements
+If you use, modify, or distribute this software:
+- ✅ **Include** the LICENSE file and copyright notice
+- ✅ **Credit** Pavel Klug as the original author
+- ✅ **Maintain** attribution in derivative works
+- ✅ **Link back** to the original repository when possible
+
+## �🙏 Acknowledgments
 
 - [Next.js](https://nextjs.org/) for the amazing React framework
 - [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) for audio synthesis
