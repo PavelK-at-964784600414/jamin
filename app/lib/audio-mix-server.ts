@@ -45,7 +45,7 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
     await fsPromises.stat(ffmpegExecutablePath);
     logger.debug(`[mixAudioFiles] Verified: ffmpeg executable exists at: ${ffmpegExecutablePath}`);
   } catch (statError) {
-    logger.error(`[mixAudioFiles] CRITICAL ERROR: ffmpeg path failed: ${ffmpegExecutablePath}`, { metadata: { data: statError } });
+    logger.error(`[mixAudioFiles] CRITICAL ERROR: Initial ffmpeg path failed: ${ffmpegExecutablePath}`, { metadata: { data: statError } });
     
     // For AWS Lambda, try re-initializing
     if (isLambda) {
@@ -63,7 +63,8 @@ export async function mixAudioFiles(originalUrl: string, layerUrl: string): Prom
             lambda_environment: isLambda,
             node_env: process.env.NODE_ENV,
             aws_execution_env: process.env.AWS_EXECUTION_ENV,
-            current_working_directory: process.cwd()
+            current_working_directory: process.cwd(),
+            vercel_env: process.env.VERCEL
           }
         });
         // Instead of throwing, return the layer URL as fallback

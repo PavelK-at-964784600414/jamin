@@ -98,38 +98,18 @@ export async function setupAwsLambdaFfmpeg(): Promise<string> {
     logger.debug('[AWS Lambda ffmpeg] @ffmpeg-installer/linux-x64 not available:', { metadata: { data: error } });
   }
   
-  const isLambda = process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL;
+  const isLambda = process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL || process.env.FFMPEG_LAMBDA ||
+                   (typeof process !== 'undefined' && process.env.NODE_ENV === 'production' && 
+                    (process.cwd().includes('/var/task') || process.cwd().includes('/vercel')));
   
   if (isLambda) {
-    // In Lambda environment, try to copy Linux binary to /tmp
-    const tmpFfmpegPath = '/tmp/ffmpeg';
+    logger.debug('[AWS Lambda ffmpeg] Running in Lambda/Vercel environment, checking Lambda layer paths first');
     
-    try {
-      // Check if already exists in /tmp
-      await fs.access(tmpFfmpegPath, require('fs').constants.X_OK);
-      logger.debug('[AWS Lambda ffmpeg] Using existing ffmpeg in /tmp');
-      return tmpFfmpegPath;
-    } catch (error) {
-      logger.debug('[AWS Lambda ffmpeg] ffmpeg not found in /tmp, attempting setup');
-    }
-    
-    // Try to copy from the Linux installer to /tmp
-    try {
-      const linuxFfmpeg = eval('require')('@ffmpeg-installer/linux-x64');
-      if (linuxFfmpeg && linuxFfmpeg.path) {
-        await fs.copyFile(linuxFfmpeg.path, tmpFfmpegPath);
-        await fs.chmod(tmpFfmpegPath, 0o755);
-        logger.debug('[AWS Lambda ffmpeg] Copied Linux x64 ffmpeg to /tmp');
-        return tmpFfmpegPath;
-      }
-    } catch (copyError) {
-      logger.warn('[AWS Lambda ffmpeg] Could not copy Linux x64 ffmpeg to /tmp:', { metadata: { data: copyError } });
-    }
-    
-    // Check for Lambda layer paths (including the deployed ffmpeg layer)
+    // Check for Lambda layer paths (including the deployed ffmpeg layer) FIRST
     const lambdaPaths = [
       '/opt/bin/ffmpeg',  // Standard Lambda layer path  
       '/opt/ffmpeg/bin/ffmpeg',  // Alternative layer path
+      '/opt/ffmpeg',  // Another common layer path
       '/var/task/ffmpeg'
     ];
     for (const lambdaPath of lambdaPaths) {
@@ -142,8 +122,34 @@ export async function setupAwsLambdaFfmpeg(): Promise<string> {
       }
     }
     
-    // If we get here, ffmpeg is not available in Lambda
-    throw new Error('ffmpeg not available in AWS Lambda environment. Please configure an ffmpeg layer or use client-side audio processing.');
+    // In Lambda environment, try to copy Linux binary to /tmp
+    const tmpFfmpegPath = '/tmp/ffmpeg';
+    
+    try {
+      // Check if already exists in /tmp
+      await fs.access(tmpFfmpegPath, require('fs').constants.X_OK);
+      logger.debug('[AWS Lambda ffmpeg] Using existing ffmpeg in /tmp');
+      return tmpFfmpegPath;
+    } catch (error) {
+      logger.debug('[AWS Lambda ffmpeg] ffmpeg not found in /tmp, attempting setup');
+    }
+
+    // Try to copy from the Linux installer to /tmp
+    try {
+      const linuxFfmpeg = eval('require')('@ffmpeg-installer/linux-x64');
+      if (linuxFfmpeg && linuxFfmpeg.path) {
+        await fs.copyFile(linuxFfmpeg.path, tmpFfmpegPath);
+        await fs.chmod(tmpFfmpegPath, 0o755);
+        logger.debug('[AWS Lambda ffmpeg] Copied Linux x64 ffmpeg to /tmp');
+        return tmpFfmpegPath;
+      }
+    } catch (copyError) {
+      logger.warn('[AWS Lambda ffmpeg] Could not copy Linux x64 ffmpeg to /tmp:', { metadata: { data: copyError } });
+    }
+
+    // If we get here, ffmpeg is not available in Lambda - return a fallback that will cause graceful degradation
+    logger.warn('[AWS Lambda ffmpeg] No ffmpeg found in Lambda environment, will fall back to layer recording only');
+    throw new Error('ffmpeg not available in AWS Lambda environment. Audio mixing will fall back to layer recording only.');
   }
   
   // Local development - use cross-platform installer since Linux binary won't work on macOS/Windows
@@ -235,7 +241,10 @@ export function isAwsLambdaEnvironment(): boolean {
     process.env.AWS_LAMBDA_FUNCTION_NAME ||
     process.env.LAMBDA_TASK_ROOT ||
     process.env.AWS_EXECUTION_ENV ||
-    (process.env.VERCEL && process.env.FFMPEG_LAMBDA)
+    process.env.VERCEL ||
+    process.env.FFMPEG_LAMBDA ||
+    (typeof process !== 'undefined' && process.env.NODE_ENV === 'production' && 
+     (process.cwd().includes('/var/task') || process.cwd().includes('/vercel')))
   );
 }
 
