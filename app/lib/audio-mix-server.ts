@@ -14,6 +14,8 @@ logger.debug(`[audio-mix-server] Initializing: NODE_ENV = "${nodeEnv}", AWS Lamb
 // Initialize ffmpeg path for AWS Lambda or traditional environments
 async function initializeFfmpegPath(): Promise<string> {
   // Always use AWS Lambda-compatible ffmpeg for consistent behavior
+  logger.debug('[audio-mix-server] Initializing ffmpeg path with environment details');
+  logger.debug(`[audio-mix-server] Environment: NODE_ENV=${process.env.NODE_ENV}, VERCEL=${process.env.VERCEL}, AWS_EXECUTION_ENV=${process.env.AWS_EXECUTION_ENV}, CWD=${process.cwd()}`);
   logger.debug('[audio-mix-server] Using AWS Lambda-compatible ffmpeg for all environments');
   return await setupAwsLambdaFfmpeg();
 }

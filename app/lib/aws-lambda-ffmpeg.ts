@@ -20,16 +20,23 @@ export function getAwsLambdaFfmpegPath(): string {
     logger.debug(`[AWS Lambda ffmpeg] Using @ffmpeg-installer/linux-x64: ${linuxX64Path}`);
     return linuxX64Path;
   } catch (error) {
-    logger.debug('[AWS Lambda ffmpeg] @ffmpeg-installer/linux-x64 not available');
+    logger.debug('[AWS Lambda ffmpeg] @ffmpeg-installer/linux-x64 not available, trying other options');
   }
   
-  const isLambda = process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL || process.env.FFMPEG_LAMBDA;
+  const isLambda = process.env.AWS_LAMBDA_FUNCTION_NAME || 
+                   process.env.VERCEL || 
+                   process.env.FFMPEG_LAMBDA ||
+                   process.env.AWS_EXECUTION_ENV ||
+                   (typeof process !== 'undefined' && process.cwd().includes('/var/task'));
+  
+  logger.debug(`[AWS Lambda ffmpeg] Environment check: isLambda=${isLambda}, cwd=${process.cwd()}, env vars: VERCEL=${process.env.VERCEL}, AWS_EXECUTION_ENV=${process.env.AWS_EXECUTION_ENV}`);
   
   if (isLambda) {
     // Try AWS Lambda layer paths (including the deployed ffmpeg layer)
     const lambdaLayerPaths = [
       '/opt/bin/ffmpeg',  // Standard Lambda layer path
       '/opt/ffmpeg/bin/ffmpeg',  // Alternative layer path
+      '/opt/ffmpeg',  // Another common layer path
       '/tmp/ffmpeg',
       '/var/task/ffmpeg',
       '/var/runtime/ffmpeg'
@@ -47,7 +54,7 @@ export function getAwsLambdaFfmpegPath(): string {
       }
     }
     
-    // Fallback to first lambda path (will be handled by setupAwsLambdaFfmpeg)
+    // If no Lambda layer found, return the first one to trigger setupAwsLambdaFfmpeg
     return lambdaLayerPaths[0] || '/opt/bin/ffmpeg';
   }
   

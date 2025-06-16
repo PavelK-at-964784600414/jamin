@@ -76,7 +76,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "ffmpeg-static"
+      "@ffmpeg-installer/linux-x64"
     ]
   }
 }
