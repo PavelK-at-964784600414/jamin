@@ -2,6 +2,7 @@
   "build": {
     "env": {
       "FFMPEG_LAMBDA": "true",
+      "FFMPEG_LAMBDA_LAYER_ARN": "arn:aws:lambda:us-east-2:904233133341:layer:ffmpeg:1",
       "TARGET_PLATFORM": "linux",
       "TARGET_ARCH": "x64",
       "NODE_OPTIONS": "--max-old-space-size=4096"
@@ -10,7 +11,8 @@
   "functions": {
     "app/api/**/*.js": {
       "maxDuration": 30,
-      "runtime": "nodejs18.x"
+      "runtime": "nodejs18.x",
+      "layers": ["arn:aws:lambda:us-east-2:904233133341:layer:ffmpeg:1"]
     }
   }
 }

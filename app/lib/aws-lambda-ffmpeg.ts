@@ -26,9 +26,10 @@ export function getAwsLambdaFfmpegPath(): string {
   const isLambda = process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL || process.env.FFMPEG_LAMBDA;
   
   if (isLambda) {
-    // Try AWS Lambda layer paths
+    // Try AWS Lambda layer paths (including the deployed ffmpeg layer)
     const lambdaLayerPaths = [
-      '/opt/bin/ffmpeg',
+      '/opt/bin/ffmpeg',  // Standard Lambda layer path
+      '/opt/ffmpeg/bin/ffmpeg',  // Alternative layer path
       '/tmp/ffmpeg',
       '/var/task/ffmpeg',
       '/var/runtime/ffmpeg'
@@ -125,8 +126,12 @@ export async function setupAwsLambdaFfmpeg(): Promise<string> {
       logger.warn('[AWS Lambda ffmpeg] Could not copy Linux x64 ffmpeg to /tmp:', { metadata: { data: copyError } });
     }
     
-    // Check for Lambda layer paths
-    const lambdaPaths = ['/opt/bin/ffmpeg', '/var/task/ffmpeg'];
+    // Check for Lambda layer paths (including the deployed ffmpeg layer)
+    const lambdaPaths = [
+      '/opt/bin/ffmpeg',  // Standard Lambda layer path  
+      '/opt/ffmpeg/bin/ffmpeg',  // Alternative layer path
+      '/var/task/ffmpeg'
+    ];
     for (const lambdaPath of lambdaPaths) {
       try {
         await fs.access(lambdaPath, require('fs').constants.X_OK);
