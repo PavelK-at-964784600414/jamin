@@ -11,8 +11,7 @@
   "functions": {
     "app/api/**/*.js": {
       "maxDuration": 30,
-      "runtime": "nodejs18.x",
-      "layers": ["arn:aws:lambda:us-east-2:904233133341:layer:ffmpeg:1"]
+      "runtime": "nodejs18.x"
     }
   }
 }
