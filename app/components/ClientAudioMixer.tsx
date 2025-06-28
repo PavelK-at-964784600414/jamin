@@ -75,18 +75,35 @@ export default function ClientAudioMixer({
       // Handle original audio file (URL)
       logger.debug('[ClientAudioMixer] Fetching original audio file from URL', { metadata: { url: originalAudioUrl } });
       let originalFile;
-      try {
-        // First try to fetch directly
-        originalFile = await fetchFile(originalAudioUrl);
-      } catch (fetchError) {
-        logger.debug('[ClientAudioMixer] Direct fetch failed, trying through proxy:', { metadata: { error: fetchError instanceof Error ? fetchError.message : String(fetchError) } });
-        // Try using our proxy to avoid CORS issues
+      
+      // Check if this is an S3 URL that needs proxying
+      const isS3Url = originalAudioUrl.includes('s3.') || originalAudioUrl.includes('amazonaws.com');
+      
+      if (isS3Url) {
+        // Always use proxy for S3 URLs to avoid CORS issues
+        logger.debug('[ClientAudioMixer] Using proxy for S3 URL');
         try {
           const proxyUrl = `/api/proxy-audio?url=${encodeURIComponent(originalAudioUrl)}`;
           originalFile = await fetchFile(proxyUrl);
         } catch (proxyError) {
-          logger.error('[ClientAudioMixer] Proxy fetch also failed:', { metadata: { error: proxyError instanceof Error ? proxyError.message : String(proxyError) } });
-          throw new Error('Cannot access original audio file. Please check your internet connection.');
+          logger.error('[ClientAudioMixer] Proxy fetch failed for S3 URL:', { metadata: { error: proxyError instanceof Error ? proxyError.message : String(proxyError) } });
+          throw new Error('Cannot access original audio file from S3. Please check your internet connection.');
+        }
+      } else {
+        // For non-S3 URLs, try direct fetch first, then fallback to proxy
+        try {
+          // First try to fetch directly
+          originalFile = await fetchFile(originalAudioUrl);
+        } catch (fetchError) {
+          logger.debug('[ClientAudioMixer] Direct fetch failed, trying through proxy:', { metadata: { error: fetchError instanceof Error ? fetchError.message : String(fetchError) } });
+          // Try using our proxy to avoid CORS issues
+          try {
+            const proxyUrl = `/api/proxy-audio?url=${encodeURIComponent(originalAudioUrl)}`;
+            originalFile = await fetchFile(proxyUrl);
+          } catch (proxyError) {
+            logger.error('[ClientAudioMixer] Both direct and proxy fetch failed:', { metadata: { error: proxyError instanceof Error ? proxyError.message : String(proxyError) } });
+            throw new Error('Cannot access original audio file. Please check your internet connection.');
+          }
         }
       }
       
