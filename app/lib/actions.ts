@@ -583,19 +583,9 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       return {
         message: 'No audio file provided. Failed to Create Layer.',
       };
-    }    // After uploading both layer recording and retrieving parent/collaboration data, mix the two audio files
-    if (recording_url && mixingAudioUrl) {
-      try {
-        // Use a server-side ffmpeg utility to mix the base audio (theme or collaboration) with new layer audio
-        const { mixAudioFiles } = await import('./audio-mix-server');
-        const mixedUrl = await mixAudioFiles(mixingAudioUrl, recording_url);
-        recording_url = mixedUrl;
-        logger.debug('Mixed audio URL', { metadata: { data: recording_url } });
-      } catch (mixingError) {
-        logger.warn('Audio mixing failed, using layer recording as-is', { metadata: { error: mixingError instanceof Error ? mixingError.message : String(mixingError) } });
-        // Continue with the original recording_url - this allows the layer to be created without mixing
-      }
-    }
+    }    // Audio file uploaded successfully - no need for server-side mixing since it's now done client-side
+    // The uploaded file should already be the mixed result from the client
+    logger.debug('Layer file uploaded to S3 (pre-mixed on client)', { metadata: { data: recording_url } });
 
     const date = new Date().toISOString().split('T')[0];    // Insert the layer into the new collabs table
     await sql`

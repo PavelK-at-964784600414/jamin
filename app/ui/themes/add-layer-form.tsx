@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import RecordingControls from './RecordingControls';
 import MediaPlayer from './MediaPlayer';
 import LayerMetadataForm from './LayerMetadataForm';
+import ClientAudioMixer from '@/app/components/ClientAudioMixer';
 import { getSupportedAudioFormats, validateAudioFile, getAudioDuration } from '@/app/lib/audio-utils';
 import { logger } from '@/app/lib/logger';
 
@@ -34,11 +35,17 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
   const [isVideoMode, setIsVideoMode] = useState(false);
   const [metronomeEnabled, setMetronomeEnabled] = useState(true);
   const [file, setFile] = useState<File | null>(null);
+  const [mixedFile, setMixedFile] = useState<File | null>(null); // For client-side mixed audio
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   // Reference for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Audio mixing state
+  const [showMixer, setShowMixer] = useState(false);
+  const [mixingProgress, setMixingProgress] = useState(0);
+  const [mixingError, setMixingError] = useState<string | null>(null);
   
   // Theme playback
   const [isPlaying, setIsPlaying] = useState(false);
@@ -264,6 +271,63 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     setIsPlaybackModalOpen(!isPlaybackModalOpen);
   };
 
+  // Handle audio mixing completion
+  const handleMixComplete = async (mixedAudioBlob: Blob) => {
+    try {
+      logger.debug('[AddLayerForm] Processing mixed audio blob');
+      
+      const mixedFileName = `mixed-${Date.now()}.mp4`;
+      const mixedAudioFile = new File([mixedAudioBlob], mixedFileName, { 
+        type: 'audio/mp4',
+        lastModified: Date.now()
+      });
+      
+      setMixedFile(mixedAudioFile);
+      setShowMixer(false);
+      setMixingError(null);
+      
+      // Get duration of mixed audio
+      try {
+        const mixedDuration = await getAudioDuration(mixedAudioFile);
+        setDuration(mixedDuration);
+        logger.debug('Mixed audio duration set', { metadata: { duration: mixedDuration, unit: 'seconds' } });
+      } catch (error) {
+        logger.error('Failed to get mixed audio duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
+        setDuration(0);
+      }
+      
+      logger.debug('[AddLayerForm] Audio mixing completed successfully');
+    } catch (error) {
+      logger.error('[AddLayerForm] Error processing mixed audio:', { metadata: { error: error instanceof Error ? error.message : String(error) } });
+      setMixingError('Failed to process mixed audio. Please try again.');
+    }
+  };
+
+  // Handle audio mixing error
+  const handleMixError = (errorMessage: string) => {
+    setMixingError(errorMessage);
+    setShowMixer(false);
+    logger.error('[AddLayerForm] Audio mixing failed:', { metadata: { error: errorMessage } });
+  };
+
+  // Handle mixing progress
+  const handleMixProgress = (progress: number) => {
+    setMixingProgress(progress);
+  };
+
+  // Start audio mixing process
+  const startAudioMixing = () => {
+    if (!file) {
+      setError('No layer audio file available for mixing.');
+      return;
+    }
+    
+    setMixingError(null);
+    setMixingProgress(0);
+    setShowMixer(true);
+    logger.debug('[AddLayerForm] Starting audio mixing process');
+  };
+
   // Maximum file size: 500MB (increased for video files)
   const MAX_FILE_SIZE = 500 * 1024 * 1024;
   const ALLOWED_AUDIO_TYPES = [
@@ -281,38 +345,41 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     setError(null);
     setSuccess(null); // Reset success message on new submission attempt
     
+    // Check if we have a mixed file (preferred) or raw file
+    const fileToCheck = mixedFile || file;
+    
     // File validation
-    if (!file) {
+    if (!fileToCheck) {
       setError('No file to save. Please record or upload a file first.');
       return false;
     }
     
     // File size validation
-    if (file.size > MAX_FILE_SIZE) {
+    if (fileToCheck.size > MAX_FILE_SIZE) {
       setError(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
       return false;
     }
     
     // File type validation
-    if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
+    if (!ALLOWED_AUDIO_TYPES.includes(fileToCheck.type)) {
       // If file type is not in allowed list, check if it's a known audio type
-      const isAudioFile = file.type.startsWith('audio/') || file.type.startsWith('video/');
+      const isAudioFile = fileToCheck.type.startsWith('audio/') || fileToCheck.type.startsWith('video/');
       if (!isAudioFile) {
         setError('Invalid file type. Please upload a supported audio format.');
         return false;
       }
       // If it's an audio type but not in our allowed list, we'll still try to process it
-      logger.warn(`File type ${file.type} not in allowed list, but appears to be audio/video`);
+      logger.warn(`File type ${fileToCheck.type} not in allowed list, but appears to be audio/video`);
     }
     
     // Validate that the media file is playable (use appropriate validation for file type)
     try {
       let isValid = false;
-      if (file.type.startsWith('video/')) {
+      if (fileToCheck.type.startsWith('video/')) {
         const { validateVideoFile } = await import('@/app/lib/video-utils');
-        isValid = await validateVideoFile(file);
+        isValid = await validateVideoFile(fileToCheck);
       } else {
-        isValid = await validateAudioFile(file);
+        isValid = await validateAudioFile(fileToCheck);
       }
       
       if (!isValid) {
@@ -331,7 +398,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     }
     
     // No longer using DataTransfer API which causes Safari issues
-    if (!file) {
+    if (!fileToCheck) {
       setError('No audio file selected. Please record or upload a file.');
       return false;
     }
@@ -403,8 +470,9 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       safeFormData.append('mode', mode);
       safeFormData.append('themeId', theme.id);
       
-      // Special handling for file upload in Safari
-      if (file) {
+      // Special handling for file upload in Safari - use mixed file if available, otherwise raw file
+      const finalFile = mixedFile || file;
+      if (finalFile) {
         try {
           // Use FileReader approach first which is more compatible with Safari
           const safeFile = await new Promise<File>((resolve, reject) => {
@@ -417,19 +485,19 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
                 }
                 
                 // Determine a safe MIME type
-                let safeMimeType = file.type || 'audio/webm';
+                let safeMimeType = finalFile.type || 'audio/webm';
                 if (!safeMimeType || safeMimeType === '') {
                   // If no mime type, try to determine from extension
-                  if (file.name.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
-                  else if (file.name.endsWith('.wav')) safeMimeType = 'audio/wav';
-                  else if (file.name.endsWith('.webm')) safeMimeType = 'audio/webm';
-                  else if (file.name.endsWith('.mp4')) safeMimeType = 'video/mp4';
+                  if (finalFile.name.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
+                  else if (finalFile.name.endsWith('.wav')) safeMimeType = 'audio/wav';
+                  else if (finalFile.name.endsWith('.webm')) safeMimeType = 'audio/webm';
+                  else if (finalFile.name.endsWith('.mp4')) safeMimeType = 'audio/mp4';
                   else safeMimeType = 'audio/webm'; // Default fallback
                 }
                 
                 // Create a completely new blob and file object
                 const fileBlob = new Blob([arrayBuffer], { type: safeMimeType });
-                const fileName = file.name || `recording-${Date.now()}.webm`;
+                const fileName = finalFile.name || `recording-${Date.now()}.webm`;
                 
                 // Create a new File with the content
                 const newFile = new File([fileBlob], fileName, { 
@@ -443,7 +511,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
               }
             };
             reader.onerror = () => reject(new Error('FileReader failed'));
-            reader.readAsArrayBuffer(file);
+            reader.readAsArrayBuffer(finalFile);
           });
           
           // Append the safe file to the form data
@@ -453,11 +521,11 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           logger.error('Error with FileReader approach', { metadata: { error: error instanceof Error ? error.message : String(error) } });
           try {
             // Fallback: Try to create a new simple Blob and File
-            const blobType = file.type || 'audio/webm';
-            const fileName = file.name || `recording-${Date.now()}.webm`;
+            const blobType = finalFile.type || 'audio/webm';
+            const fileName = finalFile.name || `recording-${Date.now()}.webm`;
             
             // Just create a simple copy using slice()
-            const fileBlob = file.slice(0, file.size, blobType);
+            const fileBlob = finalFile.slice(0, finalFile.size, blobType);
             const safeFile = new File([fileBlob], fileName, { 
               type: blobType,
               lastModified: Date.now()
@@ -467,7 +535,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           } catch (fallbackError) {
             logger.error('All safe approaches failed', { metadata: { error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError) } });
             // Last resort - direct append and hope for the best
-            safeFormData.append('audioFile', file);
+            safeFormData.append('audioFile', finalFile);
             logger.debug('Using direct file append as last resort');
           }
         }
@@ -560,6 +628,71 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             {state.message}
           </div>
         )}
+
+        {/* Audio mixing section - show after file is recorded/uploaded */}
+        {file && !mixedFile && !showMixer && (
+          <div className="mt-6 p-4 bg-gray-800 rounded-lg">
+            <h3 className="text-lg font-semibold text-white mb-4">Audio Mixing</h3>
+            <p className="text-gray-300 mb-4">
+              Mix your layer with the original theme to create the final audio, or save just your layer.
+            </p>
+            
+            {mixingError && (
+              <div className="p-3 bg-red-900 text-white rounded-md mb-4">
+                {mixingError}
+              </div>
+            )}
+            
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={startAudioMixing}
+                disabled={!file}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-200"
+              >
+                Mix with Original Theme
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Skip mixing and use the original file as mixed file
+                  setMixedFile(file);
+                  logger.debug('[AddLayerForm] Skipping mixing, using raw layer');
+                }}
+                disabled={!file}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-800 disabled:cursor-not-allowed transition-colors duration-200"
+              >
+                Save Layer Only
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Client-side audio mixer component */}
+        {showMixer && file && (
+          <div className="mt-6">
+            <ClientAudioMixer
+              originalAudioUrl={theme.recording_url}
+              layerAudioUrl={file}
+              onMixComplete={handleMixComplete}
+              onMixError={handleMixError}
+              onProgress={handleMixProgress}
+            />
+          </div>
+        )}
+
+        {/* Show mixed audio success message */}
+        {mixedFile && (
+          <div className="mt-6 p-4 bg-green-800 rounded-lg">
+            <h3 className="text-lg font-semibold text-white mb-2">✓ Audio Ready</h3>
+            <p className="text-green-200">
+              {mixedFile === file ? 
+                'Your layer is ready to save (layer only).' :
+                'Your layer has been mixed with the original theme and is ready to save.'
+              }
+            </p>
+          </div>
+        )}
   
         {/* Show metadata form if we have a file */}
         {file && (
@@ -602,10 +735,12 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             <div className="mt-6 flex justify-end">
               <button
                 type="submit"
-                disabled={isPending} // Use isPending from useActionState
+                disabled={isPending || (file && !mixedFile)} // Disabled if pending or if we have file but no mixed file
                 className="px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-600"
               >
-                {isPending ? 'Saving...' : 'Save Layer'} {/* Use isPending */}
+                {isPending ? 'Saving...' : 
+                 (file && !mixedFile) ? 'Mix Audio First' : 
+                 'Save Layer'}
               </button>
             </div>
           </div>
