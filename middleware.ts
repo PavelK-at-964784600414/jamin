@@ -103,21 +103,34 @@ export default auth((req: any) => {
     if (isSafari) {
     console.log('🍎 Safari detected - applying compatibility headers');
     
-    // Only add aggressive cache control for HTML pages, not static assets
-    if (!pathname.includes('/_next/static/') && !pathname.includes('.js') && !pathname.includes('.css')) {
-      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      response.headers.set('Pragma', 'no-cache');
-      response.headers.set('Expires', '0');
+    // For Safari in development mode, be much less aggressive with cache control
+    // to avoid interfering with session management
+    if (process.env.NODE_ENV === 'development') {
+      // In development, only prevent caching for specific problematic routes, not all HTML
+      if (pathname === '/login' || pathname === '/signup' || pathname.startsWith('/api/auth/')) {
+        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+      }
+      
+      // Remove any Clear-Site-Data headers in development to preserve sessions
+      response.headers.delete('Clear-Site-Data');
+    } else {
+      // Production Safari handling - more aggressive caching control is OK
+      if (!pathname.includes('/_next/static/') && !pathname.includes('.js') && !pathname.includes('.css')) {
+        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+      }
     }
     
-    // Add connection keep-alive for Safari
+    // Add connection keep-alive for Safari (safe for both dev and prod)
     response.headers.set('Connection', 'keep-alive');
     response.headers.set('Keep-Alive', 'timeout=5, max=100');
     
-    // For Safari on localhost, actively prevent HTTPS caching
+    // Remove HSTS for localhost in any mode
     if (isLocalhost) {
-      response.headers.set('Clear-Site-Data', '"cache", "cookies", "storage"');
-      response.headers.delete('Strict-Transport-Security'); // Explicitly remove HSTS
+      response.headers.delete('Strict-Transport-Security');
     }
     
     // Ensure JavaScript bundles are properly cached for Safari

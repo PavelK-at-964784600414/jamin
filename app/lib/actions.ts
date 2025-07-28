@@ -467,10 +467,11 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
             const fileName = audioFile.name || `recording-${Date.now()}.webm`;
             
             // Generate a unique key for S3
-            const fileKey = `layers/${themeId}/${Date.now()}-${fileName}`;
+            const fileKey = `layers/${themeId || collaborationId}/${Date.now()}-${fileName}`;
               // Use the uploadFileToS3WithRetry utility which handles environment differences
             // This avoids direct FileReader usage on the server
-            recording_url = await uploadFileToS3WithRetry(audioFile, 'layers/' + themeId);
+            const uploadPath = `layers/${themeId || collaborationId}`;
+            recording_url = await uploadFileToS3WithRetry(audioFile, uploadPath);
             logger.debug('Layer file uploaded successfully to S3', { metadata: { data: recording_url } });
           } catch (error) {
             logger.error('Error uploading file to S3', { metadata: { error: error instanceof Error ? error.message : String(error) } });
@@ -481,12 +482,13 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         } else if (audioFile instanceof Blob) {
           // Handle Blob type (might come from some browser recordings)
           try {
-            const fileKey = `layers/${themeId}/${Date.now()}-recording.webm`;
+            const fileKey = `layers/${themeId || collaborationId}/${Date.now()}-recording.webm`;
             const blobAsFile = new File([audioFile], 'recording.webm', { 
               type: audioFile.type || 'audio/webm',
               lastModified: Date.now() 
             });            // Use the uploadFileToS3WithRetry utility which handles environment differences
-            recording_url = await uploadFileToS3WithRetry(blobAsFile, 'layers/' + themeId);
+            const uploadPath = `layers/${themeId || collaborationId}`;
+            recording_url = await uploadFileToS3WithRetry(blobAsFile, uploadPath);
             logger.debug('Layer file uploaded from Blob, URL', { metadata: { data: recording_url } });
           } catch (error) {
             logger.error('Error uploading Blob to S3', { metadata: { error: error instanceof Error ? error.message : String(error) } });
@@ -497,7 +499,7 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         } else {
           // For other types, attempt to convert to a usable format
           try {
-            const fileKey = `layers/${themeId}/${Date.now()}-recording.webm`;
+            const fileKey = `layers/${themeId || collaborationId}/${Date.now()}-recording.webm`;
             
             // Handle various data formats - ensure we have a usable object for S3
             let uploadableFile;
@@ -564,7 +566,8 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
             }
             
             // Upload the converted file using the utility function that's safe for server-side
-            recording_url = await uploadFileToS3WithRetry(uploadableFile, 'layers/' + themeId);
+            const uploadPath = `layers/${themeId || collaborationId}`;
+            recording_url = await uploadFileToS3WithRetry(uploadableFile, uploadPath);
             logger.debug('Layer file uploaded from converted format, URL', { metadata: { data: recording_url } });
           } catch (conversionError) {
             logger.error('Failed to convert or upload audio file', { metadata: { error: conversionError instanceof Error ? conversionError.message : String(conversionError) } });
@@ -598,6 +601,11 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
         ${genre}, ${recording_url}, ${instrument}, ${parentThemeId}
       )
     `;
+    
+    // Note: We do NOT update the original collaboration's recording URL
+    // Each layer/collaboration should maintain its own recording URL
+    // The mixing is handled client-side and the result is saved as a new layer
+    
     logger.debug('Layer created successfully in collabs table with title', { metadata: { data: title } });
     // Make sure parentThemeId is a string before using it with revalidatePath
     const pathToRevalidate = `/dashboard/themes/${String(parentThemeId)}`;

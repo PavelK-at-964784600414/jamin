@@ -422,7 +422,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       setSuccess(null); // Clear success message if there's an error
     } else if (state?.success) {
       // If the submission was successful
-      setSuccess('Layer saved successfully!');
+      setSuccess('Layer created and saved successfully!');
       setFile(null);
       setRecordedChunks([]);
       
@@ -431,7 +431,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
         if (state.themeId) {
           router.push(`/dashboard/themes/${state.themeId}`);
         }
-      }, 1500);
+      }, 2000); // Increased to 2 seconds to give more time to see the enhanced message
       
       // Clean up the timer if the component unmounts
       return () => clearTimeout(redirectTimer);
@@ -569,6 +569,35 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             The original theme will play during recording for synchronization.
           </p>
         </div>
+
+        {/* Success message - prominent position at top */}
+        {success && (
+          <div className="mb-6 p-6 bg-gradient-to-r from-green-800 to-green-600 text-white rounded-lg border border-green-500 shadow-lg">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-green-200" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">✨ {success}</h3>
+                <p className="text-green-200 text-sm mt-1">Redirecting to your theme...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error messages */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-900 text-white rounded-md">
+            {error}
+          </div>
+        )}
+        {state.message && (
+          <div className="mb-6 p-4 bg-red-900 text-white rounded-md">
+            {state.message}
+          </div>
+        )}
   
         {/* Theme playback preview button */}
         <div className="mb-6">
@@ -612,23 +641,6 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
           onClose={toggleThemePlayback}
         />
   
-        {/* Show success or error message */}
-        {error && (
-          <div className="p-4 bg-red-900 text-white rounded-md my-4">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="p-4 bg-green-900 text-white rounded-md my-4">
-            {success}
-          </div>
-        )}
-        {state.message && (
-          <div className="p-4 bg-red-900 text-white rounded-md my-4">
-            {state.message}
-          </div>
-        )}
-
         {/* Audio mixing section - show after file is recorded/uploaded */}
         {file && !mixedFile && !showMixer && (
           <div className="mt-6 p-4 bg-gray-800 rounded-lg">

@@ -92,7 +92,23 @@ export async function signUp(
 // The `auth` parameter is typically `Session | null` (imported from `next-auth` as `NextAuthSession`).
 export const nextAuthConfig: NextAuthConfig = { 
   pages: { signIn: '/login', error: '/login' },
-  session: { strategy: 'jwt' },
+  session: { 
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'development' ? 'next-auth.session-token' : '__Secure-next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'development' ? 'localhost' : undefined,
+      },
+    },
+  },
   callbacks: {
     async signIn({ user, account, profile }: { user: User | any; account?: Account | null; profile?: Profile }) {
       if (account?.provider === "google") {

@@ -6,6 +6,7 @@ import { createLayer, LayerState } from '@/app/lib/actions';
 import { useRouter } from 'next/navigation';
 import RecordingControls from '@/app/ui/themes/RecordingControls';
 import LayerMetadataForm from '@/app/ui/themes/LayerMetadataForm';
+import ClientAudioMixer from '@/app/components/ClientAudioMixer';
 import { getSupportedAudioFormats, validateAudioFile, getAudioDuration } from '@/app/lib/audio-utils';
 import { logger } from '@/app/lib/logger';
 
@@ -41,10 +42,16 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
   const [isVideoMode, setIsVideoMode] = useState(false);
   const [metronomeEnabled, setMetronomeEnabled] = useState(true);
   const [file, setFile] = useState<File | null>(null);
+  const [mixedFile, setMixedFile] = useState<File | null>(null); // For client-side mixed audio
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Audio mixing state
+  const [showMixer, setShowMixer] = useState(false);
+  const [mixingProgress, setMixingProgress] = useState(0);
+  const [mixingError, setMixingError] = useState<string | null>(null);
   
   // Collaboration playback - multiple audio sources
   const [isPlaying, setIsPlaying] = useState(false);
@@ -80,10 +87,22 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
 
   // Initialize audio element for the complete collaboration recording only
   useEffect(() => {
-    // Only use the latest collaboration recording, which already contains all layers mixed together
-    if (collaboration.collab_recording_url) {
+    logger.debug('Collaboration data for audio mixing:', { 
+      metadata: { 
+        collab_id: collaboration.collab_id,
+        recording_url: collaboration.collab_recording_url,
+        parent_theme_recording_url: collaboration.parent_theme_recording_url,
+        has_recording: !!(collaboration.collab_recording_url || collaboration.parent_theme_recording_url),
+        total_layers: collaboration.total_layers_count 
+      } 
+    });
+    
+    // Use the collaboration recording if available, otherwise use the parent theme recording
+    const baseAudioUrl = collaboration.collab_recording_url || collaboration.parent_theme_recording_url;
+    
+    if (baseAudioUrl) {
       const audio = new Audio();
-      audio.src = collaboration.collab_recording_url;
+      audio.src = baseAudioUrl;
       audio.preload = 'auto';
       setAudioElements([audio]);
       
@@ -93,6 +112,7 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
       };
     } else {
       setAudioElements([]);
+      logger.warn('No collaboration or theme recording URL found - mixing may not work properly');
       // Return undefined explicitly for the else case
       return undefined;
     }
@@ -292,6 +312,37 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
     }
   };
 
+  // Audio mixing handlers (for client-side mixing with collaboration audio)
+  const handleMixComplete = (mixedAudioBlob: Blob) => {
+    // Convert blob to file
+    const mixedFileName = `mixed-${Date.now()}.mp4`;
+    const mixedAudioFile = new File([mixedAudioBlob], mixedFileName, { 
+      type: 'audio/mp4'
+    });
+    
+    logger.debug('Client-side audio mixing completed for collaboration layer');
+    setMixedFile(mixedAudioFile);
+    setShowMixer(false);
+    setMixingError(null);
+  };
+
+  const handleMixError = (error: string) => {
+    logger.error('Client-side audio mixing failed for collaboration layer', { metadata: { error } });
+    setMixingError(error);
+    setShowMixer(false);
+  };
+
+  const handleMixProgress = (progress: number) => {
+    setMixingProgress(progress);
+  };
+
+  // Start mixing process
+  const startAudioMixing = () => {
+    setMixingError(null);
+    setMixingProgress(0);
+    setShowMixer(true);
+  };
+
   // Maximum file size: 500MB (increased for video files)
   const MAX_FILE_SIZE = 500 * 1024 * 1024;
   const ALLOWED_AUDIO_TYPES = [
@@ -304,18 +355,20 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
     setError(null);
     setSuccess(null);
     
-    if (!file) {
+    // Check either original file or mixed file
+    const fileToCheck = mixedFile || file;
+    if (!fileToCheck) {
       setError('No file to save. Please record or upload a file first.');
       return false;
     }
     
-    if (file.size > MAX_FILE_SIZE) {
+    if (fileToCheck.size > MAX_FILE_SIZE) {
       setError(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
       return false;
     }
     
-    if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
-      const isAudioFile = file.type.startsWith('audio/') || file.type.startsWith('video/');
+    if (!ALLOWED_AUDIO_TYPES.includes(fileToCheck.type)) {
+      const isAudioFile = fileToCheck.type.startsWith('audio/') || fileToCheck.type.startsWith('video/');
       if (!isAudioFile) {
         setError('Invalid file type. Please upload a supported audio format.');
         return false;
@@ -350,10 +403,11 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
     formData.append('duration', duration.toString());
     formData.append('collaborationId', collaboration.collab_id);
     
-    // Add the file
-    if (file) {
-      formData.append('audioFile', file);
-      logger.debug('File attached to form', { metadata: { name: file.name, type: file.type, size: file.size } });
+    // Add the file (use mixed file if available, otherwise use original file)
+    const finalFile = mixedFile || file;
+    if (finalFile) {
+      formData.append('audioFile', finalFile);
+      logger.debug('File attached to form', { metadata: { name: finalFile.name, type: finalFile.type, size: finalFile.size, isMixed: !!mixedFile } });
     }
     
     // Call the server action directly
@@ -450,6 +504,104 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
           onChange={() => {}} // Controlled by the RecordingControls component
         />
 
+        {/* Debug info to understand button visibility */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-4 bg-yellow-800 rounded-lg text-sm">
+            <h4 className="text-white font-semibold mb-2">Debug Info:</h4>
+            <div className="text-yellow-200 space-y-1">
+              <div>file: {file ? `${file.name} (${file.type})` : 'null'}</div>
+              <div>mixedFile: {mixedFile ? `${mixedFile.name} (${mixedFile.type})` : 'null'}</div>
+              <div>showMixer: {showMixer.toString()}</div>
+              <div>collaboration.collab_recording_url: {collaboration.collab_recording_url || 'null'}</div>
+              <div>collaboration.parent_theme_recording_url: {collaboration.parent_theme_recording_url || 'null'}</div>
+              <div>baseAudioUrl: {(collaboration.collab_recording_url || collaboration.parent_theme_recording_url) || 'null'}</div>
+              <div>Should show Mix Audio: {String(!!(file && !mixedFile && !showMixer))}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Audio Mixing Section */}
+        {file && !mixedFile && !showMixer && (
+          <div className="mt-6 p-6 bg-gray-800 rounded-lg">
+            <h3 className="text-lg font-semibold text-white mb-4">🎵 Audio Mixing</h3>
+            <p className="text-gray-300 mb-4">
+              Mix your layer with the existing collaboration audio for the best sound quality.
+            </p>
+            
+            {mixingError && (
+              <div className="p-3 bg-red-900 text-white rounded-md mb-4">
+                {mixingError}
+              </div>
+            )}
+            
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={startAudioMixing}
+                className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors font-medium"
+              >
+                🎚️ Mix Audio
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Skip mixing - use layer only
+                  setMixedFile(file);
+                  logger.debug('[CollabAddLayerForm] Skipping mixing, using raw layer');
+                }}
+                className="px-6 py-3 bg-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors"
+              >
+                Skip Mixing (Layer Only)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Client-side audio mixer component */}
+        {showMixer && file && (
+          <div className="mt-6">
+            <ClientAudioMixer
+              originalAudioUrl={collaboration.collab_recording_url || collaboration.parent_theme_recording_url || ''}
+              layerAudioUrl={file}
+              onMixComplete={handleMixComplete}
+              onMixError={handleMixError}
+              onProgress={handleMixProgress}
+            />
+          </div>
+        )}
+
+        {/* Show mixing error */}
+        {mixingError && (
+          <div className="mt-6 p-4 bg-red-800 rounded-lg">
+            <h3 className="text-lg font-semibold text-white mb-2">❌ Mixing Failed</h3>
+            <p className="text-red-200 mb-4">{mixingError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setMixingError(null);
+                // Allow user to try again or skip mixing
+                setMixedFile(file);
+              }}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            >
+              Skip Mixing (Use Layer Only)
+            </button>
+          </div>
+        )}
+
+        {/* Show mixed audio success message */}
+        {mixedFile && (
+          <div className="mt-6 p-4 bg-green-800 rounded-lg">
+            <h3 className="text-lg font-semibold text-white mb-2">✓ Audio Ready</h3>
+            <p className="text-green-200">
+              {mixedFile === file ? 
+                'Your layer is ready to save (layer only).' :
+                'Your layer has been mixed with the existing collaboration and is ready to save.'
+              }
+            </p>
+          </div>
+        )}
+
         {/* Display validation errors */}
         {state?.errors && Object.keys(state.errors).length > 0 && (
           <div className="p-4 bg-red-900 text-red-200 rounded-md">
@@ -498,14 +650,17 @@ export default function AddLayerToCollabForm({ collaboration }: AddLayerToCollab
           </button>
           <button
             type="submit"
-            disabled={isPending || !file}
+            disabled={isPending || !file || !mixedFile || showMixer}
             className={`px-6 py-3 rounded-md font-medium transition-colors ${
-              isPending || !file
+              isPending || !file || !mixedFile || showMixer
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-green-600 text-white hover:bg-green-700'
             }`}
           >
-            {isPending ? 'Saving Layer...' : 'Save Layer'}
+            {isPending ? 'Saving Layer...' : 
+             showMixer ? 'Mixing Audio...' :
+             !mixedFile ? 'Mix Audio First' :
+             'Save Layer'}
           </button>
         </div>
       </form>
