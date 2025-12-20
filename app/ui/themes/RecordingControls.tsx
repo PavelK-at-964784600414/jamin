@@ -1,6 +1,5 @@
 import React from 'react';
-import { MicrophoneIcon, VideoCameraIcon, PlayIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
-import { Button } from '@/app/ui/button';
+import { MicrophoneIcon, VideoCameraIcon, ArrowUpTrayIcon, StopIcon } from '@heroicons/react/24/outline';
 
 interface RecordingControlsProps {
   isRecording: boolean;
@@ -24,54 +23,71 @@ export default function RecordingControls({
   file,
 }: RecordingControlsProps) {
   return (
-    <div className="rounded-xl bg-gradient-to-r from-gray-800 to-gray-700 p-6 mt-6 shadow-2xl">
-      {/* Recording Mode Section (Toggle) */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xl font-semibold text-white">Recording Mode</span>
-        <Button
+    <div className="bg-gradient-to-br from-indigo-800 to-purple-700 rounded-xl p-6 shadow-lg">
+      <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+        <span className="bg-red-500 rounded-full w-6 h-6 flex items-center justify-center text-sm mr-2">4</span>
+        Record Your Theme
+      </h3>
+      
+      {/* Quick Settings */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+          <span className="text-white text-sm">Recording Mode</span>
+          <button
             type="button"
             onClick={() => setIsVideoMode(!isVideoMode)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
-            isVideoMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-500'
-            } text-white`}
-        >
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              isVideoMode 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+            }`}
+          >
             {isVideoMode ? 'Video' : 'Audio'}
-        </Button>
+          </button>
         </div>
-      {/* Metronome Toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xl font-semibold text-white">Metronome</span>
-        <Button
-          type="button"
-          onClick={() => setMetronomeEnabled(!metronomeEnabled)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
-            metronomeEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-500'
-          } text-white`}
-        >
-          {metronomeEnabled ? 'On' : 'Off'}
-        </Button>
+        <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+          <span className="text-white text-sm">Metronome</span>
+          <button
+            type="button"
+            onClick={() => setMetronomeEnabled(!metronomeEnabled)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              metronomeEnabled 
+                ? 'bg-green-500 text-white' 
+                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+            }`}
+          >
+            {metronomeEnabled ? 'ON' : 'OFF'}
+          </button>
+        </div>
       </div>
 
-      {/* Recording & File Controls */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            type="button"
-            onClick={onStartStopRecording}
-            className="flex items-center gap-2 px-5 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200"
-          >
-            {isRecording ? (
-              <>
-                <MicrophoneIcon className="h-6 w-6 bg-red 400" />
-                Stop Recording
-              </>
-            ) : (
-              <>
-                <MicrophoneIcon className="h-6 w-6" />
-                {isVideoMode ? 'Record Video' : 'Record Audio'}
-              </>
-            )}
-          </Button>
+      {/* Main Recording Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <button
+          type="button"
+          onClick={onStartStopRecording}
+          className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all transform hover:scale-105 ${
+            isRecording
+              ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25'
+              : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25'
+          }`}
+        >
+          {isRecording ? (
+            <>
+              <StopIcon className="w-5 h-5" />
+              Stop Recording
+            </>
+          ) : (
+            <>
+              {isVideoMode ? <VideoCameraIcon className="w-5 h-5" /> : <MicrophoneIcon className="w-5 h-5" />}
+              {isVideoMode ? 'Record Video' : 'Record Audio'}
+            </>
+          )}
+        </button>
+
+        <div className="text-white text-sm">OR</div>
+
+        <div className="relative">
           <input
             type="file"
             accept={isVideoMode ? 'video/*,audio/*' : 'audio/*'}
@@ -81,14 +97,23 @@ export default function RecordingControls({
           />
           <label
             htmlFor="file-input"
-            className="flex items-center gap-2 cursor-pointer px-4 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors duration-200"
+            className="flex items-center gap-2 cursor-pointer px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-medium transition-all transform hover:scale-105 shadow-lg shadow-green-500/25"
           >
-            <PlayIcon className="h-6 w-6" />
+            <ArrowUpTrayIcon className="w-5 h-5" />
             Upload File
           </label>
         </div>
-        {/* We'll use form submission instead of a separate save button */}
       </div>
+
+      {/* File Status */}
+      {file && (
+        <div className="mt-4 p-3 bg-black/20 rounded-lg">
+          <div className="flex items-center gap-2 text-green-400">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <span className="text-sm">File ready: {file.name}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

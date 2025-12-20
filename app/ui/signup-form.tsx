@@ -4,20 +4,20 @@ import { useState, useEffect } from 'react';
 import { useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/ui/button';
-import { register } from '@/app/lib/actions';
+import { register, type RegisterState } from '@/app/lib/actions';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { SignupFormSchema } from '@/app/lib/definitions';
+import confetti from 'canvas-confetti';
 
 export default function SignupForm() {
   const router = useRouter();
-  // Keep your existing hook unchanged
-  const [errorMessage, formAction, isPending] = useActionState(register, undefined);
-
-  // Only redirect after a form submission, not on initial mount
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [state, formAction, isPending] = useActionState<RegisterState | undefined, FormData>(
+    register, 
+    undefined
+  );
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleFormAction = async (formData: FormData) => {
-    setHasSubmitted(true);
     return formAction(formData);
   };
 
@@ -55,19 +55,56 @@ export default function SignupForm() {
     }
   }, [userName, email, password, confirmPassword, firstName, lastName, country, instrument]);
 
+  // Handle success with confetti and redirect
   useEffect(() => {
-    if (hasSubmitted && errorMessage === undefined && !isPending) {
-      router.push('/login');
+    if (state?.success) {
+      setShowSuccess(true);
+      
+      // Trigger confetti effect
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+      
+      // Redirect after showing success message for 2 seconds
+      const redirectTimer = setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+      
+      return () => clearTimeout(redirectTimer);
     }
-  }, [hasSubmitted, errorMessage, isPending, router]);
+  }, [state, router]);
 
   // Helper to get error messages for a field
   const getError = (field: string) =>
     localErrors[field] ? localErrors[field].join(', ') : null;
 
   return (
-    <form action={handleFormAction} className="space-y-4">
-      <div className="rounded-md bg-gray-800 p-6">
+    <>
+      {/* Success Message with Confetti */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gradient-to-r from-green-800 to-green-600 text-white rounded-xl p-8 shadow-2xl border border-green-400 max-w-md mx-4 transform scale-100 animate-pulse">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg className="w-20 h-20 text-green-200 mx-auto animate-bounce" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h2 className="text-3xl font-bold mb-2">🎉 Account Created!</h2>
+              <p className="text-green-100 mb-4 text-lg">Your account has been successfully created.</p>
+              <p className="text-green-300 text-sm font-medium">Redirecting to login page in 2 seconds...</p>
+              <div className="mt-4 w-full bg-green-700 rounded-full h-2">
+                <div className="bg-green-300 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <form action={handleFormAction} className="space-y-4">
+        <div className="rounded-md bg-gray-800 p-6">
         <div>
           <label htmlFor="firstName" className="block text-sm font-medium text-white">
             First Name
@@ -217,16 +254,17 @@ export default function SignupForm() {
             <p className="mt-1 text-sm text-red-500">{getError('confirmPassword')}</p>
           )}
         </div>
-        <Button type="submit" className="bg-primary text-white" disabled={isPending}>
-          Sign Up
+        <Button type="submit" className="bg-primary text-white" disabled={isPending || showSuccess}>
+          {isPending ? 'Creating Account...' : 'Sign Up'}
         </Button>
-        {errorMessage && typeof errorMessage === 'string' && (
+        {state?.error && (
           <div className="mt-3 flex items-center space-x-2 text-sm text-red-500">
             <ExclamationCircleIcon className="h-5 w-5" />
-            <span>{errorMessage}</span>
+            <span>{state.error}</span>
           </div>
         )}
       </div>
     </form>
+    </>
   );
 }

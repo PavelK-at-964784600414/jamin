@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { UpdateTheme, DeleteTheme } from '@/app/ui/themes/buttons';
-import { formatDateToLocal } from '@/app/lib/utils';
+import { formatDateToLocal, formatTimestampToLocal } from '@/app/lib/utils';
 import { ThemesTableWithLikes, CollabRecord, CollabRecord as Layer } from '@/app/lib/definitions'; 
 import MediaPlayerModal from '@/app/ui/themes/MediaPlayer';
 import LikeDislikeButton from '@/app/ui/like-dislike-button';
@@ -87,7 +87,7 @@ export default function ThemesTable({
                       </div>
                     </div>
                     <div className="flex flex-col text-right text-sm text-gray-400">
-                      <span className="font-medium">{formatDateToLocal(theme.date)}</span>
+                      <span className="font-medium">{formatTimestampToLocal(theme.date)}</span>
                       <span className="text-xs">{typeof theme.seconds === 'number' ? `${Math.floor(theme.seconds / 60)}:${(theme.seconds % 60).toString().padStart(2, '0')}` : 'N/A'}</span>
                     </div>
                   </div>
@@ -119,11 +119,45 @@ export default function ThemesTable({
                   <div className="space-y-3 text-sm text-gray-300">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                       <div><strong>Length:</strong> {typeof theme.seconds === 'number' ? `${Math.floor(theme.seconds / 60)}:${(theme.seconds % 60).toString().padStart(2, '0')}` : 'N/A'}</div>
-                      <div><strong>Date:</strong> {formatDateToLocal(theme.date)}</div>
+                      <div><strong>Date:</strong> {formatTimestampToLocal(theme.date)}</div>
                       <div><strong>Key:</strong> {theme.key}</div>
                       <div><strong>Mode:</strong> {theme.mode}</div>
                       <div><strong>Tempo:</strong> {theme.tempo} BPM</div>
                       <div><strong>Instrument:</strong> {theme.instrument}</div>
+                      {layersByTheme[theme.id] && Array.isArray(layersByTheme[theme.id]) && layersByTheme[theme.id]!.length > 0 && (
+                        <div className="col-span-2">
+                          <strong>All Instruments:</strong>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(() => {
+                              // Get unique instruments from theme and all its layers
+                              const allInstruments = new Set<string>();
+                              
+                              // Add theme's original instrument
+                              if (theme.instrument) {
+                                allInstruments.add(theme.instrument);
+                              }
+                              
+                              // Add instruments from layers
+                              layersByTheme[theme.id]?.forEach(layer => {
+                                if (layer.instrument) {
+                                  allInstruments.add(layer.instrument);
+                                }
+                              });
+                              
+                              const instrumentsArray = Array.from(allInstruments);
+                              
+                              return instrumentsArray.map((instrument) => (
+                                <span 
+                                  key={instrument}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-purple-900 text-purple-200"
+                                >
+                                  {instrument}
+                                </span>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <strong>Chords:</strong>
@@ -165,7 +199,7 @@ export default function ThemesTable({
                           <li key={layer.id} className="p-2 bg-gray-750 rounded-md">
                             <p className="text-sm font-medium text-yellow-500">{layer.title}</p>
                             <p className="text-xs text-gray-400">Instrument: {layer.instrument}</p>
-                            <p className="text-xs text-gray-400">Added on: {formatDateToLocal(layer.date)}</p>
+                            <p className="text-xs text-gray-400">Added on: {formatTimestampToLocal(layer.date)}</p>
                             {layer.file_path && ( 
                               <button
                                 onClick={(e) => {

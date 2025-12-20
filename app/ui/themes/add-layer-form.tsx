@@ -10,12 +10,16 @@ import LayerMetadataForm from './LayerMetadataForm';
 import ClientAudioMixer from '@/app/components/ClientAudioMixer';
 import { getSupportedAudioFormats, validateAudioFile, getAudioDuration } from '@/app/lib/audio-utils';
 import { logger } from '@/app/lib/logger';
+import confetti from 'canvas-confetti';
 
 interface AddLayerFormProps {
   theme: ThemesTable;
 }
 
 export default function AddLayerForm({ theme }: AddLayerFormProps) {
+  const router = useRouter();
+  const [showSuccess, setShowSuccess] = useState(false);
+  
   // Initialize the form state for server action response with proper typing
   const initialState: LayerState = { 
     message: null, 
@@ -413,8 +417,6 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     return await prepareFormSubmission();
   };
 
-  const router = useRouter();
-
   useEffect(() => {
     // After form submission via formAction, handle success or errors
     if (state?.message) {
@@ -422,9 +424,17 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
       setSuccess(null); // Clear success message if there's an error
     } else if (state?.success) {
       // If the submission was successful
+      setShowSuccess(true);
       setSuccess('Layer created and saved successfully!');
       setFile(null);
       setRecordedChunks([]);
+      
+      // Trigger confetti effect
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
       
       // Add a small delay before redirecting so user can see the success message
       const redirectTimer = setTimeout(() => {
@@ -445,36 +455,30 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
     return undefined;
   }, [state, router]);
 
-  // Handle form submission in a Safari-compatible way
-  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  // Handle form submission - server action wrapper
+  const handleFormSubmit = async (formData: FormData) => {
+    console.log('=== handleFormSubmit called for add-layer ===');
+    
     // First validate the form data
-    if (!await validateFormData()) {
-      return;
+    const fileToCheck = mixedFile || file;
+    
+    if (!fileToCheck) {
+      alert('No file to save. Please record or upload a file first.');
+      return { message: 'Audio file required', errors: {}, success: false, themeId: theme.id };
+    }
+    
+    // Title validation
+    if (!title.trim()) {
+      alert('Title is required');
+      return { message: 'Title required', errors: {}, success: false, themeId: theme.id };
     }
 
     try {
-      // Create a fresh FormData instance for Safari compatibility
-      const safeFormData = new FormData();
-      
-      // Manually append all form fields
-      safeFormData.append('title', title);
-      safeFormData.append('description', description);
-      safeFormData.append('genre', genre);
-      safeFormData.append('keySignature', keySignature);
-      safeFormData.append('tempo', tempo.toString());
-      safeFormData.append('scale', scale);
-      safeFormData.append('chords', chords);
-      safeFormData.append('instrument', instrument);
-      safeFormData.append('mode', mode);
-      safeFormData.append('themeId', theme.id);
-      
-      // Special handling for file upload in Safari - use mixed file if available, otherwise raw file
+      // Handle file upload in a Safari-compatible way
       const finalFile = mixedFile || file;
       if (finalFile) {
         try {
-          // Use FileReader approach first which is more compatible with Safari
+          // Use FileReader approach for Safari compatibility
           const safeFile = await new Promise<File>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -487,22 +491,18 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
                 // Determine a safe MIME type
                 let safeMimeType = finalFile.type || 'audio/webm';
                 if (!safeMimeType || safeMimeType === '') {
-                  // If no mime type, try to determine from extension
                   if (finalFile.name.endsWith('.mp3')) safeMimeType = 'audio/mpeg';
                   else if (finalFile.name.endsWith('.wav')) safeMimeType = 'audio/wav';
                   else if (finalFile.name.endsWith('.webm')) safeMimeType = 'audio/webm';
                   else if (finalFile.name.endsWith('.mp4')) safeMimeType = 'audio/mp4';
-                  else safeMimeType = 'audio/webm'; // Default fallback
+                  else safeMimeType = 'audio/webm';
                 }
                 
-                // Create a completely new blob and file object
                 const fileBlob = new Blob([arrayBuffer], { type: safeMimeType });
                 const fileName = finalFile.name || `recording-${Date.now()}.webm`;
-                
-                // Create a new File with the content
                 const newFile = new File([fileBlob], fileName, { 
                   type: safeMimeType,
-                  lastModified: Date.now() // Use current timestamp for consistency
+                  lastModified: Date.now()
                 });
                 
                 resolve(newFile);
@@ -514,90 +514,105 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             reader.readAsArrayBuffer(finalFile);
           });
           
-          // Append the safe file to the form data
-          safeFormData.append('audioFile', safeFile);
+          // Add the safe file to the FormData (replace any existing audioFile)
+          formData.set('audioFile', safeFile);
           logger.debug('Using FileReader approach for Safari compatibility');
         } catch (error) {
           logger.error('Error with FileReader approach', { metadata: { error: error instanceof Error ? error.message : String(error) } });
+          // Fallback
           try {
-            // Fallback: Try to create a new simple Blob and File
             const blobType = finalFile.type || 'audio/webm';
             const fileName = finalFile.name || `recording-${Date.now()}.webm`;
-            
-            // Just create a simple copy using slice()
             const fileBlob = finalFile.slice(0, finalFile.size, blobType);
             const safeFile = new File([fileBlob], fileName, { 
               type: blobType,
               lastModified: Date.now()
             });
-            safeFormData.append('audioFile', safeFile);
+            formData.set('audioFile', safeFile);
             logger.debug('Using slice fallback for Safari compatibility');
           } catch (fallbackError) {
             logger.error('All safe approaches failed', { metadata: { error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError) } });
-            // Last resort - direct append and hope for the best
-            safeFormData.append('audioFile', finalFile);
+            formData.set('audioFile', finalFile);
             logger.debug('Using direct file append as last resort');
           }
         }
       }
       
-      // Submit form using the server action
-      logger.debug('Submitting form with data', {
-        metadata: {
-          title: safeFormData.get('title'),
-          hasFile: !!safeFormData.get('audioFile')
-        }
-      });
+      console.log('=== Calling formAction for add-layer ===');
+      return await formAction(formData);
       
-      await formAction(safeFormData);
-      
-      // The form submission result is handled in the useEffect through the updated state
     } catch (e) {
       logger.error('Error saving layer', { metadata: { data: e } });
-      // Using the correctly typed error state
-      setError('Failed to save layer. Please try again.');
+      return {
+        message: 'Failed to save layer. Please try again.',
+        success: false,
+        errors: {},
+        themeId: theme.id
+      };
     }
   };
 
   return (
-    <form onSubmit={handleFormSubmit}>
-      <div className="bg-gray-900 rounded-lg p-6 shadow-lg">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-white mb-4">Add a New Layer</h2>
-          <p className="text-gray-300">
-            Record or upload your layer while listening to the original theme. 
-            The original theme will play during recording for synchronization.
-          </p>
-        </div>
-
-        {/* Success message - prominent position at top */}
-        {success && (
-          <div className="mb-6 p-6 bg-gradient-to-r from-green-800 to-green-600 text-white rounded-lg border border-green-500 shadow-lg">
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-green-200" fill="currentColor" viewBox="0 0 20 20">
+    <>
+      {/* Success Message with Confetti */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gradient-to-r from-green-800 to-green-600 text-white rounded-xl p-8 shadow-2xl border border-green-400 max-w-md mx-4 transform scale-100 animate-pulse">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg className="w-20 h-20 text-green-200 mx-auto animate-bounce" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold">✨ {success}</h3>
-                <p className="text-green-200 text-sm mt-1">Redirecting to your theme...</p>
+              <h2 className="text-3xl font-bold mb-2">🎉 Layer Added!</h2>
+              <p className="text-green-100 mb-4 text-lg">Your layer has been saved successfully and added to the theme.</p>
+              <p className="text-green-300 text-sm font-medium">Redirecting to theme page in 2 seconds...</p>
+              <div className="mt-4 w-full bg-green-700 rounded-full h-2">
+                <div className="bg-green-300 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
+      
+      <form action={handleFormSubmit}>
+        <div className="bg-gray-900 rounded-lg p-6 shadow-lg">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white mb-4">Add a New Layer</h2>
+            <p className="text-gray-300">
+              Record or upload your layer while listening to the original theme. 
+              The original theme will play during recording for synchronization.
+            </p>
+          </div>
 
-        {/* Error messages */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-900 text-white rounded-md">
-            {error}
-          </div>
-        )}
-        {state.message && (
-          <div className="mb-6 p-4 bg-red-900 text-white rounded-md">
-            {state.message}
-          </div>
-        )}
+          {/* Success message - prominent position at top */}
+          {success && (
+            <div className="mb-6 p-6 bg-gradient-to-r from-green-800 to-green-600 text-white rounded-lg border border-green-500 shadow-lg">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-green-200" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">✨ {success}</h3>
+                  <p className="text-green-200 text-sm mt-1">Redirecting to your theme...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error messages */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-900 text-white rounded-md">
+              {error}
+            </div>
+          )}
+          {state.message && (
+            <div className="mb-6 p-4 bg-red-900 text-white rounded-md">
+              {state.message}
+            </div>
+          )}
   
         {/* Theme playback preview button */}
         <div className="mb-6">
@@ -747,7 +762,7 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             <div className="mt-6 flex justify-end">
               <button
                 type="submit"
-                disabled={isPending || (file && !mixedFile)} // Disabled if pending or if we have file but no mixed file
+                disabled={isPending || showSuccess || (file && !mixedFile)} // Disabled if pending, showing success, or if we have file but no mixed file
                 className="px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-600"
               >
                 {isPending ? 'Saving...' : 
@@ -757,7 +772,8 @@ export default function AddLayerForm({ theme }: AddLayerFormProps) {
             </div>
           </div>
         )}
-      </div>
-    </form>
+        </div>
+      </form>
+    </>
   );
 }

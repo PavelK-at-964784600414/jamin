@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { CollaborationDisplayDataWithLikes } from '@/app/lib/definitions';
 import Image from 'next/image';
-import { formatDateToLocal } from '@/app/lib/utils';
+import { formatDateToLocal, formatTimestampToLocal } from '@/app/lib/utils';
 import Link from 'next/link';
 import LikeDislikeButton from '@/app/ui/like-dislike-button';
 import {
@@ -58,6 +58,12 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                           scope="col"
                           className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200"
                         >
+                          Instruments
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-200"
+                        >
                           Participants
                         </th>
                         <th
@@ -105,7 +111,7 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                                   Latest layer by: {collab.collab_creator_name}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  Added: {formatDateToLocal(collab.collab_date)}
+                                  Added: {formatTimestampToLocal(collab.collab_date)}
                                 </p>
                                 <div className="mt-1 text-xs text-gray-400">
                                   Built on: 
@@ -120,6 +126,47 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                                   </span>
                                 </div>
                               </div>
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm">
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                // Get unique instruments from all sources
+                                const allInstruments = new Set<string>();
+                                
+                                // Add the parent theme instrument (original theme)
+                                if (collab.parent_theme_instrument) {
+                                  allInstruments.add(collab.parent_theme_instrument);
+                                }
+                                
+                                // Add the latest collaboration instrument (current layer)
+                                if (collab.collab_instrument) {
+                                  allInstruments.add(collab.collab_instrument);
+                                }
+                                
+                                // Add instruments from all cumulative layers
+                                collab.cumulative_layers?.forEach(layer => {
+                                  if (layer.layer_instrument) {
+                                    allInstruments.add(layer.layer_instrument);
+                                  }
+                                });
+                                
+                                const instrumentsArray = Array.from(allInstruments);
+                                
+                                if (instrumentsArray.length === 0) {
+                                  return <span className="text-xs text-gray-500">N/A</span>;
+                                }
+                                
+                                return instrumentsArray.map((instrument, index) => (
+                                  <span 
+                                    key={instrument}
+                                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-900 text-purple-200"
+                                  >
+                                    <MicrophoneIcon className="h-3 w-3 mr-1" />
+                                    {instrument}
+                                  </span>
+                                ));
+                              })()}
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm">
@@ -156,7 +203,7 @@ export default function CollabPageClient({ collaborations }: CollabPageClientPro
                           <td className="whitespace-nowrap px-3 py-4 text-sm">
                             <div className="flex items-center">
                               <ClockIcon className="h-4 w-4 mr-1.5 text-gray-400" />
-                              {formatDateToLocal(collab.collab_date)}
+                              {formatTimestampToLocal(collab.collab_date)}
                             </div>
                           </td>
                           <td className="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">

@@ -12,20 +12,33 @@ import { logger } from '@/app/lib/logger';
 import { MicrophoneIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
 import { getAudioDuration } from '@/app/lib/audio-utils';
+import confetti from 'canvas-confetti';
 
 export default function CreateForm() {
   const router = useRouter();
+  // Add success state for showing success message before redirect
+  const [showSuccess, setShowSuccess] = useState(false);
+  
   // Use the server action directly with the form
   const initialState = { message: null, errors: {}, success: false };
-  type ThemeFormState = typeof initialState;
-  const [state, formAction] = useActionState(
+  type ThemeFormState = {
+    message: string | null;
+    errors: any;
+    success: boolean;
+  };
+  const [state, formAction, isPending] = useActionState(
     async (_state: ThemeFormState, formData: FormData): Promise<ThemeFormState> => {
+      console.log('Form submission started');
+      console.log('Duration from form data:', formData.get('duration'));
+      
       const result = await createTheme(_state, formData);
-      if (result === undefined) return { message: null, errors: {}, success: true };
+      console.log('Create theme result:', result);
+      
+      // Ensure consistent return format
       return {
-        message: null, // Always null for compatibility
-        errors: result.errors ?? {},
-        success: !!result.success,
+        message: result.message || null,
+        errors: result.errors || {},
+        success: result.success || false
       };
     },
     initialState
@@ -66,10 +79,32 @@ export default function CreateForm() {
     return '';
   };
 
+    // Handle success with confetti and redirect
   useEffect(() => {
+    console.log('Success effect triggered, state:', state);
     if (state && state.success) {
-      router.push('/dashboard/themes');
+      console.log('Success state detected, showing success message');
+      // Show success message with confetti
+      setShowSuccess(true);
+      
+      // Trigger confetti effect
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+      
+      // Redirect after showing success message for 2 seconds
+      const redirectTimer = setTimeout(() => {
+        console.log('Redirecting to themes page');
+        router.push('/dashboard/themes');
+      }, 2000);
+      
+      return () => clearTimeout(redirectTimer);
     }
+    
+    // Return undefined for other cases
+    return undefined;
   }, [state, router]);
 
   const handleStartRecording = async () => {
@@ -167,9 +202,11 @@ export default function CreateForm() {
         if (!isVideoMode && recordedFile.type.startsWith('audio/')) {
           try {
             const recordedDuration = await getAudioDuration(recordedFile);
+            console.log('Audio duration calculated:', recordedDuration);
             setDuration(recordedDuration);
             logger.debug('Recorded audio duration set to', { metadata: { duration: recordedDuration, unit: 'seconds' } });
           } catch (error) {
+            console.error('Failed to get audio duration:', error);
             logger.error('Failed to get recorded audio duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
             setDuration(0);
           }
@@ -228,9 +265,11 @@ export default function CreateForm() {
       if (selectedFile.type.startsWith('audio/')) {
         try {
           const audioDuration = await getAudioDuration(selectedFile);
+          console.log('Uploaded file duration calculated:', audioDuration);
           setDuration(audioDuration);
           logger.debug('Audio duration set to', { metadata: { duration: audioDuration, unit: 'seconds' } });
         } catch (error) {
+          console.error('Failed to get uploaded file duration:', error);
           logger.error('Failed to get audio duration', { metadata: { error: error instanceof Error ? error.message : String(error) } });
           setDuration(0);
         }
@@ -334,21 +373,29 @@ export default function CreateForm() {
   // Submit file using the formAction via useRef to be included in the form data
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Function to prepare the form submission
-  const prepareSubmit = () => {
+    // Function to prepare and submit the form
+  const handleFormSubmit = async (formData: FormData) => {
+    console.log('=== handleFormSubmit called ===');
+    console.log('File:', file);
+    console.log('Duration:', duration);
+    console.log('Title:', formData.get('title'));
+    
     if (!file) {
       alert('Please record or upload an audio file before submitting.');
-      return false;
+      return { message: 'Audio file required', errors: {}, success: false };
     }
     
-    // When we have a file, we'll inject it into the hidden file input so it's included in form submission
+    // Ensure the file is in the FormData
     if (fileInputRef.current && file) {
-      // Create a DataTransfer to programmatically set files
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
       fileInputRef.current.files = dataTransfer.files;
+      console.log('File added to hidden input');
     }
-    return true;
+    
+    // Call the original form action
+    console.log('=== Calling formAction ===');
+    return await formAction(formData);
   };
 
   const isValidBlobUrl = (url: string) => {
@@ -370,8 +417,29 @@ export default function CreateForm() {
   // Use the formAction from useActionState which will handle the server redirect properly
   
   return (
-    <form action={formAction}>
+    <form action={handleFormSubmit}>
       <div className="w-[500px] mx-auto">
+        {/* Success Message with Confetti */}
+        {showSuccess && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gradient-to-r from-green-800 to-green-600 text-white rounded-xl p-8 shadow-2xl border border-green-400 max-w-md mx-4 transform scale-100 animate-pulse">
+              <div className="text-center">
+                <div className="mb-4">
+                  <svg className="w-20 h-20 text-green-200 mx-auto animate-bounce" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold mb-2">🎉 Theme Created!</h2>
+                <p className="text-green-100 mb-4 text-lg">Your musical theme has been saved successfully and is ready for collaboration.</p>
+                <p className="text-green-300 text-sm font-medium">Redirecting to themes page in 2 seconds...</p>
+                <div className="mt-4 w-full bg-green-700 rounded-full h-2">
+                  <div className="bg-green-300 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <MetadataForm 
           title={title}
           onTitleChange={setTitle}
@@ -428,6 +496,20 @@ export default function CreateForm() {
           name="duration" 
           value={duration} 
         />
+        
+        {/* Debug: Show current duration */}
+        {duration > 0 && (
+          <div className="mt-2 p-2 bg-blue-900 rounded text-blue-200 text-sm">
+            Debug: Duration calculated: {duration} seconds ({Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')})
+          </div>
+        )}
+        
+        {/* Debug: Show current duration */}
+        {duration > 0 && (
+          <div className="mt-2 p-2 bg-blue-900 rounded text-white text-sm">
+            Debug: Current duration = {duration} seconds ({Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')})
+          </div>
+        )}
         {/* Replace MediaPlayer component with inline audio/video element */}
         {mediaURL && isValidBlobUrl(mediaURL) && (
           <div className="mt-4">
@@ -493,9 +575,9 @@ export default function CreateForm() {
           <Button 
             type="submit" 
             className="bg-blue-600 text-white hover:bg-blue-700"
-            onClick={(e) => !prepareSubmit() && e.preventDefault()}
+            disabled={isPending || showSuccess}
           >
-            Create Theme
+            {isPending ? 'Creating...' : 'Create Theme'}
           </Button>
         </div>
         <div id="message" aria-live="polite" aria-atomic="true">

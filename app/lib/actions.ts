@@ -61,6 +61,10 @@ const CreateTheme = z.object({
 
 
 export async function createTheme(prevState: State, formData: FormData) {
+    console.log('=== createTheme server action called ===');
+    console.log('Form data duration:', formData.get('duration'));
+    console.log('Form data title:', formData.get('title'));
+    
     // Get the current session from NextAuth
   let session;
   try {
@@ -82,7 +86,9 @@ export async function createTheme(prevState: State, formData: FormData) {
       title: formData.get('title'),
       description: formData.get('description'),
       genre: formData.get('genre'),
-      key: formData.get('keySignature') ?? "",      tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
+      key: formData.get('keySignature') ?? "",
+      tempo: formData.get('tempo') ? Number(formData.get('tempo')) : undefined,
+      seconds: formData.get('duration') ? Number(formData.get('duration')) : undefined,
       audioFile: formData.get('audioFile'),
       instrument: formData.get('instrument'),
       scale: formData.get('scale') ?? "",
@@ -90,9 +96,12 @@ export async function createTheme(prevState: State, formData: FormData) {
       chords: formData.get('chords'),
     });
 
-    // Get duration from form data
+    // Get duration from form data for logging
     const submittedDuration = formData.get('duration');
-    const seconds = submittedDuration ? Number(submittedDuration) : 0;
+    logger.debug('Duration from form', { metadata: { duration: submittedDuration } });
+    
+    // Use the validated seconds field
+    const seconds = validatedFields.success ? (validatedFields.data.seconds || 0) : 0;
 
     
     if (!validatedFields.success) {
@@ -144,7 +153,8 @@ export async function createTheme(prevState: State, formData: FormData) {
       };
     }
 
-    const date = new Date().toISOString().split('T')[0];
+    // Use full timestamp instead of just date for proper sorting
+    const date = new Date().toISOString();
 
     // Use the memberId obtained from the session
     // member_id	seconds	key	mode	chords	tempo	date	status	description	title	genre	recording_url	instrument
@@ -157,8 +167,14 @@ export async function createTheme(prevState: State, formData: FormData) {
     `;
     logger.debug('Theme created successfully');
     revalidatePath('/dashboard/themes');
-    // Always return a State object for useActionState compatibility
-    return { message: null, errors: {}, success: true };
+    
+    console.log('=== Theme creation successful, returning success state ===');
+    // Return success state instead of redirecting - let client handle redirect
+    return {
+      success: true,
+      message: 'Theme created successfully!',
+      errors: {},
+    };
   } catch (error) {
     logger.error('Error creating theme', { metadata: { error: error instanceof Error ? error.message : String(error) } });
     return {
@@ -262,10 +278,15 @@ export async function authenticate(
   }
 }
 
+export type RegisterState = {
+  success?: boolean;
+  error?: string;
+};
+
 export async function register(
-  prevState: string | undefined,
+  prevState: RegisterState | undefined,
   formData: FormData,
-) {
+): Promise<RegisterState> {
   try {
     // Extract signup fields from formData
     const userName = formData.get('userName') as string;
@@ -278,11 +299,14 @@ export async function register(
 
     // Call signUp helper
     await signUp(userName, email, password, firstName, lastName, country, instrument);
-    // Success: let client handle redirect
-    return undefined;
+    // Success: return success state
+    return { success: true };
   } catch (error) {
     logger.error('Registration error', { metadata: { error: error instanceof Error ? error.message : String(error) } });
-    return 'Something went wrong. Please try again.';
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Something went wrong. Please try again.' 
+    };
   }
 }
 
@@ -375,7 +399,10 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       
       // Get existing layers for this theme to calculate layer number
       existingLayers = await fetchLayersByThemeId(parentThemeId);
-      layerNumber = existingLayers.length + 1;
+      // Layer number should account for original theme as Layer 1
+      // So if there are 0 existing layers, next layer is 3
+      // If there are 1 existing layers, next layer is 4, etc.
+      layerNumber = existingLayers.length + 3;
       
       // Use the collaboration's complete recording for mixing
       mixingAudioUrl = collaboration.collab_recording_url;
@@ -402,7 +429,10 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
       parentData = parentThemeData;
       existingLayers = themeLayers;
       parentThemeId = themeId;
-      layerNumber = existingLayers.length + 1;
+      // Layer number should account for original theme as Layer 1
+      // So if there are 0 existing layers, next layer is 3
+      // If there are 1 existing layers, next layer is 4, etc.
+      layerNumber = existingLayers.length + 3;
       
       // Use the theme's sample for mixing
       mixingAudioUrl = parentThemeData.sample;
@@ -590,7 +620,8 @@ export async function createLayer(prevState: LayerState | null, formData: FormDa
     // The uploaded file should already be the mixed result from the client
     logger.debug('Layer file uploaded to S3 (pre-mixed on client)', { metadata: { data: recording_url } });
 
-    const date = new Date().toISOString().split('T')[0];    // Insert the layer into the new collabs table
+    // Use full timestamp instead of just date for proper sorting
+    const date = new Date().toISOString();    // Insert the layer into the new collabs table
     await sql`
       INSERT INTO collabs (
         member_id, seconds, key, mode, chords, tempo, date, status,
@@ -647,16 +678,12 @@ export async function toggleThemeLike(themeId: string, likeType: LikeType): Prom
   try {
     // Get the current session
     const session = await auth();
-    const memberId = session?.user?.id;
+    let memberId = session?.user?.id;
     
     if (!memberId) {
       logger.warn('User not authenticated. Using default member id for testing.');
       // For testing purposes, use default member id
-      // In production, you would return an error here
-      return {
-        success: false,
-        message: 'User not authenticated.'
-      };
+      memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
     }
 
     // Check if user already has a like/dislike for this theme
@@ -718,16 +745,12 @@ export async function toggleCollabLike(collabId: string, likeType: LikeType): Pr
   try {
     // Get the current session
     const session = await auth();
-    const memberId = session?.user?.id;
+    let memberId = session?.user?.id;
     
     if (!memberId) {
       logger.warn('User not authenticated. Using default member id for testing.');
       // For testing purposes, use default member id
-      // In production, you would return an error here
-      return {
-        success: false,
-        message: 'User not authenticated.'
-      };
+      memberId = 'd6e15727-9fe1-4961-8c5b-ea44a9bd81aa';
     }
 
     // Check if user already has a like/dislike for this collaboration

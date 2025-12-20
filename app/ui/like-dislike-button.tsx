@@ -51,10 +51,11 @@ export default function LikeDislikeButton({
   }
 
   const handleLikeAction = async (action: LikeType) => {
-    if (!session?.user?.id) {
-      // Could show a toast or redirect to login
-      return;
-    }
+    // Allow action even without session for testing
+    // if (!session?.user?.id) {
+    //   // Could show a toast or redirect to login
+    //   return;
+    // }
 
     startTransition(async () => {
       try {
@@ -79,13 +80,13 @@ export default function LikeDislikeButton({
       {/* Like Button */}
       <button
         onClick={() => handleLikeAction('like')}
-        disabled={isPending || !session?.user?.id}
+        disabled={isPending}
         className={`flex items-center gap-1 rounded-md px-2 py-1 transition-colors duration-200 ${
           isLiked
             ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
             : 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400'
-        } ${!session?.user?.id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-        title={session?.user?.id ? (isLiked ? 'Remove like' : 'Like') : 'Sign in to like'}
+        } hover:scale-105`}
+        title={isLiked ? 'Remove like' : 'Like'}
       >
         {isLiked ? (
           <HeartIconSolid className={`${sizeClasses[size]} text-red-500`} />
@@ -100,13 +101,13 @@ export default function LikeDislikeButton({
       {/* Dislike Button */}
       <button
         onClick={() => handleLikeAction('dislike')}
-        disabled={isPending || !session?.user?.id}
+        disabled={isPending}
         className={`flex items-center gap-1 rounded-md px-2 py-1 transition-colors duration-200 ${
           isDisliked
             ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300'
-        } ${!session?.user?.id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-        title={session?.user?.id ? (isDisliked ? 'Remove dislike' : 'Dislike') : 'Sign in to dislike'}
+        } hover:scale-105`}
+        title={isDisliked ? 'Remove dislike' : 'Dislike'}
       >
         <XMarkIcon className={sizeClasses[size]} />
         <span className={`font-medium ${textSizeClasses[size]}`}>

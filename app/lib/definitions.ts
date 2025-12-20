@@ -223,6 +223,7 @@ export type EnrichedLayerWithParentTheme = {
   layer_creator_image_url?: string;
   parent_theme_id: string;
   parent_theme_title: string;
+  parent_theme_instrument: string;
   parent_theme_date: string; // Keep as string from DB
   parent_theme_recording_url?: string; // Add recording URL for the original theme
   parent_theme_creator_id: string;
@@ -253,6 +254,7 @@ export type CollaborationDisplayData = {
   collab_recording_url?: string; // The latest layer's recording URL
   parent_theme_id: string; // The original theme this collaboration is built on
   parent_theme_title: string; // The original theme title
+  parent_theme_instrument: string; // The original theme instrument
   parent_theme_date: string; // When the original theme was created
   parent_theme_creator_id: string; // Who created the original theme
   parent_theme_creator_name: string; // Original theme creator's name
